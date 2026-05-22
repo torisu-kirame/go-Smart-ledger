@@ -4,7 +4,7 @@
   "description": "Chainscore MiniLedger node for go-Smart-ledger backend",
   "scripts": {
     "init": "miniledger init -d ./data/node1",
-    "start": "miniledger start -d ./data/node1 --api-port 4441 --p2p-port 4440",
+    "start": "miniledger start -d ./data/node1 --api-port 24441 --p2p-port 24440",
     "demo": "miniledger demo"
   },
   "engines": {

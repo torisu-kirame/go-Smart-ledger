@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import '../styles/layout.css'
 
 const nav = [
@@ -7,6 +8,14 @@ const nav = [
 ]
 
 export function Layout() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -24,8 +33,12 @@ export function Layout() {
           ))}
         </ul>
         <div className="sidebar-footer">
+          <div className="sidebar-user">{user?.username ?? '—'}</div>
+          <button type="button" className="btn-ghost sidebar-logout" onClick={handleLogout}>
+            退出登录
+          </button>
           <span>MiniLedger 浏览器</span>
-          <a href="http://localhost:4441/dashboard" target="_blank" rel="noreferrer">
+          <a href="http://localhost:24441/dashboard" target="_blank" rel="noreferrer">
             打开链节点面板 →
           </a>
         </div>

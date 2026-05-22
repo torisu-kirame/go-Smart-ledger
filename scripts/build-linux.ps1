@@ -6,7 +6,7 @@
 #   .\scripts\build-linux.ps1 -Service gateway
 
 param(
-    [ValidateSet("all", "ledger", "storage", "gateway")]
+    [ValidateSet("all", "ledger", "storage", "gateway", "auth")]
     [string] $Service = "all"
 )
 
@@ -24,11 +24,12 @@ $builds = @{
     ledger  = @{ Out = "ledger-api";  Pkg = "./services/ledger" }
     storage = @{ Out = "storage-api"; Pkg = "./services/storage" }
     gateway = @{ Out = "gateway-api"; Pkg = "./services/gateway" }
+    auth    = @{ Out = "auth-api";    Pkg = "./services/auth" }
 }
 
 Push-Location $Backend
 try {
-    $targets = if ($Service -eq "all") { @("ledger", "storage", "gateway") } else { @($Service) }
+    $targets = if ($Service -eq "all") { @("ledger", "storage", "gateway", "auth") } else { @($Service) }
     foreach ($name in $targets) {
         $b = $builds[$name]
         $out = Join-Path $BinDir $b.Out

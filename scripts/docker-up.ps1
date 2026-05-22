@@ -20,8 +20,10 @@ try {
         docker compose up -d
         if ($LASTEXITCODE -ne 0) { throw "docker compose up failed" }
         Write-Host ""
-        Write-Host "Gateway:    http://localhost:8080/api/v1/health"
-        Write-Host "MiniLedger: http://localhost:4441/dashboard"
+        Write-Host "Gateway:    http://localhost:28080/api/v1/health"
+        Write-Host "Frontend:   http://localhost:25173  (make frontend-dev)"
+        Write-Host "MiniLedger: http://localhost:24441/dashboard"
+        Write-Host "Login:      admin / admin123"
     }
 }
 finally {

@@ -1,0 +1,61 @@
+syntax = "v1"
+
+info (
+	title:   "Auth Service API"
+	desc:    "Login, captcha, JWT refresh"
+	author:  "smart-ledger"
+	version: "v1"
+)
+
+type (
+	CaptchaResp {
+		CaptchaId string `json:"captchaId"`
+		Image     string `json:"image"`
+	}
+	LoginReq {
+		Username    string `json:"username"`
+		Password    string `json:"password"`
+		CaptchaId   string `json:"captchaId"`
+		CaptchaCode string `json:"captchaCode"`
+	}
+	LoginResp {
+		AccessToken string   `json:"accessToken"`
+		ExpiresIn   int64    `json:"expiresIn"`
+		TokenType   string   `json:"tokenType"`
+		User        UserInfo `json:"user"`
+	}
+	RefreshResp {
+		AccessToken string   `json:"accessToken"`
+		ExpiresIn   int64    `json:"expiresIn"`
+		TokenType   string   `json:"tokenType"`
+		User        UserInfo `json:"user"`
+	}
+	UserInfo {
+		Id       string `json:"id"`
+		Username string `json:"username"`
+	}
+	HealthResp {
+		Status string `json:"status"`
+	}
+)
+
+@server (
+	prefix: /api/v1/auth
+)
+service auth-api {
+	@handler health
+	get /health returns (HealthResp)
+
+	@handler captcha
+	get /captcha returns (CaptchaResp)
+
+	@handler login
+	post /login (LoginReq) returns (LoginResp)
+
+	@handler refresh
+	post /refresh returns (RefreshResp)
+
+	@handler logout
+	post /logout
+}
+

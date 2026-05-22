@@ -1,0 +1,13 @@
+# 需先在外部编译: make build-linux-auth
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates wget
+
+WORKDIR /app
+
+ARG BIN=bin/linux/auth-api
+COPY ${BIN} ./auth-api
+COPY deploy/etc/auth-api.docker.yaml etc/auth-api.yaml
+
+EXPOSE 28887
+CMD ["./auth-api", "-f", "etc/auth-api.yaml"]

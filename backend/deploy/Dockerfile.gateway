@@ -9,5 +9,5 @@ ARG BIN=bin/linux/gateway-api
 COPY ${BIN} ./gateway-api
 COPY deploy/etc/gateway-api.docker.yaml etc/gateway-api.yaml
 
-EXPOSE 8080
+EXPOSE 28080
 CMD ["./gateway-api", "-f", "etc/gateway-api.yaml"]

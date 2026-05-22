@@ -51,7 +51,7 @@ export function Dashboard() {
             <div className="value">
               {loading ? '…' : <StatusDot ok={health?.status === 'ok'} label={health?.status ?? '未知'} />}
             </div>
-            <p className="sub">http://localhost:8080</p>
+            <p className="sub">http://localhost:28080</p>
           </div>
           <div className="card">
             <h3>MiniLedger 链</h3>
@@ -86,7 +86,7 @@ export function Dashboard() {
                 管理账本
               </button>
             </Link>
-            <a href="http://localhost:4441/dashboard" target="_blank" rel="noreferrer">
+            <a href="http://localhost:24441/dashboard" target="_blank" rel="noreferrer">
               <button type="button" className="btn-ghost">
                 区块浏览器
               </button>

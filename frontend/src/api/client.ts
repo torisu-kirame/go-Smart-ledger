@@ -7,8 +7,20 @@ import type {
   LedgerEvent,
   VerifyResult,
 } from '../types/ledger'
+import type { CaptchaResp, LoginResp, RefreshResp } from '../types/auth'
 
 const BASE = '/api/v1'
+
+let getToken: (() => string | null) | null = null
+let onUnauthorized: (() => Promise<boolean>) | null = null
+
+export function configureAuth(
+  tokenGetter: () => string | null,
+  refreshFn: () => Promise<boolean>,
+) {
+  getToken = tokenGetter
+  onUnauthorized = refreshFn
+}
 
 export class ApiError extends Error {
   constructor(
@@ -20,11 +32,27 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string>),
+  }
+  const token = getToken?.()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    credentials: 'include',
     ...init,
+    headers,
   })
+
+  if (res.status === 401 && retry && onUnauthorized && !path.startsWith('/auth/')) {
+    const ok = await onUnauthorized()
+    if (ok) return request<T>(path, init, false)
+  }
+
   const text = await res.text()
   let body: unknown = null
   if (text) {
@@ -47,6 +75,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  captcha: () => request<CaptchaResp>('/auth/captcha'),
+
+  login: (body: {
+    username: string
+    password: string
+    captchaId: string
+    captchaCode: string
+  }) =>
+    request<LoginResp>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  refresh: () =>
+    request<RefreshResp>('/auth/refresh', {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  logout: () =>
+    request<void>('/auth/logout', {
+      method: 'POST',
+      body: '{}',
+    }),
+
   health: () => request<Health>('/health'),
 
   listLedgers: () => request<Ledger[]>('/ledgers'),

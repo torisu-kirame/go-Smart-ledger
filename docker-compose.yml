@@ -1,18 +1,12 @@
-# Smart Ledger — 一键启动全栈（先外部编译，再 COPY 进镜像）
+# Smart Ledger — 一键启动（先 make build-linux，再 docker compose build）
 #
-# 推荐用法（增量编译 + 打包）:
-#   make docker-build && docker compose up -d
 #   make up
-#   .\scripts\docker-up.ps1          # Windows
+#   make docker-build && docker compose up -d
 #
-# 仅重编某一服务后更新镜像:
-#   make -C backend build-linux-ledger
-#   docker compose build ledger-api
-#
-# 注意: 不要单独 docker compose build，须先存在 backend/bin/linux/*
-#
-# 入口: http://localhost:8080/api/v1/health
-# MiniLedger 浏览器: http://localhost:4441/dashboard
+# 控制台: http://localhost:25173  (make frontend-dev)
+# 网关:   http://localhost:28080
+# 链浏览器: http://localhost:24441/dashboard
+# 默认账号: admin / admin123
 
 name: smart-ledger
 
@@ -26,14 +20,29 @@ services:
       - miniledger-data:/app/data
     entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
     ports:
-      - "4441:4441"
-      - "4440:4440"
+      - "24441:24441"
+      - "24440:24440"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4441/status"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:24441/status"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 60s
+    restart: unless-stopped
+
+  auth-api:
+    build:
+      context: ./backend
+      dockerfile: deploy/Dockerfile.auth
+    container_name: smart-ledger-auth-api
+    ports:
+      - "28887:28887"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28887/api/v1/auth/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
     restart: unless-stopped
 
   ledger-api:
@@ -42,12 +51,12 @@ services:
       dockerfile: deploy/Dockerfile.ledger
     container_name: smart-ledger-ledger-api
     ports:
-      - "8888:8888"
+      - "28888:28888"
     depends_on:
       miniledger:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8888/api/v1/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28888/api/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -60,11 +69,11 @@ services:
       dockerfile: deploy/Dockerfile.storage
     container_name: smart-ledger-storage-api
     ports:
-      - "8890:8890"
+      - "28890:28890"
     volumes:
       - storage-backups:/data/backups
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8890/api/v1/storage/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28890/api/v1/storage/health"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -77,14 +86,16 @@ services:
       dockerfile: deploy/Dockerfile.gateway
     container_name: smart-ledger-gateway
     ports:
-      - "8080:8080"
+      - "28080:28080"
     depends_on:
+      auth-api:
+        condition: service_healthy
       ledger-api:
         condition: service_healthy
       storage-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/v1/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28080/api/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 6

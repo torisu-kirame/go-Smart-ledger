@@ -11,5 +11,5 @@ COPY deploy/etc/storage-api.docker.yaml etc/storage-api.yaml
 
 RUN mkdir -p /data/backups
 
-EXPOSE 8890
+EXPOSE 28890
 CMD ["./storage-api", "-f", "etc/storage-api.yaml"]

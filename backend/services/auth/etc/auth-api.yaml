@@ -1,0 +1,18 @@
+Name: auth-api
+Host: 0.0.0.0
+Port: 28887
+
+Auth:
+  AccessSecret: smart-ledger-access-secret-change-me
+  RefreshSecret: smart-ledger-refresh-secret-change-me
+  AccessExpire: 900
+  RefreshExpire: 604800
+  CookieSecure: false
+
+Users:
+  - username: admin
+    password: admin123
+
+Log:
+  Mode: console
+  Level: info

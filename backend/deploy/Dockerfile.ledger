@@ -10,5 +10,5 @@ ARG BIN=bin/linux/ledger-api
 COPY ${BIN} ./ledger-api
 COPY deploy/etc/ledger-api.docker.yaml etc/ledger-api.yaml
 
-EXPOSE 8888
+EXPOSE 28888
 CMD ["./ledger-api", "-f", "etc/ledger-api.yaml"]

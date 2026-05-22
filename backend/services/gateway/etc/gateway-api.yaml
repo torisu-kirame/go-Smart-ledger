@@ -1,10 +1,19 @@
 Name: gateway-api
 Host: 0.0.0.0
-Port: 8080
+Port: 28080
+
+Auth:
+  AccessSecret: smart-ledger-access-secret-change-me
 
 Upstreams:
-  Ledger: http://127.0.0.1:8888
-  Storage: http://127.0.0.1:8890
+  Auth: http://127.0.0.1:28887
+  Ledger: http://127.0.0.1:28888
+  Storage: http://127.0.0.1:28890
+
+Cors:
+  AllowedOrigins:
+    - http://localhost:25173
+    - http://127.0.0.1:25173
 
 Log:
   Mode: console

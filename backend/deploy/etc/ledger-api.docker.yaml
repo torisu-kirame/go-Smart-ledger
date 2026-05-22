@@ -1,9 +1,9 @@
 Name: ledger-api
 Host: 0.0.0.0
-Port: 8888
+Port: 28888
 
 MiniLedger:
-  BaseURL: http://miniledger:4441
+  BaseURL: http://miniledger:24441
 
 Log:
   Mode: console
