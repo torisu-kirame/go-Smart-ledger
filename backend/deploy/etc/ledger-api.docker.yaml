@@ -5,6 +5,8 @@ Port: 28888
 MiniLedger:
   BaseURL: http://miniledger:24441
 
+BackupDir: /data/backups
+
 Log:
   Mode: console
   Level: info

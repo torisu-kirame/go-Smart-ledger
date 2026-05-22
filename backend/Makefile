@@ -13,7 +13,7 @@ CGO      := 0
 LDFLAGS  := -s -w
 GOBUILD  := CGO_ENABLED=$(CGO) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -trimpath -ldflags "$(LDFLAGS)"
 
-LEDGER_SRC_DIRS  := pkg/domain pkg/ledgersvc pkg/miniledgerclient services/ledger
+LEDGER_SRC_DIRS  := pkg/domain pkg/ledgersvc pkg/miniledgerclient pkg/importxlsx pkg/storage services/ledger
 STORAGE_SRC_DIRS := pkg/storage services/storage
 GATEWAY_SRC_DIRS := pkg/authjwt services/gateway
 AUTH_SRC_DIRS    := pkg/authjwt pkg/captcha pkg/userstore services/auth

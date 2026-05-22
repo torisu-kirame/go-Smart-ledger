@@ -51,5 +51,6 @@ type EntryPayload struct {
 const (
 	EventLedgerCreated = "LedgerCreated"
 	EventEntryAdded    = "EntryAdded"
+	EventImportBatch   = "ImportBatch"
 	EventBatchSealed   = "BatchSealed"
 )
