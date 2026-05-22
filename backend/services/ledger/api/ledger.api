@@ -1,0 +1,103 @@
+syntax = "v1"
+
+info (
+	title:   "Ledger Service API"
+	desc:    "Smart ledger business API (MiniLedger-backed)"
+	author:  "smart-ledger"
+	version: "v1"
+)
+
+type (
+	Member {
+		Id      string `json:"id"`
+		Address string `json:"address"`
+		Role    string `json:"role,optional"`
+	}
+	CreateLedgerReq {
+		Type      string   `json:"type"`
+		Name      string   `json:"name"`
+		CreatorId string   `json:"creatorId"`
+		Members   []Member `json:"members"`
+	}
+	EntryReq {
+		SignerId string `json:"signerId"`
+		Date     string `json:"date"`
+		Type     string `json:"type"`
+		Amount   string `json:"amount"`
+		Category string `json:"category,optional"`
+		Note     string `json:"note,optional"`
+	}
+	AppendEntryReq {
+		Entry EntryReq `json:"entry"`
+	}
+	AnchorReq {
+		SeqFrom uint64 `json:"seqFrom,optional"`
+		SeqTo   uint64 `json:"seqTo,optional"`
+	}
+	LedgerResp {
+		Id           string   `json:"id"`
+		Type         string   `json:"type"`
+		Name         string   `json:"name"`
+		CreatorId    string   `json:"creatorId"`
+		Members      []Member `json:"members"`
+		LatestSeq    uint64   `json:"latestSeq"`
+		LatestRoot   string   `json:"latestRoot"`
+		BlockHeight  uint64   `json:"blockHeight,omitempty"`
+		AnchorStatus string   `json:"anchorStatus"`
+	}
+	EventResp {
+		Seq       uint64 `json:"seq"`
+		Type      string `json:"type"`
+		Hash      string `json:"hash"`
+		SignerId  string `json:"signerId,omitempty"`
+		CreatedAt string `json:"createdAt"`
+	}
+	AnchorResp {
+		LedgerId string `json:"ledgerId"`
+		Seq      uint64 `json:"seq"`
+		Root     string `json:"root"`
+		TxHash   string `json:"txHash,omitempty"`
+		Status   string `json:"status"`
+	}
+	VerifyResp {
+		Valid bool `json:"valid"`
+	}
+	HealthResp {
+		Status           string `json:"status"`
+		MiniLedgerOnline bool   `json:"miniLedgerOnline"`
+	}
+	ListEventsReq {
+		From uint64 `form:"from,optional"`
+		To   uint64 `form:"to,optional"`
+	}
+)
+
+@server (
+	prefix: /api/v1
+)
+service ledger-api {
+	@handler health
+	get /health returns (HealthResp)
+
+	@handler createLedger
+	post /ledgers (CreateLedgerReq) returns (LedgerResp)
+
+	@handler listLedgers
+	get /ledgers returns ([]LedgerResp)
+
+	@handler getLedger
+	get /ledgers/:id returns (LedgerResp)
+
+	@handler appendEntry
+	post /ledgers/:id/entries (AppendEntryReq) returns (EventResp)
+
+	@handler listEvents
+	get /ledgers/:id/events (ListEventsReq) returns ([]EventResp)
+
+	@handler anchorLedger
+	post /ledgers/:id/anchor (AnchorReq) returns (AnchorResp)
+
+	@handler verifyLedger
+	get /ledgers/:id/verify returns (VerifyResp)
+}
+

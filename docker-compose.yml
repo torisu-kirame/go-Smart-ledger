@@ -1,0 +1,89 @@
+# Smart Ledger — 一键启动全栈
+# 用法:
+#   docker compose up -d --build
+#   docker compose logs -f
+#   docker compose down
+#
+# 入口: http://localhost:8080/api/v1/health
+# MiniLedger 浏览器: http://localhost:4441/dashboard
+
+name: smart-ledger
+
+services:
+  miniledger:
+    image: node:22-alpine
+    container_name: smart-ledger-miniledger
+    working_dir: /app
+    volumes:
+      - ./backend/infra/miniledger:/app
+      - miniledger-data:/app/data
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
+    ports:
+      - "4441:4441"
+      - "4440:4440"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4441/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
+
+  ledger-api:
+    build:
+      context: ./backend
+      dockerfile: deploy/Dockerfile.ledger
+    container_name: smart-ledger-ledger-api
+    ports:
+      - "8888:8888"
+    depends_on:
+      miniledger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8888/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  storage-api:
+    build:
+      context: ./backend
+      dockerfile: deploy/Dockerfile.storage
+    container_name: smart-ledger-storage-api
+    ports:
+      - "8890:8890"
+    volumes:
+      - storage-backups:/data/backups
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8890/api/v1/storage/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  gateway-api:
+    build:
+      context: ./backend
+      dockerfile: deploy/Dockerfile.gateway
+    container_name: smart-ledger-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      ledger-api:
+        condition: service_healthy
+      storage-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  miniledger-data:
+  storage-backups:

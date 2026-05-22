@@ -1,0 +1,16 @@
+{
+  "name": "smart-ledger-miniledger-node",
+  "private": true,
+  "description": "Chainscore MiniLedger node for go-Smart-ledger backend",
+  "scripts": {
+    "init": "miniledger init -d ./data/node1",
+    "start": "miniledger start -d ./data/node1 --api-port 4441 --p2p-port 4440",
+    "demo": "miniledger demo"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "miniledger": "^0.2.0"
+  }
+}

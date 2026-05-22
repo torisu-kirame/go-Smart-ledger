@@ -1,0 +1,9 @@
+/data/
+*.db
+*.exe
+.env
+backend/bin/
+backend/data/
+backend/infra/miniledger/node_modules/
+backend/infra/miniledger/data/
+/docx/

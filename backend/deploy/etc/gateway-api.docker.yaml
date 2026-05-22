@@ -1,0 +1,11 @@
+Name: gateway-api
+Host: 0.0.0.0
+Port: 8080
+
+Upstreams:
+  Ledger: http://ledger-api:8888
+  Storage: http://storage-api:8890
+
+Log:
+  Mode: console
+  Level: info

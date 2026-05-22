@@ -1,0 +1,44 @@
+syntax = "v1"
+
+info (
+	title:   "Storage Service API"
+	desc:    "IPFS and encrypted backup"
+	author:  "smart-ledger"
+	version: "v1"
+)
+
+type (
+	HealthResp {
+		Status string `json:"status"`
+	}
+	PutBackupReq {
+		LedgerId string `json:"ledgerId"`
+		Password string `json:"password"`
+		Payload  string `json:"payload"` // base64
+	}
+	PutBackupResp {
+		Ref string `json:"ref"`
+	}
+	GetBackupReq {
+		Ref      string `json:"ref"`
+		Password string `json:"password"`
+	}
+	GetBackupResp {
+		Payload string `json:"payload"` // base64
+	}
+)
+
+@server (
+	prefix: /api/v1/storage
+)
+service storage-api {
+	@handler health
+	get /health returns (HealthResp)
+
+	@handler putBackup
+	post /backup (PutBackupReq) returns (PutBackupResp)
+
+	@handler getBackup
+	post /backup/fetch (GetBackupReq) returns (GetBackupResp)
+}
+
