@@ -1,5 +1,11 @@
 # 根目录：先外部编译，再打包 Docker（增量编译见 backend/Makefile）
-.PHONY: build build-linux docker-build up down logs clean
+.PHONY: build build-linux docker-build up down logs clean frontend-dev frontend-build
+
+frontend-dev:
+	cd frontend && npm install && npm run dev
+
+frontend-build:
+	cd frontend && npm install && npm run build
 
 build:
 	$(MAKE) -C backend build-local
