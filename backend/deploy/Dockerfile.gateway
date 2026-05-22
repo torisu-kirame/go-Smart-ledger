@@ -1,13 +1,13 @@
-FROM golang:1.22-alpine AS build
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN go build -o /gateway-api ./services/gateway
-
+# 需先在外部编译: make build-linux 或 make build-linux-gateway
 FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates wget
+
 WORKDIR /app
-COPY --from=build /gateway-api .
+
+ARG BIN=bin/linux/gateway-api
+COPY ${BIN} ./gateway-api
 COPY deploy/etc/gateway-api.docker.yaml etc/gateway-api.yaml
+
 EXPOSE 8080
 CMD ["./gateway-api", "-f", "etc/gateway-api.yaml"]

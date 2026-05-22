@@ -6,4 +6,6 @@ backend/bin/
 backend/data/
 backend/infra/miniledger/node_modules/
 backend/infra/miniledger/data/
+# Linux 交叉编译产物（Docker 用，不提交）
+backend/bin/linux/
 /docx/

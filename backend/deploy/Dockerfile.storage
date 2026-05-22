@@ -1,14 +1,15 @@
-FROM golang:1.22-alpine AS build
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN go build -o /storage-api ./services/storage
-
+# 需先在外部编译: make build-linux 或 make build-linux-storage
 FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates wget
+
 WORKDIR /app
-COPY --from=build /storage-api .
+
+ARG BIN=bin/linux/storage-api
+COPY ${BIN} ./storage-api
 COPY deploy/etc/storage-api.docker.yaml etc/storage-api.yaml
+
 RUN mkdir -p /data/backups
+
 EXPOSE 8890
 CMD ["./storage-api", "-f", "etc/storage-api.yaml"]

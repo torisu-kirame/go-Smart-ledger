@@ -1,0 +1,7 @@
+# 最小构建上下文：仅预编译产物与运行时配置
+*
+!bin/linux/
+!bin/linux/**
+!deploy/etc/
+!deploy/etc/**
+!deploy/Dockerfile.*
