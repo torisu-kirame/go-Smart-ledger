@@ -151,3 +151,29 @@ func decodeResponse(resp *http.Response, out interface{}) error {
 	}
 	return nil
 }
+
+// GetRaw performs GET and returns the response body (for proxying explorer APIs).
+func (c *Client) GetRaw(ctx context.Context, path string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("miniledger %s: %s", path, string(raw))
+	}
+	return raw, nil
+}
+
+// BaseURL returns the configured node URL.
+func (c *Client) BaseURL() string {
+	return c.baseURL
+}

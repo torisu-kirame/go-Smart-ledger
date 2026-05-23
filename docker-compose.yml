@@ -74,8 +74,11 @@ services:
       context: ./backend
       dockerfile: deploy/Dockerfile.ledger
     container_name: smart-ledger-ledger-api
+    volumes:
+      - ledger-data:/data
     ports:
       - "28888:28888"
+      - "28898:28898"
     depends_on:
       miniledger:
         condition: service_healthy
@@ -147,5 +150,6 @@ services:
 volumes:
   auth-avatars:
   miniledger-data:
+  ledger-data:
   storage-backups:
   ipfs-data:

@@ -81,6 +81,15 @@ export const api = {
   refresh: () => request('/auth/refresh', { method: 'POST', body: '{}' }),
   logout: () => request('/auth/logout', { method: 'POST', body: '{}' }),
   health: () => request('/health'),
+  chainStatus: () => request('/chain/status'),
+  chainQueue: () => request('/chain/queue'),
+  retryChainQueue: (id) =>
+    request(`/chain/queue/${encodeURIComponent(id)}/retry`, { method: 'POST', body: '{}' }),
+  chainBlocks: (page = 1, limit = 20) =>
+    request(`/chain/blocks?page=${page}&limit=${limit}`),
+  chainConsensus: () => request('/chain/consensus'),
+  chainPeers: () => request('/chain/peers'),
+  discoveryServices: () => request('/discovery/services'),
   listEntrySchemaTemplates: () => request('/entry-schema/templates'),
   listEntryTemplates: () => request('/entry-templates'),
   getEntryTemplate: (id) => request(`/entry-templates/${encodeURIComponent(id)}`),

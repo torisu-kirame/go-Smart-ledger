@@ -130,13 +130,13 @@ go-Smart-ledger/
 | F32 | 团队：绑定多人账本 + 邀请 ≥1 好友（类拉群） | P1 | ✅ 已完成 |
 | F33 | 雪花 ID（用户/账本/团队）+ HD 钱包 BIP44 账本地址 | P1 | ✅ 已完成 |
 | F21 | 自定义账本字段 Schema / 动态模板 | P2 | ✅ 已完成 |
-| F22 | MiniLedger 多节点 Raft 集群部署文档与 Compose | P1 | ⬜ 未完成 |
-| F23 | 上链失败重试队列、待上链状态 UI | P1 | ⬜ 未完成 |
+| F22 | MiniLedger 多节点 Raft 集群部署文档与 Compose | P1 | ✅ 已完成 |
+| F23 | 上链失败重试队列、待上链状态 UI | P1 | ✅ 已完成 |
 | F24 | 前端纳入 Docker（Nginx 托管 dist） | P1 | ✅ 已完成 |
 | F25 | 移动端 Vue3 / Uni-app | P2 | ⬜ 未完成 |
 | F26 | 集成测试 / CI（GitHub Actions） | P2 | ⬜ 未完成 |
 | F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ⬜ 未完成 |
-| F28 | go-zero gRPC + 服务发现（etcd） | P3 | ⬜ 未完成 |
+| F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
 | F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ⬜ 未完成 |
 | F30 | 项目根 README 计划与进度维护 | P0 | ✅ 已完成 |
 
@@ -160,6 +160,10 @@ go-Smart-ledger/
 - [x] **F17 多签审批**：多人账本默认需 2 人批准；`propose` / `approve` / `reject`；详情页待审批列表
 - [x] **F18 成员同步与加入**：邀请成员、我的邀请页、接受加入链上 `MemberJoined`；`GET /ledgers/:id/sync` 增量同步；账本列表按成员过滤
 - [x] **F19 组级 E2E 加密**：创建多人账本可选加密口令；客户端 AES-GCM 加密 `entry.data`；`user_public_keys` 表与密钥轮换 API
+- [x] **F22 Raft 集群**：`docker-compose.raft.yml` 三节点编排 + `docs/miniledger-raft.md`
+- [x] **F23 上链重试**：`pkg/txqueue` 持久化队列与后台重试；`/api/v1/chain/queue`；概览与链浏览器页展示待上链
+- [x] **F28 服务发现**：etcd 注册/发现；ledger gRPC health（:28898）；`docker-compose.discovery.yml`；`GET /api/v1/discovery/services`
+- [x] **链浏览器页**：控制台 `/chain` 内嵌 MiniLedger Dashboard（Nginx `/miniledger/` 反代）
 
 ### 后端
 
@@ -168,13 +172,14 @@ go-Smart-ledger/
 - [x] `pkg/snowflake`：分布式 ID；`pkg/ledgerhd`：go-ethereum-hdwallet 分层确定性地址
 - [x] `backend/services/ledger`：账本 CRUD、导入、备份 API
 - [x] `backend/services/storage`：Argon2 + AES 磁盘加密备份
-- [x] `pkg/miniledgerclient`：对接 MiniLedger REST
+- [x] `pkg/miniledgerclient`：对接 MiniLedger REST；链浏览器代理 API（`/chain/*`）
+- [x] `pkg/txqueue`：上链失败多步重试队列；`pkg/registry`：etcd 服务注册；`pkg/grpchsrv`：gRPC health
 - [x] `pkg/importxlsx`：excelize 解析与模板生成
 
 ### 前端
 
 - [x] `frontend/desktop`：Vue 3 + Pinia + Vue Router
-- [x] 页面：登录、概览、账本管理、账本详情、Excel 导入、备份/恢复
+- [x] 页面：登录、概览、账本管理、账本详情、Excel 导入、备份/恢复、**链浏览器**（`/chain`）
 - [x] 短期 access token 仅存内存；refresh 走 Cookie
 - [x] 用户端登录/注册页；好友页（ID 搜索、添加、删除）；团队页（选多人账本 + 勾选好友）
 - [x] 账本列表展示 `ledgerAddress`；创建账本无需手填链上地址
@@ -196,13 +201,12 @@ go-Smart-ledger/
 
 | 功能 | 说明 |
 |------|------|
-| **上链状态机** | 待上链 / 失败重试 / 展示 tx 或块高 |
 | **RBAC / 权限** | 角色与细粒度权限（当前仅 JWT 登录用户） |
 
 ### 中低优先级
 
-- MiniLedger 多节点 Raft、真 P2P 节点直连同步（当前为链上邀请 + HTTP 增量同步）
-- MiniLedger 多节点、移动端、CI、生产安全加固
+- 真 P2P 节点直连同步（当前为链上邀请 + HTTP 增量同步）
+- 移动端、CI、生产安全加固
 - 自定义字段 Schema、公链 L2 合约锚定
 
 ### 已知限制
@@ -258,7 +262,8 @@ make frontend-dev
 |------|------|
 | http://localhost:25173 | Vue 控制台 |
 | http://localhost:28080/api/v1/health | 网关健康检查 |
-| http://localhost:24441/dashboard | MiniLedger 浏览器 |
+| http://localhost:25173/chain | 控制台内嵌链浏览器（推荐） |
+| http://localhost:24441/dashboard | MiniLedger 原生浏览器（直连节点） |
 | 默认账号 | `admin` / `admin123` |
 
 ### ID 与链上地址（开发说明）
@@ -283,12 +288,30 @@ make down            # 停止栈
 make frontend-build  # 构建前端静态资源
 ```
 
+### Raft 集群（F22，可选）
+
+```bash
+docker compose stop miniledger
+docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d miniledger-1 miniledger-2 miniledger-3
+```
+
+详见 [docs/miniledger-raft.md](docs/miniledger-raft.md)。`ledger-api` 的 `MiniLedger.BaseURL` 应指向 leader（通常为 node1 `:24441`）。
+
+### etcd 服务发现（F28，可选）
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile discovery up -d
+```
+
+将 `ledger-api` / `gateway-api` 配置换为 `deploy/etc/*.discovery.docker.yaml`（`Discovery.Etcd.Enabled: true`）并重建镜像后，`ledger-api` 会向 etcd 注册 HTTP/gRPC；网关 `GET /api/v1/discovery/services` 可查看注册表。默认单栈已开启 gRPC health（`:28898`），etcd 为可选。
+
 ---
 
 ## 更新记录
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-24 | F22/F23/F28：Raft 三节点 Compose；上链重试队列与链浏览器页；etcd + gRPC health 服务发现。 |
 | 2026-05-23 | F14–F16：IPFS Kubo 存储；备份本地+IPFS 双写与链上 CID；`restore/commit` 快照写回账本。 |
 | 2026-05-23 | 记账模板管理页（`/entry-templates`）；MySQL `entry_templates` 表；侧栏「记账模板」。 |
 | 2026-05-23 | F21：账本条目 Schema；默认模板（记账人/收账人/金额/日期/备注）；创建账本可选模板或自定义字段；动态表单与 Excel 按 Schema 导入。 |

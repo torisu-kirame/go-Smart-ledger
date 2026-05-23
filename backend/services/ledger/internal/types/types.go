@@ -81,6 +81,8 @@ type HealthResp struct {
 	Status           string `json:"status"`
 	MiniLedgerOnline bool   `json:"miniLedgerOnline"`
 	IPFSOnline       bool   `json:"ipfsOnline"`
+	QueuePending     int    `json:"queuePending,omitempty"`
+	QueueFailed      int    `json:"queueFailed,omitempty"`
 }
 
 type LedgerResp struct {

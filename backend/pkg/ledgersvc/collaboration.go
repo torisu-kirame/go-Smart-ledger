@@ -341,7 +341,7 @@ func (s *Service) putPending(ctx context.Context, p *domain.PendingEntry) error 
 	if err != nil {
 		return err
 	}
-	return s.chain.Submit(ctx, miniledgerclient.TxRequest{
+	return s.submitOne(ctx, "pending:"+p.ID, p.LedgerID, miniledgerclient.TxRequest{
 		Key:   domain.LedgerPendingKey(p.LedgerID, p.ID),
 		Value: raw,
 	})
@@ -369,7 +369,7 @@ func (s *Service) putInvite(ctx context.Context, inv *domain.MemberInvite) error
 	if err != nil {
 		return err
 	}
-	return s.chain.Submit(ctx, miniledgerclient.TxRequest{
+	return s.submitOne(ctx, "invite:"+inv.InviteeID, inv.LedgerID, miniledgerclient.TxRequest{
 		Key:   domain.LedgerInviteKey(inv.LedgerID, inv.InviteeID),
 		Value: raw,
 	})
@@ -393,5 +393,5 @@ func (s *Service) loadInvite(ctx context.Context, ledgerID, inviteeID string) (*
 }
 
 func (s *Service) deleteKey(ctx context.Context, key string) error {
-	return s.chain.Submit(ctx, miniledgerclient.TxRequest{Key: key, Value: json.RawMessage(`null`)})
+	return s.submitOne(ctx, "delete:"+key, "", miniledgerclient.TxRequest{Key: key, Value: json.RawMessage(`null`)})
 }

@@ -52,11 +52,15 @@ func (l *HealthLogic) Health() (*types.HealthResp, error) {
 	}
 	var ledgerHealth struct {
 		MiniLedgerOnline bool `json:"miniLedgerOnline"`
+		QueuePending     int  `json:"queuePending"`
+		QueueFailed      int  `json:"queueFailed"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&ledgerHealth); err != nil {
 		logx.WithContext(l.ctx).Errorf("health: decode ledger response: %v", err)
 		return resp, nil
 	}
 	resp.MiniLedgerOnline = ledgerHealth.MiniLedgerOnline
+	resp.ChainQueuePending = ledgerHealth.QueuePending
+	resp.ChainQueueFailed = ledgerHealth.QueueFailed
 	return resp, nil
 }

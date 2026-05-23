@@ -31,7 +31,7 @@
         </a>
         <div v-if="auth.user?.id" class="uid">ID: {{ auth.user.id }}</div>
         <button class="btn-ghost foot-logout" type="button" @click="onLogout">退出</button>
-        <a href="http://localhost:24441/dashboard" target="_blank" rel="noreferrer" class="ext-link">MiniLedger 浏览器 →</a>
+        <router-link to="/chain" class="ext-link">链浏览器</router-link>
       </div>
     </aside>
     <main class="main">
@@ -58,6 +58,7 @@ const navItems = [
   { to: '/friends', label: '好友', exact: true },
   { to: '/teams', label: '团队', exact: true },
   { to: '/invites', label: '账本邀请', exact: true },
+  { to: '/chain', label: '链浏览器', exact: true },
 ]
 
 const footAvatar = computed(() =>

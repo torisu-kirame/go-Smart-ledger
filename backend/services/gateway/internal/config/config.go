@@ -1,6 +1,9 @@
 package config
 
-import "github.com/zeromicro/go-zero/rest"
+import (
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/registry"
+	"github.com/zeromicro/go-zero/rest"
+)
 
 type Config struct {
 	rest.RestConf
@@ -12,6 +15,9 @@ type Config struct {
 		Ledger  string `json:",default=http://127.0.0.1:28888"`
 		Storage string `json:",default=http://127.0.0.1:28890"`
 	} `json:"Upstreams"`
+	Discovery struct {
+		Etcd registry.EtcdConfig `json:"Etcd"`
+	} `json:"Discovery"`
 	Cors struct {
 		AllowedOrigins []string `json:",default=http://localhost:25173"`
 	} `json:"Cors"`

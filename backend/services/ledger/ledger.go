@@ -30,9 +30,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	lc, err := ctx.StartBackground(c)
+	if err != nil {
+		panic(err)
+	}
+	defer lc.Stop()
+
 	handler.RegisterHandlers(server, ctx)
 	handler.RegisterExtraHandlers(server, ctx)
 	handler.RegisterCollaborationHandlers(server, ctx)
+	handler.RegisterChainHandlers(server, ctx)
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()

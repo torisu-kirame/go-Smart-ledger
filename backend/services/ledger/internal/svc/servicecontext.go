@@ -7,15 +7,19 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/storage"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/txqueue"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/config"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type ServiceContext struct {
-	Config config.Config
-	Ledger *ledgersvc.Service
-	Chain  *miniledgerclient.Client
-	Backup *storage.DualBackup
-	IPFS   *ipfsclient.Client
+	Config    config.Config
+	Ledger    *ledgersvc.Service
+	Chain     *miniledgerclient.Client
+	Backup    *storage.DualBackup
+	IPFS      *ipfsclient.Client
+	Queue     *txqueue.Queue
+	EtcdLease clientv3.LeaseID
 }
 
 func NewServiceContext(c config.Config) (*ServiceContext, error) {
@@ -38,11 +42,22 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 			return nil, err
 		}
 	}
+	var queue *txqueue.Queue
+	if c.TxQueue.Enabled {
+		queue, err = txqueue.New(chain.Submit, txqueue.Options{
+			PersistPath: c.TxQueue.PersistPath,
+			MaxAttempts: c.TxQueue.MaxAttempts,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &ServiceContext{
 		Config: c,
 		Chain:  chain,
-		Ledger: ledgersvc.New(chain, hd),
+		Ledger: ledgersvc.New(chain, hd, queue),
 		Backup: storage.NewDualBackup(disk, ipfs),
 		IPFS:   ipfs,
+		Queue:  queue,
 	}, nil
 }

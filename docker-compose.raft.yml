@@ -1,0 +1,72 @@
+# F22: 3-node MiniLedger Raft cluster (use with main compose)
+#
+#   docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d
+#
+# Leader API: http://localhost:24441  (node1)
+# Node2 API:  http://localhost:24443
+# Node3 API:  http://localhost:24445
+#
+# Point ledger-api MiniLedger.BaseURL to http://miniledger-1:24441
+
+name: smart-ledger
+
+# 启动前请停止单节点： docker compose stop miniledger
+services:
+  miniledger-1:
+    profiles: ["raft"]
+    image: node:22-alpine
+    container_name: smart-ledger-miniledger-1
+    working_dir: /app
+    volumes:
+      - ./backend/infra/miniledger:/app
+      - miniledger-raft-1:/app/data/node1
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint-raft-node1.sh"]
+    ports:
+      - "24441:24441"
+      - "24440:24440"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:24441/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
+    restart: unless-stopped
+
+  miniledger-2:
+    profiles: ["raft"]
+    image: node:22-alpine
+    container_name: smart-ledger-miniledger-2
+    working_dir: /app
+    volumes:
+      - ./backend/infra/miniledger:/app
+      - miniledger-raft-2:/app/data/node2
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint-raft-node2.sh"]
+    depends_on:
+      miniledger-1:
+        condition: service_healthy
+    ports:
+      - "24443:24443"
+      - "24442:24442"
+    restart: unless-stopped
+
+  miniledger-3:
+    profiles: ["raft"]
+    image: node:22-alpine
+    container_name: smart-ledger-miniledger-3
+    working_dir: /app
+    volumes:
+      - ./backend/infra/miniledger:/app
+      - miniledger-raft-3:/app/data/node3
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint-raft-node3.sh"]
+    depends_on:
+      miniledger-1:
+        condition: service_healthy
+    ports:
+      - "24445:24445"
+      - "24444:24444"
+    restart: unless-stopped
+
+volumes:
+  miniledger-raft-1:
+  miniledger-raft-2:
+  miniledger-raft-3:

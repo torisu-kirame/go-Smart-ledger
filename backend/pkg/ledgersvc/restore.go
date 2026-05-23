@@ -48,7 +48,7 @@ func (s *Service) RestoreSnapshot(ctx context.Context, targetLedgerID string, sn
 			continue
 		}
 		key := domain.LedgerEventKey(targetLedgerID, ev.Seq)
-		if err := s.chain.Submit(ctx, miniledgerclient.TxRequest{
+		if err := s.submitOne(ctx, "restore:"+key, targetLedgerID, miniledgerclient.TxRequest{
 			Key:   key,
 			Value: raw,
 		}); err != nil {

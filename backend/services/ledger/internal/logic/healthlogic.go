@@ -24,5 +24,12 @@ func (l *HealthLogic) Health() (*types.HealthResp, error) {
 	if l.svcCtx.IPFS != nil && l.svcCtx.IPFS.Enabled() {
 		ipfsOnline = l.svcCtx.IPFS.Ping(l.ctx) == nil
 	}
-	return &types.HealthResp{Status: "ok", MiniLedgerOnline: online, IPFSOnline: ipfsOnline}, nil
+	pending, failed := l.svcCtx.Ledger.ChainQueueStats()
+	return &types.HealthResp{
+		Status:           "ok",
+		MiniLedgerOnline: online,
+		IPFSOnline:       ipfsOnline,
+		QueuePending:     pending,
+		QueueFailed:      failed,
+	}, nil
 }

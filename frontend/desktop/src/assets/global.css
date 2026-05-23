@@ -241,6 +241,7 @@ label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bott
 
 .alert-error { background: color-mix(in srgb, var(--danger) 14%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger); }
 .alert-success { background: color-mix(in srgb, var(--success) 14%, transparent); border: 1px solid color-mix(in srgb, var(--success) 36%, transparent); color: var(--success); }
+.alert-warn { background: color-mix(in srgb, var(--warning, #d4a012) 14%, transparent); border: 1px solid color-mix(in srgb, var(--warning, #d4a012) 35%, transparent); color: var(--warning, #b8860b); }
 
 .badge { display: inline-block; padding: 0.18rem 0.52rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
 .badge-private { background: rgba(167,139,250,.2); color: #a78bfa; }

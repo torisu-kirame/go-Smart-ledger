@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -11,16 +12,18 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/txqueue"
 )
 
 // Service implements ledger business rules on top of Chainscore MiniLedger.
 type Service struct {
 	chain *miniledgerclient.Client
 	hd    *ledgerhd.Deriver
+	queue *txqueue.Queue
 }
 
-func New(chain *miniledgerclient.Client, hd *ledgerhd.Deriver) *Service {
-	return &Service{chain: chain, hd: hd}
+func New(chain *miniledgerclient.Client, hd *ledgerhd.Deriver, queue *txqueue.Queue) *Service {
+	return &Service{chain: chain, hd: hd, queue: queue}
 }
 
 func (s *Service) Online(ctx context.Context) bool {
@@ -201,10 +204,11 @@ func (s *Service) appendEvent(ctx context.Context, meta *domain.LedgerMeta, sign
 		CreatedAt: time.Now().UTC(),
 	}
 	raw, _ := json.Marshal(ev)
-	if err := s.chain.Submit(ctx, miniledgerclient.TxRequest{
+	eventTx := miniledgerclient.TxRequest{
 		Key:   domain.LedgerEventKey(meta.ID, seq),
 		Value: raw,
-	}); err != nil {
+	}
+	if err := s.submitOne(ctx, fmt.Sprintf("event:%s:%d", meta.ID, seq), meta.ID, eventTx); err != nil {
 		return nil, err
 	}
 	var hashes []string
@@ -230,7 +234,7 @@ func (s *Service) putMeta(ctx context.Context, meta *domain.LedgerMeta) error {
 	if err != nil {
 		return err
 	}
-	return s.chain.Submit(ctx, miniledgerclient.TxRequest{
+	return s.submitOne(ctx, "meta:"+meta.ID, meta.ID, miniledgerclient.TxRequest{
 		Key:   domain.LedgerMetaKey(meta.ID),
 		Value: raw,
 	})

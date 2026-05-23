@@ -30,6 +30,7 @@ func main() {
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
+	handler.RegisterDiscoveryHandlers(server, ctx)
 
 	authProxy := proxy.Handler(c.Upstreams.Auth)
 	authJWT := middleware.JWT(c.Auth.AccessSecret)(authProxy)
@@ -102,7 +103,18 @@ func main() {
 		{Method: http.MethodPost, Path: "/api/v1/storage/backup", Handler: storageProxy},
 		{Method: http.MethodPost, Path: "/api/v1/storage/backup/fetch", Handler: storageProxy},
 		{Method: http.MethodGet, Path: "/api/v1/storage/health", Handler: storageProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/status", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/queue", Handler: ledgerProxy},
+		{Method: http.MethodPost, Path: "/api/v1/chain/queue/:id/retry", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/blocks", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/blocks/latest", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/blocks/:height", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/tx/recent", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/consensus", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/chain/peers", Handler: ledgerProxy},
 	})
+
+	// discovery/services is registered by RegisterDiscoveryHandlers when etcd is enabled
 
 	fmt.Printf("Starting gateway at %s:%d...\n", c.Host, c.Port)
 	server.Start()

@@ -12,7 +12,7 @@ TxQueue:
 
 Discovery:
   Etcd:
-    Enabled: false
+    Enabled: true
     Hosts:
       - etcd:2379
     KeyPrefix: /smart-ledger/services
