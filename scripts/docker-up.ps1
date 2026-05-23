@@ -1,4 +1,4 @@
-# 先外部编译，再 docker compose（Windows 推荐）
+# Build Linux binaries, then docker compose (Windows)
 param(
     [switch] $BuildOnly,
     [switch] $NoCache
@@ -11,9 +11,9 @@ $Root = Split-Path $PSScriptRoot -Parent
 
 Push-Location $Root
 try {
-    $args = @("compose", "build")
-    if ($NoCache) { $args += "--no-cache" }
-    docker @args
+    $dockerArgs = @("compose", "build")
+    if ($NoCache) { $dockerArgs += "--no-cache" }
+    docker @dockerArgs
     if ($LASTEXITCODE -ne 0) { throw "docker compose build failed" }
 
     if (-not $BuildOnly) {
@@ -21,7 +21,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "docker compose up failed" }
         Write-Host ""
         Write-Host "Gateway:    http://localhost:28080/api/v1/health"
-        Write-Host "Frontend:   http://localhost:25173  (make frontend-dev)"
+        Write-Host "Web UI:     http://localhost:25173  (Nginx container)"
+        Write-Host "Local dev:  make frontend-dev  (Vite, proxies to gateway)"
         Write-Host "MiniLedger: http://localhost:24441/dashboard"
         Write-Host "Login:      admin / admin123"
     }

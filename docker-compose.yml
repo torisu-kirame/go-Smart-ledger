@@ -3,8 +3,8 @@
 #   make up
 #   make docker-build && docker compose up -d
 #
-# 控制台: http://localhost:25173  (make frontend-dev)
-# 网关:   http://localhost:28080
+# 控制台: http://localhost:25173  (web 容器 Nginx)
+# 网关:   http://localhost:28080  (直连 API / 调试)
 # 链浏览器: http://localhost:24441/dashboard
 # 默认账号: admin / admin123
 
@@ -38,7 +38,8 @@ services:
     ports:
       - "28887:28887"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28887/api/v1/auth/health"]
+      # wget --spider 使用 HEAD，go-zero 仅注册 GET 会返回 405
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28887/api/v1/auth/health"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -56,7 +57,7 @@ services:
       miniledger:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28888/api/v1/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28888/api/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -73,7 +74,7 @@ services:
     volumes:
       - storage-backups:/data/backups
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28890/api/v1/storage/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28890/api/v1/storage/health"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -95,11 +96,29 @@ services:
       storage-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:28080/api/v1/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28080/api/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 6
       start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend/desktop
+      dockerfile: Dockerfile
+    container_name: smart-ledger-web
+    ports:
+      - "25173:80"
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
     restart: unless-stopped
 
 volumes:

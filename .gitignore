@@ -11,6 +11,7 @@ backend/bin/linux/
 
 # 前端
 frontend/desktop/node_modules/
+frontend/desktop/.npm-cache/
 frontend/desktop/dist/
 frontend/mobile/node_modules/
 /docx/

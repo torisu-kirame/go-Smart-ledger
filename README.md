@@ -1,0 +1,295 @@
+# Smart Ledger（go-Smart-ledger）
+
+去中心化区块链自定义账本系统：支持私人账本与多人账本，底层基于 [Chainscore MiniLedger](https://github.com/Chainscore/miniledger) 许可链，后端采用 **Go + go-zero 微服务**，前端采用 **Vue 3 桌面控制台**。
+
+> **维护说明**：每次新增功能或变更规划时，请同步更新本文档——在「项目计划」中登记 idea，并在「已完成 / 未完成」中勾选状态。文末「更新记录」追加一条摘要。
+
+---
+
+## 目录
+
+- [架构概览](#架构概览)
+- [仓库结构](#仓库结构)
+- [端口一览](#端口一览)
+- [项目计划（功能清单）](#项目计划功能清单)
+- [已完成](#已完成)
+- [未完成 / 进行中](#未完成--进行中)
+- [快速开始](#快速开始)
+- [更新记录](#更新记录)
+
+---
+
+## 架构概览
+
+```mermaid
+flowchart TB
+    subgraph client [客户端]
+        Desktop[frontend/desktop Vue3]
+    end
+
+    subgraph gateway_layer [网关 :28080]
+        GW[gateway-api JWT + CORS]
+    end
+
+    subgraph services [Go 微服务]
+        AUTH[auth-api :28887]
+        LEDGER[ledger-api :28888]
+        STORAGE[storage-api :28890]
+    end
+
+    subgraph chain [链层]
+        ML[MiniLedger Node :24441 Raft]
+    end
+
+    Desktop --> GW
+    GW --> AUTH
+    GW --> LEDGER
+    GW --> STORAGE
+    LEDGER --> ML
+```
+
+| 层级 | 技术 |
+|------|------|
+| 链 | Chainscore MiniLedger（Node.js，REST + SQLite 世界状态） |
+| 后端 | go-zero REST 微服务，外部交叉编译后 COPY 进 Docker |
+| 前端 | Vue 3 + Vite + Pinia（`frontend/desktop`） |
+| 部署 | 根目录 `docker-compose.yml` |
+
+---
+
+## 仓库结构
+
+```text
+go-Smart-ledger/
+├── README.md                 # 本文件：计划 + 进度
+├── Makefile                  # 全栈构建入口
+├── docker-compose.yml        # 一键启动后端 + MiniLedger
+├── backend/                  # Go 后端工作区
+│   ├── pkg/                  # 领域、JWT、xlsx、MiniLedger 客户端等
+│   ├── services/
+│   │   ├── gateway/          # API 网关、鉴权、反向代理
+│   │   ├── auth/             # 登录、验证码、JWT
+│   │   ├── ledger/           # 账本业务、导入、备份
+│   │   └── storage/          # 加密备份 API
+│   ├── infra/miniledger/     # 链节点 npm 启动脚本
+│   └── deploy/               # Dockerfile、docker 专用配置
+├── frontend/
+│   ├── desktop/              # Vue3 桌面端（当前使用）
+│   └── mobile/               # 移动端预留
+└── scripts/                  # build-linux.ps1、docker-up.ps1
+```
+
+---
+
+## 端口一览
+
+原 4 位数端口前加前缀 **`2`**（如 8080 → 28080）。
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| gateway-api | **28080** | 统一 API 入口 |
+| ledger-api | **28888** | 账本业务 |
+| storage-api | **28890** | 存储/备份 |
+| auth-api | **28887** | 认证 |
+| MiniLedger API | **24441** | 链 HTTP / 区块浏览器 |
+| MiniLedger P2P | **24440** | 链 P2P |
+| 前端 Vite dev | **25173** | 桌面控制台开发服 |
+
+---
+
+## 项目计划（功能清单）
+
+以下为产品与技术上的**完整规划**。新 idea 请先加在本表，实现后再移到「已完成」。
+
+| ID | 功能 | 优先级 | 状态 |
+|----|------|--------|------|
+| F01 | 私人账本（单成员） | P0 | ✅ 已完成 |
+| F02 | 多人账本（创建时 ≥2 人） | P0 | ✅ 已完成 |
+| F03 | 对接 Chainscore MiniLedger 作为链底层 | P0 | ✅ 已完成 |
+| F04 | 事件溯源记账、Merkle 根、封账锚定 | P0 | ✅ 已完成 |
+| F05 | go-zero 微服务（gateway / ledger / storage / auth） | P0 | ✅ 已完成 |
+| F06 | 根目录 Docker Compose 一键部署 | P1 | ✅ 已完成 |
+| F07 | 外部编译 + 增量构建 + 镜像仅 COPY 二进制 | P1 | ✅ 已完成 |
+| F08 | JWT 登录：短期 token 内存、长期 token HttpOnly Cookie | P0 | ✅ 已完成 |
+| F09 | 图形验证码（base64Captcha） | P0 | ✅ 已完成 |
+| F10 | Vue3 桌面控制台（概览 / 账本 / 详情） | P0 | ✅ 已完成 |
+| F11 | 前端工作区划分 desktop / mobile | P1 | ✅ 已完成（mobile 仅占位） |
+| F12 | Excel 模板下载、解析、预览、批量导入上链 | P0 | ✅ 已完成 |
+| F13 | 加密备份 / 恢复预览，与封账流程串联 | P0 | ✅ 已完成 |
+| F14 | IPFS 去中心化内容存储（CID、Pin） | P0 | ⬜ 未完成 |
+| F15 | 备份与 IPFS 双写、链上记录 CID | P1 | ⬜ 未完成 |
+| F16 | 从备份快照**恢复写入**账本（非仅预览） | P1 | ⬜ 未完成 |
+| F17 | 多人账本多签 / 审批流 | P1 | ⬜ 未完成 |
+| F18 | 成员 P2P 同步、加入账本 | P2 | ⬜ 未完成 |
+| F19 | 账本数据组级端到端加密 | P2 | ⬜ 未完成 |
+| F20 | 用户注册、数据库用户体系、RBAC | P1 | ⬜ 未完成 |
+| F21 | 自定义账本字段 Schema / 动态模板 | P2 | ⬜ 未完成 |
+| F22 | MiniLedger 多节点 Raft 集群部署文档与 Compose | P1 | ⬜ 未完成 |
+| F23 | 上链失败重试队列、待上链状态 UI | P1 | ⬜ 未完成 |
+| F24 | 前端纳入 Docker（Nginx 托管 dist） | P1 | ✅ 已完成 |
+| F25 | 移动端 Vue3 / Uni-app | P2 | ⬜ 未完成 |
+| F26 | 集成测试 / CI（GitHub Actions） | P2 | ⬜ 未完成 |
+| F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ⬜ 未完成 |
+| F28 | go-zero gRPC + 服务发现（etcd） | P3 | ⬜ 未完成 |
+| F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ⬜ 未完成 |
+| F30 | 项目根 README 计划与进度维护 | P0 | ✅ 已完成 |
+
+**状态图例**：✅ 已完成 · 🟡 进行中 · ⬜ 未完成
+
+---
+
+## 已完成
+
+### 产品与业务
+
+- [x] 私人账本、多人账本（≥2 人创建校验）
+- [x] 记账、事件流水、完整性校验、封账锚定（写入 MiniLedger）
+- [x] Excel 导入全流程（模板 → 预览 → 批量入账 → 可选自动封账）
+- [x] 账本加密备份与恢复预览（须先封账 `synced`）
+- [x] 导入/详情页与封账、备份流程串联
+
+### 后端
+
+- [x] `backend/services/gateway`：JWT 鉴权、CORS、路由聚合
+- [x] `backend/services/auth`：登录 / 刷新 / 登出 / 图形验证码
+- [x] `backend/services/ledger`：账本 CRUD、导入、备份 API
+- [x] `backend/services/storage`：Argon2 + AES 磁盘加密备份
+- [x] `pkg/miniledgerclient`：对接 MiniLedger REST
+- [x] `pkg/importxlsx`：excelize 解析与模板生成
+
+### 前端
+
+- [x] `frontend/desktop`：Vue 3 + Pinia + Vue Router
+- [x] 页面：登录、概览、账本管理、账本详情、Excel 导入、备份/恢复
+- [x] 短期 access token 仅存内存；refresh 走 Cookie
+- [x] Docker 服务 `web`：Nginx 托管 `dist`，`/api` 反代至 `gateway-api`
+
+### 工程与部署
+
+- [x] 根目录 `Makefile`、`docker-compose.yml`（含 `web` 前端容器）
+- [x] `scripts/build-linux.ps1`、`scripts/docker-up.ps1`
+- [x] 端口 2xxxx 统一规范
+
+---
+
+## 未完成 / 进行中
+
+### 高优先级（建议下一步）
+
+| 功能 | 说明 |
+|------|------|
+| **IPFS 存储** | 批次数据 CID 上链引用；成员/节点 Pin |
+| **备份 + IPFS 双写** | 与 F14 配套，防止无人 pin |
+| **上链状态机** | 待上链 / 失败重试 / 展示 tx 或块高 |
+| **用户体系** | 注册、持久化、多用户（当前仅内存种子用户 `admin`） |
+
+### 中低优先级
+
+- 多人多签、P2P 成员同步、组级加密
+- 快照恢复为真实写回链（当前仅 JSON 预览）
+- MiniLedger 多节点、移动端、CI、生产安全加固
+- 自定义字段 Schema、公链 L2 合约锚定
+
+### 已知限制
+
+- 移动端目录仅为占位，无实现。
+- 恢复接口不做账本数据回写，仅解密预览。
+- 默认 JWT/Cookie 密钥仅供开发，生产必须更换。
+- 根目录 `data/miniledger.db` 等为早期残留，与当前架构无关，可清理。
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- Go 1.22+、Docker Desktop（运行中）
+- Node.js 22+（前端开发服；MiniLedger 由 Docker 提供）
+- Make（推荐）；Windows 无 Make 时可用 `scripts/*.ps1`
+
+### 一行启动全栈（推荐）
+
+先启动 Docker Desktop，在项目根目录执行：
+
+```bash
+make start
+```
+
+Windows PowerShell：
+
+```powershell
+.\scripts\start-all.ps1
+```
+
+流程：交叉编译 Go 服务 → `docker compose build` → 启动全部容器（含 **`web`**：Vue 构建产物 + Nginx，:25173 反代 `/api` 至网关）。停止全栈：`make down`。
+
+| 服务 | 容器名 | 端口 |
+|------|--------|------|
+| 控制台 | `smart-ledger-web` | 25173 |
+| 网关 | `smart-ledger-gateway` | 28080 |
+| MiniLedger | `smart-ledger-miniledger` | 24441 |
+
+### 本地前端热更新（可选）
+
+后端已 `make up` 时，在本机跑 Vite（不走 `web` 容器）：
+
+```bash
+make frontend-dev
+```
+
+依赖安装使用 `frontend/desktop/.npm-cache`（`.npmrc`）。Windows 可执行 `.\scripts\frontend-install.ps1`。
+
+| 地址 | 说明 |
+|------|------|
+| http://localhost:25173 | Vue 控制台 |
+| http://localhost:28080/api/v1/health | 网关健康检查 |
+| http://localhost:24441/dashboard | MiniLedger 浏览器 |
+| 默认账号 | `admin` / `admin123` |
+
+### 常用命令
+
+```bash
+make help            # 查看 Makefile 目标
+make start           # 全栈（后端 + 前端开发服）
+make logs            # Docker 日志
+make down            # 停止栈
+make frontend-build  # 构建前端静态资源
+```
+
+---
+
+## 更新记录
+
+| 日期 | 摘要 |
+|------|------|
+| 2026-05-22 | F24：前端容器化 `web`（`frontend/desktop/Dockerfile` + Nginx 反代）；`make start` 仅 Docker 全栈。 |
+| 2026-05-22 | 前端 npm 改用项目内 `.npm-cache`（`.npmrc` + `scripts/frontend-install.ps1`），规避全局 node_cache EPERM。 |
+| 2026-05-22 | 修复 Docker 健康检查：`wget --spider`（HEAD）改为 GET，避免 go-zero 返回 405 导致 auth/storage 等 unhealthy。 |
+| 2026-05-22 | 快速开始增加一行全栈启动：`make start` / `scripts/start-all.ps1`（Docker 后端 + Vue 开发服）。 |
+| 2026-05-22 | 初始化项目计划 README；汇总至 F30：私人/多人账本、MiniLedger、go-zero 微服务、JWT+验证码、Vue3 桌面端、Excel 导入、加密备份与封账串联、Docker 与外部编译流程。 |
+| 2026-05-22 | 记录 F12/F13/F11/F10/F08/F09 等为已完成；F14–F29 登记为未完成后续项。 |
+
+---
+
+## 更新规范
+
+新增或完成一项功能时，请按顺序操作：
+
+1. 在 [项目计划（功能清单）](#项目计划功能清单) 中**新增一行**（若尚无对应 Fxx），状态标为 🟡 或 ⬜。
+2. 实现完成后：计划表改为 ✅，并在 [已完成](#已完成) 勾选对应条目。
+3. 在 [更新记录](#更新记录) **顶部**追加一行（日期 + 一句话摘要）。
+4. 若涉及新端口、新服务或新命令，同步更新本文「端口一览」「快速开始」。
+
+示例（追加计划项）：
+
+```markdown
+| F31 | 某某新功能 | P1 | ⬜ 未完成 |
+```
+
+完成实现后：
+
+```markdown
+| F31 | 某某新功能 | P1 | ✅ 已完成 |
+```
+
+并在更新记录中写：`YYYY-MM-DD：完成 F31 某某新功能（简要说明）。`

@@ -1,7 +1,6 @@
-# 外部交叉编译 Linux 二进制（供 Docker COPY）
-# 用法:
-#   .\scripts\build-linux.ps1              # 编译全部
-#   .\scripts\build-linux.ps1 -Service ledger   # 仅 ledger-api
+﻿# 澶栭儴浜ゅ弶缂栬瘧 Linux 浜岃繘鍒讹紙渚?Docker COPY锛?# 鐢ㄦ硶:
+#   .\scripts\build-linux.ps1              # 缂栬瘧鍏ㄩ儴
+#   .\scripts\build-linux.ps1 -Service ledger   # 浠?ledger-api
 #   .\scripts\build-linux.ps1 -Service storage
 #   .\scripts\build-linux.ps1 -Service gateway
 
