@@ -10,6 +10,14 @@ TxQueue:
   PersistPath: /data/txqueue.json
   MaxAttempts: 30
 
+NSQ:
+  NsqdAddr: nsqd:4150
+  LookupdHTTP:
+    - http://nsqlookupd:4161
+  Topic: chain_tx_retry
+  Channel: ledger-worker
+  MaxInFlight: 4
+
 Discovery:
   Etcd:
     Enabled: false

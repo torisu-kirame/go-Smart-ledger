@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/mq/nsq"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/registry"
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -15,6 +16,7 @@ type Config struct {
 		PersistPath string `json:",default=./data/txqueue.json"`
 		MaxAttempts int    `json:",default=30"`
 	} `json:"TxQueue"`
+	NSQ nsqmq.Config `json:"NSQ"`
 	Discovery struct {
 		Etcd registry.EtcdConfig `json:"Etcd"`
 		Grpc struct {

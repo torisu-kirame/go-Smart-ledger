@@ -96,6 +96,10 @@ go-Smart-ledger/
 | MiniLedger P2P | **24440** | 链 P2P |
 | IPFS Kubo API | **25001** | 备份内容 Pin（容器内 5001） |
 | IPFS Gateway | **28090** | 可选网关访问 CID |
+| NSQ nsqd TCP | **24150** | 消息发布/消费（容器内 4150） |
+| NSQ nsqd HTTP | **24151** | nsqd 管理 / ping |
+| NSQ lookupd | **24161** / **24162** | 服务发现 |
+| NSQ admin | **24171** | 队列监控 UI |
 | 前端 web / Vite | **25173** | 控制台（Docker Nginx 或本地 dev） |
 
 ---
@@ -161,7 +165,7 @@ go-Smart-ledger/
 - [x] **F18 成员同步与加入**：邀请成员、我的邀请页、接受加入链上 `MemberJoined`；`GET /ledgers/:id/sync` 增量同步；账本列表按成员过滤
 - [x] **F19 组级 E2E 加密**：创建多人账本可选加密口令；客户端 AES-GCM 加密 `entry.data`；`user_public_keys` 表与密钥轮换 API
 - [x] **F22 Raft 集群**：`docker-compose.raft.yml` 三节点编排 + `docs/miniledger-raft.md`
-- [x] **F23 上链重试**：`pkg/txqueue` 持久化队列与后台重试；`/api/v1/chain/queue`；概览与链浏览器页展示待上链
+- [x] **F23 上链重试**：`pkg/txqueue` + **NSQ** 异步重试；本地 JSON 状态 + topic `chain_tx_retry`；`/api/v1/chain/queue`；概览与链浏览器页展示待上链
 - [x] **F28 服务发现**：etcd 注册/发现；ledger gRPC health（:28898）；`docker-compose.discovery.yml`；`GET /api/v1/discovery/services`
 - [x] **链浏览器页**：控制台 `/chain` 内嵌 MiniLedger Dashboard（Nginx `/miniledger/` 反代）
 
@@ -173,7 +177,7 @@ go-Smart-ledger/
 - [x] `backend/services/ledger`：账本 CRUD、导入、备份 API
 - [x] `backend/services/storage`：Argon2 + AES 磁盘加密备份
 - [x] `pkg/miniledgerclient`：对接 MiniLedger REST；链浏览器代理 API（`/chain/*`）
-- [x] `pkg/txqueue`：上链失败多步重试队列；`pkg/registry`：etcd 服务注册；`pkg/grpchsrv`：gRPC health
+- [x] `pkg/mq/nsq`：NSQ 生产者/消费者；`pkg/txqueue`：上链失败多步重试（NSQ 投递 + 本地状态）；`pkg/registry`：etcd 服务注册；`pkg/grpchsrv`：gRPC health
 - [x] `pkg/importxlsx`：excelize 解析与模板生成
 
 ### 前端
@@ -262,6 +266,7 @@ make frontend-dev
 |------|------|
 | http://localhost:25173 | Vue 控制台 |
 | http://localhost:28080/api/v1/health | 网关健康检查 |
+| http://localhost:24171 | NSQ Admin（上链重试队列监控） |
 | http://localhost:25173/chain | 控制台内嵌链浏览器（推荐） |
 | http://localhost:24441/dashboard | MiniLedger 原生浏览器（直连节点） |
 | 默认账号 | `admin` / `admin123` |
@@ -311,6 +316,7 @@ docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile d
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-24 | 消息队列改用 **NSQ**（nsqd/lookupd/admin）；上链重试经 topic `chain_tx_retry` 异步消费。 |
 | 2026-05-24 | F22/F23/F28：Raft 三节点 Compose；上链重试队列与链浏览器页；etcd + gRPC health 服务发现。 |
 | 2026-05-23 | F14–F16：IPFS Kubo 存储；备份本地+IPFS 双写与链上 CID；`restore/commit` 快照写回账本。 |
 | 2026-05-23 | 记账模板管理页（`/entry-templates`）；MySQL `entry_templates` 表；侧栏「记账模板」。 |

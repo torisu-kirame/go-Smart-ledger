@@ -47,6 +47,7 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		queue, err = txqueue.New(chain.Submit, txqueue.Options{
 			PersistPath: c.TxQueue.PersistPath,
 			MaxAttempts: c.TxQueue.MaxAttempts,
+			NSQ:         c.NSQ,
 		})
 		if err != nil {
 			return nil, err

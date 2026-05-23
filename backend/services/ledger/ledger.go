@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer lc.Stop()
+	defer lc.StopAll(ctx)
 
 	handler.RegisterHandlers(server, ctx)
 	handler.RegisterExtraHandlers(server, ctx)

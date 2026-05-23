@@ -24,10 +24,6 @@ func (ctx *ServiceContext) StartBackground(c config.Config) (*Lifecycle, error) 
 	bgCtx, cancel := context.WithCancel(context.Background())
 	lc := &Lifecycle{cancel: cancel}
 
-	if ctx.Queue != nil {
-		go ctx.Queue.StartWorker(bgCtx)
-	}
-
 	if c.Discovery.Grpc.Enabled {
 		s, err := grpchsrv.Start(c.Host, c.Discovery.Grpc.Port)
 		if err != nil {
@@ -48,7 +44,7 @@ func (ctx *ServiceContext) StartBackground(c config.Config) (*Lifecycle, error) 
 		}
 		lease, closeFn, err := registry.Register(bgCtx, c.Discovery.Etcd, "ledger-api", httpAddr, grpcAddr)
 		if err != nil {
-			lc.Stop()
+			lc.StopAll(ctx)
 			return nil, err
 		}
 		lc.EtcdLease = lease
@@ -62,6 +58,20 @@ func (ctx *ServiceContext) StartBackground(c config.Config) (*Lifecycle, error) 
 func (lc *Lifecycle) Stop() {
 	if lc.cancel != nil {
 		lc.cancel()
+	}
+}
+
+// StopWithContext stops background workers including NSQ consumers.
+func (ctx *ServiceContext) StopQueue() {
+	if ctx.Queue != nil {
+		ctx.Queue.Stop()
+	}
+}
+
+func (lc *Lifecycle) StopAll(svcCtx *ServiceContext) {
+	lc.Stop()
+	if svcCtx != nil {
+		svcCtx.StopQueue()
 	}
 	if lc.etcdClose != nil {
 		lc.etcdClose()

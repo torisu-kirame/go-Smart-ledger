@@ -6,11 +6,47 @@
 # 控制台: http://localhost:25173  (web 容器 Nginx)
 # 网关:   http://localhost:28080  (直连 API / 调试)
 # 链浏览器: http://localhost:24441/dashboard
+# NSQ Admin: http://localhost:24171
 # 默认账号: admin / admin123
 
 name: smart-ledger
 
 services:
+  nsqlookupd:
+    image: nsqio/nsq:v1.3.0
+    container_name: smart-ledger-nsqlookupd
+    command: /nsqlookupd
+    ports:
+      - "24161:4160"
+      - "24162:4161"
+    restart: unless-stopped
+
+  nsqd:
+    image: nsqio/nsq:v1.3.0
+    container_name: smart-ledger-nsqd
+    command: /nsqd --broadcast-address=nsqd --lookupd-tcp-address=nsqlookupd:4160
+    depends_on:
+      - nsqlookupd
+    ports:
+      - "24150:4150"
+      - "24151:4151"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4151/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  nsqadmin:
+    image: nsqio/nsq:v1.3.0
+    container_name: smart-ledger-nsqadmin
+    command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
+    depends_on:
+      - nsqlookupd
+    ports:
+      - "24171:4171"
+    restart: unless-stopped
+
   miniledger:
     image: node:22-alpine
     container_name: smart-ledger-miniledger
@@ -81,6 +117,8 @@ services:
       - "28898:28898"
     depends_on:
       miniledger:
+        condition: service_healthy
+      nsqd:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28888/api/v1/health"]

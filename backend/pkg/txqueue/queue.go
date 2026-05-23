@@ -1,4 +1,4 @@
-// Package txqueue persists failed MiniLedger submissions and retries them in the background.
+// Package txqueue persists failed MiniLedger submissions and retries them via NSQ.
 package txqueue
 
 import (
@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nsqio/go-nsq"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/mq/nsq"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 )
 
@@ -23,64 +25,136 @@ const (
 
 // Item is a multi-step chain submission that failed mid-flight.
 type Item struct {
-	ID         string                      `json:"id"`
-	Label      string                      `json:"label"`
-	LedgerID   string                      `json:"ledgerId,omitempty"`
-	Steps      []miniledgerclient.TxRequest `json:"steps"`
-	Status     string                      `json:"status"`
-	Attempts   int                         `json:"attempts"`
-	LastError  string                      `json:"lastError,omitempty"`
-	CreatedAt  time.Time                   `json:"createdAt"`
-	UpdatedAt  time.Time                   `json:"updatedAt"`
+	ID        string                       `json:"id"`
+	Label     string                       `json:"label"`
+	LedgerID  string                       `json:"ledgerId,omitempty"`
+	Steps     []miniledgerclient.TxRequest `json:"steps"`
+	Status    string                       `json:"status"`
+	Attempts  int                          `json:"attempts"`
+	LastError string                       `json:"lastError,omitempty"`
+	CreatedAt time.Time                    `json:"createdAt"`
+	UpdatedAt time.Time                    `json:"updatedAt"`
+}
+
+type messageBody struct {
+	ID string `json:"id"`
 }
 
 // SubmitFunc submits a single transaction to MiniLedger.
 type SubmitFunc func(ctx context.Context, tx miniledgerclient.TxRequest) error
 
-// Queue stores pending chain writes and retries them periodically.
+// Queue stores pending chain writes; NSQ delivers retry work to consumers.
 type Queue struct {
 	mu          sync.Mutex
 	items       map[string]*Item
 	path        string
 	submit      SubmitFunc
 	maxAttempts int
-	interval    time.Duration
+	producer    *nsqmq.Producer
+	consumer    *nsqmq.Consumer
 }
 
 // Options configures the retry queue.
 type Options struct {
 	PersistPath string
 	MaxAttempts int
-	Interval    time.Duration
+	NSQ         nsqmq.Config
 }
 
 func New(submit SubmitFunc, opt Options) (*Queue, error) {
 	if submit == nil {
 		return nil, errors.New("txqueue: submit func required")
 	}
+	if opt.NSQ.NsqdAddr == "" && len(opt.NSQ.LookupdHTTP) == 0 {
+		return nil, errors.New("txqueue: NSQ NsqdAddr or LookupdHTTP required")
+	}
 	if opt.MaxAttempts <= 0 {
 		opt.MaxAttempts = 30
-	}
-	if opt.Interval <= 0 {
-		opt.Interval = 5 * time.Second
 	}
 	q := &Queue{
 		items:       make(map[string]*Item),
 		path:        opt.PersistPath,
 		submit:      submit,
 		maxAttempts: opt.MaxAttempts,
-		interval:    opt.Interval,
 	}
 	if opt.PersistPath != "" {
 		if err := os.MkdirAll(filepath.Dir(opt.PersistPath), 0o755); err != nil {
 			return nil, err
 		}
-		_ = q.load()
+		if err := q.load(); err != nil {
+			return nil, err
+		}
+	}
+	prod, err := nsqmq.NewProducer(opt.NSQ)
+	if err != nil {
+		return nil, err
+	}
+	q.producer = prod
+
+	cons, err := nsqmq.NewConsumer(opt.NSQ, nsq.HandlerFunc(q.handleMessage))
+	if err != nil {
+		prod.Stop()
+		return nil, err
+	}
+	q.consumer = cons
+
+	if err := q.republishPending(); err != nil {
+		return nil, err
 	}
 	return q, nil
 }
 
-// Enqueue adds remaining steps after a partial failure.
+func (q *Queue) handleMessage(msg *nsq.Message) error {
+	var body messageBody
+	if err := json.Unmarshal(msg.Body, &body); err != nil {
+		return nil
+	}
+	q.mu.Lock()
+	it, ok := q.items[body.ID]
+	if !ok || it.Status == StatusDone {
+		q.mu.Unlock()
+		return nil
+	}
+	q.mu.Unlock()
+	err := q.flushOne(context.Background(), it)
+	if err != nil {
+		q.mu.Lock()
+		st := q.items[body.ID]
+		q.mu.Unlock()
+		if st != nil && st.Status == StatusFailed {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (q *Queue) publishID(id string) error {
+	raw, err := json.Marshal(messageBody{ID: id})
+	if err != nil {
+		return err
+	}
+	return q.producer.Publish(raw)
+}
+
+func (q *Queue) republishPending() error {
+	q.mu.Lock()
+	ids := make([]string, 0)
+	for id, it := range q.items {
+		if it.Status == StatusPending || it.Status == StatusRetrying {
+			ids = append(ids, id)
+		}
+	}
+	q.mu.Unlock()
+	for _, id := range ids {
+		if err := q.publishID(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Enqueue adds remaining steps after a partial failure and publishes to NSQ.
 func (q *Queue) Enqueue(label, ledgerID string, steps []miniledgerclient.TxRequest, cause string) (*Item, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("txqueue: empty steps")
@@ -106,6 +180,9 @@ func (q *Queue) Enqueue(label, ledgerID string, steps []miniledgerclient.TxReque
 	if err := q.save(); err != nil {
 		return it, err
 	}
+	if err := q.publishID(it.ID); err != nil {
+		return it, err
+	}
 	return it, nil
 }
 
@@ -120,7 +197,6 @@ func (q *Queue) List() []Item {
 		}
 		out = append(out, *it)
 	}
-	// simple sort by UpdatedAt desc
 	for i := 0; i < len(out); i++ {
 		for j := i + 1; j < len(out); j++ {
 			if out[j].UpdatedAt.After(out[i].UpdatedAt) {
@@ -146,7 +222,7 @@ func (q *Queue) Stats() (pending, failed int) {
 	return pending, failed
 }
 
-// RetryNow forces one immediate attempt for an item.
+// RetryNow re-publishes the item to NSQ for immediate retry.
 func (q *Queue) RetryNow(ctx context.Context, id string) error {
 	q.mu.Lock()
 	it, ok := q.items[id]
@@ -158,42 +234,20 @@ func (q *Queue) RetryNow(ctx context.Context, id string) error {
 		q.mu.Unlock()
 		return nil
 	}
-	it.Status = StatusRetrying
+	it.Status = StatusPending
+	it.UpdatedAt = time.Now().UTC()
 	q.mu.Unlock()
-	return q.flushOne(ctx, it)
+	_ = q.save()
+	return q.publishID(id)
 }
 
-// StartWorker runs until ctx is cancelled.
-func (q *Queue) StartWorker(ctx context.Context) {
-	ticker := time.NewTicker(q.interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			q.flushAll(ctx)
-		}
+// Stop shuts down NSQ producer and consumer.
+func (q *Queue) Stop() {
+	if q.consumer != nil {
+		q.consumer.Stop()
 	}
-}
-
-func (q *Queue) flushAll(ctx context.Context) {
-	q.mu.Lock()
-	ids := make([]string, 0, len(q.items))
-	for id, it := range q.items {
-		if it.Status == StatusPending || it.Status == StatusRetrying {
-			ids = append(ids, id)
-		}
-	}
-	q.mu.Unlock()
-	for _, id := range ids {
-		q.mu.Lock()
-		it, ok := q.items[id]
-		q.mu.Unlock()
-		if !ok {
-			continue
-		}
-		_ = q.flushOne(ctx, it)
+	if q.producer != nil {
+		q.producer.Stop()
 	}
 }
 

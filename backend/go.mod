@@ -10,6 +10,7 @@ require (
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.3
 	github.com/mojocn/base64Captcha v1.3.6
 	github.com/navnitms/go-identicon v0.1.0
+	github.com/nsqio/go-nsq v1.1.0
 	github.com/xuri/excelize/v2 v2.9.0
 	github.com/zeromicro/go-zero v1.7.3
 	github.com/zeromicro/x v0.0.0-20240408115609-8224c482b07e
@@ -41,6 +42,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect

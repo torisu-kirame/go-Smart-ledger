@@ -5,6 +5,19 @@ Port: 28888
 MiniLedger:
   BaseURL: http://127.0.0.1:24441
 
+TxQueue:
+  Enabled: true
+  PersistPath: ./data/txqueue.json
+  MaxAttempts: 30
+
+NSQ:
+  NsqdAddr: 127.0.0.1:4150
+  LookupdHTTP:
+    - http://127.0.0.1:4161
+  Topic: chain_tx_retry
+  Channel: ledger-worker
+  MaxInFlight: 4
+
 BackupDir: ./data/backups
 
 HDWallet:
