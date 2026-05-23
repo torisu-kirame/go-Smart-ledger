@@ -122,9 +122,9 @@ go-Smart-ledger/
 | F14 | IPFS 去中心化内容存储（CID、Pin） | P0 | ✅ 已完成 |
 | F15 | 备份与 IPFS 双写、链上记录 CID | P1 | ✅ 已完成 |
 | F16 | 从备份快照**恢复写入**账本（非仅预览） | P1 | ✅ 已完成 |
-| F17 | 多人账本多签 / 审批流 | P1 | ⬜ 未完成 |
-| F18 | 成员 P2P 同步、加入账本 | P2 | ⬜ 未完成 |
-| F19 | 账本数据组级端到端加密 | P2 | ⬜ 未完成 |
+| F17 | 多人账本多签 / 审批流 | P1 | ✅ 已完成 |
+| F18 | 成员 P2P 同步、加入账本 | P2 | ✅ 已完成 |
+| F19 | 账本数据组级端到端加密 | P2 | ✅ 已完成 |
 | F20 | 用户注册、MySQL 用户体系、个人资料（昵称/头像） | P1 | ✅ 已完成（无 RBAC） |
 | F31 | 好友系统：按用户 ID 搜索、添加、删除 | P1 | ✅ 已完成 |
 | F32 | 团队：绑定多人账本 + 邀请 ≥1 好友（类拉群） | P1 | ✅ 已完成 |
@@ -157,6 +157,9 @@ go-Smart-ledger/
 - [x] 账本加密备份：本地 + IPFS 双写、Pin；`BackupAnchored` 事件记录 ref/CID 上链
 - [x] 恢复：预览解密快照；`restore/commit` 写回账本（可选覆盖模式）；IPFS CID 回源
 - [x] 导入/详情页与封账、备份流程串联
+- [x] **F17 多签审批**：多人账本默认需 2 人批准；`propose` / `approve` / `reject`；详情页待审批列表
+- [x] **F18 成员同步与加入**：邀请成员、我的邀请页、接受加入链上 `MemberJoined`；`GET /ledgers/:id/sync` 增量同步；账本列表按成员过滤
+- [x] **F19 组级 E2E 加密**：创建多人账本可选加密口令；客户端 AES-GCM 加密 `entry.data`；`user_public_keys` 表与密钥轮换 API
 
 ### 后端
 
@@ -198,7 +201,7 @@ go-Smart-ledger/
 
 ### 中低优先级
 
-- 多人多签、P2P 成员同步、组级加密
+- MiniLedger 多节点 Raft、真 P2P 节点直连同步（当前为链上邀请 + HTTP 增量同步）
 - MiniLedger 多节点、移动端、CI、生产安全加固
 - 自定义字段 Schema、公链 L2 合约锚定
 
@@ -300,6 +303,7 @@ make frontend-build  # 构建前端静态资源
 | 2026-05-22 | 前端 npm 改用项目内 `.npm-cache`（`.npmrc` + `scripts/frontend-install.ps1`），规避全局 node_cache EPERM。 |
 | 2026-05-22 | 修复 Docker 健康检查：`wget --spider`（HEAD）改为 GET，避免 go-zero 返回 405 导致 auth/storage 等 unhealthy。 |
 | 2026-05-22 | 快速开始增加一行全栈启动：`make start` / `scripts/start-all.ps1`（Docker 后端 + Vue 开发服）。 |
+| 2026-05-24 | 完成 F17 多人账本审批流、F18 成员邀请/增量同步、F19 客户端组级 E2E 加密；新增协作 API 与「账本邀请」页。 |
 | 2026-05-22 | 初始化项目计划 README；汇总至 F30：私人/多人账本、MiniLedger、go-zero 微服务、JWT+验证码、Vue3 桌面端、Excel 导入、加密备份与封账串联、Docker 与外部编译流程。 |
 | 2026-05-22 | 记录 F12/F13/F11/F10/F08/F09 等为已完成；F14–F29 登记为未完成后续项。 |
 

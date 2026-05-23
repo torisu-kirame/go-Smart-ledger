@@ -24,6 +24,8 @@ func registerProfileHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPatch, Path: "/me", Handler: patchMeHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/me/avatar", Handler: uploadAvatarHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/me/delete-account", Handler: deleteAccountHandler(svcCtx)},
+		{Method: http.MethodPut, Path: "/me/public-key", Handler: putPublicKeyHandler(svcCtx)},
+		{Method: http.MethodGet, Path: "/me/public-key", Handler: getPublicKeyHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/:userId/avatar", Handler: getAvatarHandler(svcCtx)},
 	}, rest.WithPrefix("/api/v1/users"))
 }
@@ -153,6 +155,50 @@ func uploadAvatarHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		p, _ := svcCtx.Profiles.GetProfile(uid)
 		httpx.OkJsonCtx(r.Context(), w, userinfo.ToPublic(p))
+	}
+}
+
+type publicKeyBody struct {
+	PublicKeyPem string `json:"publicKeyPem"`
+}
+
+func putPublicKeyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		var body publicKeyBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		if strings.TrimSpace(body.PublicKeyPem) == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "publicKeyPem required"))
+			return
+		}
+		if err := svcCtx.Profiles.SetPublicKey(uid, body.PublicKeyPem); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func getPublicKeyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		pem, err := svcCtx.Profiles.GetPublicKey(uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]string{"publicKeyPem": pem})
 	}
 }
 

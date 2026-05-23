@@ -57,6 +57,7 @@ const navItems = [
   { to: '/backup', label: '备份 / 恢复', exact: true },
   { to: '/friends', label: '好友', exact: true },
   { to: '/teams', label: '团队', exact: true },
+  { to: '/invites', label: '账本邀请', exact: true },
 ]
 
 const footAvatar = computed(() =>

@@ -17,6 +17,7 @@ const routes = [
       { path: 'settings', component: () => import('../views/SettingsView.vue') },
       { path: 'profile', redirect: '/settings' },
       { path: 'teams', component: () => import('../views/TeamsView.vue') },
+      { path: 'invites', component: () => import('../views/InvitesView.vue') },
     ],
   },
 ]

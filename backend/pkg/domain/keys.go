@@ -15,3 +15,19 @@ func LedgerEventKey(id string, seq uint64) string {
 func LedgerIndexPrefix() string {
 	return keyPrefix + ":ledger:%"
 }
+
+func LedgerPendingKey(ledgerID, pendingID string) string {
+	return fmt.Sprintf("%s:ledger:%s:pending:%s", keyPrefix, ledgerID, pendingID)
+}
+
+func LedgerPendingPrefix(ledgerID string) string {
+	return fmt.Sprintf("%s:ledger:%s:pending:", keyPrefix, ledgerID)
+}
+
+func LedgerInviteKey(ledgerID, inviteeID string) string {
+	return fmt.Sprintf("%s:ledger:%s:invite:%s", keyPrefix, ledgerID, inviteeID)
+}
+
+func LedgerInviteSuffix(inviteeID string) string {
+	return ":invite:" + inviteeID
+}

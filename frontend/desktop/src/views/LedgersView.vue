@@ -53,6 +53,16 @@
           <button type="button" class="btn-ghost" @click="addCustomField">+ 字段</button>
         </div>
         <p v-else class="hint">字段：{{ selectedTemplateFields }}</p>
+        <div v-if="form.type === 'multi'" class="form-row">
+          <label class="inline-check">
+            <input v-model="form.enableE2E" type="checkbox" />
+            启用组级端到端加密（F19）
+          </label>
+        </div>
+        <div v-if="form.type === 'multi' && form.enableE2E" class="form-row">
+          <label>加密口令（仅本机解密，勿丢失）</label>
+          <input v-model="form.e2ePassphrase" type="password" placeholder="创建后用于加解密记账数据" />
+        </div>
         <template v-if="form.type === 'multi'">
           <div class="form-row">
             <label>其他成员</label>
@@ -79,6 +89,7 @@ import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import AppSelect from '../components/AppSelect.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
+import { buildEncryptionForCreate, saveLocalGroupKey } from '../utils/e2eCrypto'
 
 const auth = useAuthStore()
 const list = ref([])
@@ -93,6 +104,8 @@ const form = reactive({
   templateId: 'default',
   customFields: [{ key: '', label: '', type: 'text', required: true }],
   otherMembers: [{ id: '' }],
+  enableE2E: false,
+  e2ePassphrase: '',
 })
 
 const ledgerTypeOptions = [
@@ -133,6 +146,8 @@ function resetForm() {
   form.templateId = 'default'
   form.customFields = [{ key: '', label: '', type: 'text', required: true }]
   form.otherMembers = [{ id: '' }]
+  form.enableE2E = false
+  form.e2ePassphrase = ''
 }
 
 function buildEntrySchema() {
@@ -202,13 +217,25 @@ async function create() {
   success.value = ''
   try {
     const members = buildMembers()
+    let encryption = { enabled: false }
+    let groupKey = ''
+    if (form.type === 'multi' && form.enableE2E && form.e2ePassphrase) {
+      const enc = await buildEncryptionForCreate(members, auth.user.id, form.e2ePassphrase, 'new')
+      encryption = { enabled: true, algo: 'aes-gcm-v1', wrappedKeys: enc.wrappedKeys }
+      groupKey = enc._groupKey
+    }
     const created = await api.createLedger({
       type: form.type,
       name: form.name.trim(),
       creatorId: auth.user.id,
       members,
       entrySchema: buildEntrySchema(),
+      approvalPolicy: form.type === 'multi' ? { enabled: true, threshold: 2 } : { enabled: false },
+      encryption,
     })
+    if (groupKey && created.id) {
+      saveLocalGroupKey(created.id, groupKey)
+    }
     show.value = false
     await load()
     success.value = `已创建账本「${created.name}」（ID: ${created.id}）`

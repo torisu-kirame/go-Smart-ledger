@@ -16,6 +16,8 @@ type ProfileStore interface {
 	GetProfile(id string) (*Profile, error)
 	UpdateNickname(id, nickname string) (*Profile, error)
 	SetAvatarURL(id, avatarURL string) error
+	SetPublicKey(id, pem string) error
+	GetPublicKey(id string) (string, error)
 }
 
 // AvatarPath returns API path for user avatar.

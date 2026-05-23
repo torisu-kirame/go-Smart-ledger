@@ -27,7 +27,7 @@ func (s *Service) Online(ctx context.Context) bool {
 	return s.chain.Ping(ctx) == nil
 }
 
-func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creatorID string, members []domain.Member, schema domain.EntrySchema) (*domain.LedgerMeta, error) {
+func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creatorID string, members []domain.Member, schema domain.EntrySchema, opts CreateOptions) (*domain.LedgerMeta, error) {
 	if err := domain.ValidateCreate(t, members); err != nil {
 		return nil, err
 	}
@@ -50,19 +50,29 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		}
 	}
 	now := time.Now().UTC()
+	ap := opts.ApprovalPolicy
+	if !ap.Enabled && ap.Threshold == 0 {
+		ap = domain.DefaultApprovalPolicy(t, len(members))
+	}
+	enc := opts.Encryption
+	if enc.Enabled && enc.Algo == "" {
+		enc.Algo = "aes-gcm-v1"
+	}
 	meta := &domain.LedgerMeta{
-		ID:            id,
-		Type:          t,
-		Name:          name,
-		CreatorID:     creatorID,
-		LedgerAddress: ledgerAddr,
-		Members:       members,
-		EntrySchema:   schema,
-		LatestSeq:     0,
-		LatestRoot:    domain.MerkleRoot(nil),
-		AnchorStatus:  "pending",
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		ID:             id,
+		Type:           t,
+		Name:           name,
+		CreatorID:      creatorID,
+		LedgerAddress:  ledgerAddr,
+		Members:        members,
+		EntrySchema:    schema,
+		ApprovalPolicy: ap,
+		Encryption:     enc,
+		LatestSeq:      0,
+		LatestRoot:     domain.MerkleRoot(nil),
+		AnchorStatus:   "pending",
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err
@@ -101,24 +111,8 @@ func (s *Service) List(ctx context.Context) ([]*domain.LedgerMeta, error) {
 }
 
 func (s *Service) AppendEntry(ctx context.Context, ledgerID, signerID string, entry domain.EntryPayload) (*domain.EventRecord, error) {
-	meta, err := s.loadMeta(ctx, ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	schema := domain.ResolveEntrySchema(meta.EntrySchema)
-	data := entry.NormalizeData()
-	if err := domain.ValidateEntryData(schema, data); err != nil {
-		return nil, err
-	}
-	signerID, err = domain.SignerFromEntry(schema, data, signerID)
-	if err != nil {
-		return nil, err
-	}
-	if err := domain.CanAppend(meta, signerID); err != nil {
-		return nil, err
-	}
-	raw, _ := json.Marshal(entry.ForChain(schema))
-	return s.appendEvent(ctx, meta, signerID, domain.EventEntryAdded, raw)
+	_, ev, err := s.ProposeEntry(ctx, ledgerID, signerID, entry)
+	return ev, err
 }
 
 func (s *Service) ListEvents(ctx context.Context, ledgerID string, from, to uint64) ([]domain.EventRecord, error) {
@@ -306,6 +300,11 @@ func MapDomainError(err error) int {
 		errors.Is(err, domain.ErrUnauthorized),
 		errors.Is(err, domain.ErrEntryValidation),
 		errors.Is(err, domain.ErrInvalidSchema),
+		errors.Is(err, domain.ErrPendingNotFound),
+		errors.Is(err, domain.ErrInviteNotFound),
+		errors.Is(err, domain.ErrAlreadyMember),
+		errors.Is(err, domain.ErrInvalidApproval),
+		errors.Is(err, domain.ErrCannotApproveOwn),
 		errors.Is(err, ErrRestoreConflict):
 		return 400
 	default:

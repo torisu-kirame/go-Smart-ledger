@@ -110,6 +110,36 @@ export const api = {
         },
       }),
     }),
+  proposeEntry: (id, entry) =>
+    request(`/ledgers/${id}/entries/propose`, {
+      method: 'POST',
+      body: JSON.stringify({ entry }),
+    }),
+  listPending: (id) => request(`/ledgers/${id}/pending`),
+  approvePending: (id, pendingId) =>
+    request(`/ledgers/${id}/pending/${pendingId}/approve`, { method: 'POST', body: '{}' }),
+  rejectPending: (id, pendingId) =>
+    request(`/ledgers/${id}/pending/${pendingId}/reject`, { method: 'POST', body: '{}' }),
+  inviteMember: (id, inviteeId, role = 'member') =>
+    request(`/ledgers/${id}/members/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ inviteeId, role }),
+    }),
+  listMyInvites: () => request('/ledgers/invites/mine'),
+  acceptInvite: (id) =>
+    request(`/ledgers/${id}/invites/accept`, { method: 'POST', body: '{}' }),
+  syncLedger: (id, sinceSeq = 0) =>
+    request(`/ledgers/${id}/sync?sinceSeq=${sinceSeq}`),
+  rotateGroupKeys: (id, wrappedKeys) =>
+    request(`/ledgers/${id}/encryption/rotate`, {
+      method: 'POST',
+      body: JSON.stringify({ wrappedKeys }),
+    }),
+  putPublicKey: (publicKeyPem) =>
+    request('/users/me/public-key', {
+      method: 'PUT',
+      body: JSON.stringify({ publicKeyPem }),
+    }),
   listEvents: (id, from = 1, to = 0) => {
     const q = new URLSearchParams({ from: String(from) })
     if (to > 0) q.set('to', String(to))

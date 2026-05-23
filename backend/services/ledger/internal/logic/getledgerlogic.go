@@ -19,8 +19,8 @@ func NewGetLedgerLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetLedg
 	return &GetLedgerLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
 
-func (l *GetLedgerLogic) GetLedger(id string) (*types.LedgerResp, error) {
-	meta, err := l.svcCtx.Ledger.Get(l.ctx, id)
+func (l *GetLedgerLogic) GetLedger(id, userID string) (*types.LedgerResp, error) {
+	meta, err := l.svcCtx.Ledger.GetForUser(l.ctx, id, userID)
 	if err != nil {
 		return nil, toCodeErr(err)
 	}

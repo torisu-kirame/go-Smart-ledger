@@ -19,8 +19,8 @@ func NewListLedgersLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListL
 	return &ListLedgersLogic{Logger: logx.WithContext(ctx), ctx: ctx, svcCtx: svcCtx}
 }
 
-func (l *ListLedgersLogic) ListLedgers() ([]types.LedgerResp, error) {
-	list, err := l.svcCtx.Ledger.List(l.ctx)
+func (l *ListLedgersLogic) ListLedgers(userID string) ([]types.LedgerResp, error) {
+	list, err := l.svcCtx.Ledger.ListForUser(l.ctx, userID)
 	if err != nil {
 		return nil, toCodeErr(err)
 	}

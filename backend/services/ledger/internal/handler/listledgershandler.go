@@ -14,7 +14,7 @@ import (
 func listLedgersHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l := logic.NewListLedgersLogic(r.Context(), svcCtx)
-		resp, err := l.ListLedgers()
+		resp, err := l.ListLedgers(r.Header.Get("X-User-Id"))
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

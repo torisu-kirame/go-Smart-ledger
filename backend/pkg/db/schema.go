@@ -118,6 +118,27 @@ var schemaTables = []tableSchema{
 		},
 	},
 	{
+		name: "user_public_keys",
+		createSQL: `CREATE TABLE IF NOT EXISTS user_public_keys (
+			user_id BIGINT UNSIGNED NOT NULL,
+			public_key_pem TEXT NOT NULL,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "user_id", addSQL: "ADD COLUMN user_id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "public_key_pem", addSQL: "ADD COLUMN public_key_pem TEXT NOT NULL"},
+			{name: "updated_at", addSQL: "ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_user_public_keys_user",
+				createSQL:  "ALTER TABLE user_public_keys ADD CONSTRAINT fk_user_public_keys_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
+	{
 		name: "entry_templates",
 		createSQL: `CREATE TABLE IF NOT EXISTS entry_templates (
 			id BIGINT UNSIGNED NOT NULL,

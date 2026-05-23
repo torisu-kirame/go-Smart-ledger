@@ -20,12 +20,25 @@ type AppendEntryReq struct {
 	Entry EntryReq `json:"entry"`
 }
 
+type ApprovalPolicyReq struct {
+	Enabled   bool `json:"enabled,optional"`
+	Threshold int  `json:"threshold,optional"`
+}
+
+type EncryptionReq struct {
+	Enabled     bool              `json:"enabled,optional"`
+	Algo        string            `json:"algo,optional"`
+	WrappedKeys map[string]string `json:"wrappedKeys,optional"`
+}
+
 type CreateLedgerReq struct {
-	Type        string         `json:"type"`
-	Name        string         `json:"name"`
-	CreatorId   string         `json:"creatorId"`
-	Members     []Member       `json:"members"`
-	EntrySchema EntrySchemaReq `json:"entrySchema,optional"`
+	Type           string            `json:"type"`
+	Name           string            `json:"name"`
+	CreatorId      string            `json:"creatorId"`
+	Members        []Member          `json:"members"`
+	EntrySchema    EntrySchemaReq    `json:"entrySchema,optional"`
+	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,optional"`
+	Encryption     EncryptionReq     `json:"encryption,optional"`
 }
 
 type EntrySchemaReq struct {
@@ -71,19 +84,21 @@ type HealthResp struct {
 }
 
 type LedgerResp struct {
-	Id            string          `json:"id"`
-	Type          string          `json:"type"`
-	Name          string          `json:"name"`
-	CreatorId     string          `json:"creatorId"`
-	LedgerAddress string          `json:"ledgerAddress,omitempty"`
-	Members       []Member        `json:"members"`
-	EntrySchema   EntrySchemaResp `json:"entrySchema"`
-	LatestSeq      uint64 `json:"latestSeq"`
-	LatestRoot     string `json:"latestRoot"`
-	BlockHeight    uint64 `json:"blockHeight,omitempty"`
-	AnchorStatus   string `json:"anchorStatus"`
-	LastBackupRef  string `json:"lastBackupRef,omitempty"`
-	LastBackupCid  string `json:"lastBackupCid,omitempty"`
+	Id             string            `json:"id"`
+	Type           string            `json:"type"`
+	Name           string            `json:"name"`
+	CreatorId      string            `json:"creatorId"`
+	LedgerAddress  string            `json:"ledgerAddress,omitempty"`
+	Members        []Member          `json:"members"`
+	EntrySchema    EntrySchemaResp   `json:"entrySchema"`
+	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,omitempty"`
+	Encryption     EncryptionReq     `json:"encryption,omitempty"`
+	LatestSeq      uint64            `json:"latestSeq"`
+	LatestRoot     string            `json:"latestRoot"`
+	BlockHeight    uint64            `json:"blockHeight,omitempty"`
+	AnchorStatus   string            `json:"anchorStatus"`
+	LastBackupRef  string            `json:"lastBackupRef,omitempty"`
+	LastBackupCid  string            `json:"lastBackupCid,omitempty"`
 }
 
 type ListEventsReq struct {

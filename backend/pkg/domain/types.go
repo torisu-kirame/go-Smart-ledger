@@ -16,20 +16,22 @@ type Member struct {
 }
 
 type LedgerMeta struct {
-	ID            string      `json:"id"`
-	Type          LedgerType  `json:"type"`
-	Name          string      `json:"name"`
-	CreatorID     string      `json:"creatorId"`
-	LedgerAddress string      `json:"ledgerAddress,omitempty"`
-	Members       []Member    `json:"members"`
-	EntrySchema   EntrySchema `json:"entrySchema,omitempty"`
-	LatestSeq     uint64      `json:"latestSeq"`
-	LatestRoot    string      `json:"latestRoot"`
-	AnchorStatus  string      `json:"anchorStatus"`
-	LastBackupRef string      `json:"lastBackupRef,omitempty"`
-	LastBackupCID string      `json:"lastBackupCid,omitempty"`
-	CreatedAt     time.Time   `json:"createdAt"`
-	UpdatedAt     time.Time   `json:"updatedAt"`
+	ID             string           `json:"id"`
+	Type           LedgerType       `json:"type"`
+	Name           string           `json:"name"`
+	CreatorID      string           `json:"creatorId"`
+	LedgerAddress  string           `json:"ledgerAddress,omitempty"`
+	Members        []Member         `json:"members"`
+	EntrySchema    EntrySchema      `json:"entrySchema,omitempty"`
+	ApprovalPolicy ApprovalPolicy   `json:"approvalPolicy,omitempty"`
+	Encryption     LedgerEncryption `json:"encryption,omitempty"`
+	LatestSeq      uint64           `json:"latestSeq"`
+	LatestRoot     string           `json:"latestRoot"`
+	AnchorStatus   string           `json:"anchorStatus"`
+	LastBackupRef  string           `json:"lastBackupRef,omitempty"`
+	LastBackupCID  string           `json:"lastBackupCid,omitempty"`
+	CreatedAt      time.Time        `json:"createdAt"`
+	UpdatedAt      time.Time        `json:"updatedAt"`
 }
 
 type EventRecord struct {
@@ -101,3 +103,5 @@ const (
 	EventBatchSealed    = "BatchSealed"
 	EventBackupAnchored = "BackupAnchored"
 )
+// Collaboration events: EntryProposed, EntryApproved, EntryRejected,
+// MemberInvited, MemberJoined, GroupKeyRotated — see collaboration.go

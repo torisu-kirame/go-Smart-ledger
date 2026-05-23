@@ -24,7 +24,7 @@ func (l *CreateLedgerLogic) CreateLedger(req *types.CreateLedgerReq) (*types.Led
 	if err != nil {
 		return nil, toCodeErr(err)
 	}
-	meta, err := l.svcCtx.Ledger.Create(l.ctx, lt, req.Name, req.CreatorId, mapper.MembersFromReq(req.Members), mapper.EntrySchemaFromReq(req.EntrySchema))
+	meta, err := l.svcCtx.Ledger.Create(l.ctx, lt, req.Name, req.CreatorId, mapper.MembersFromReq(req.Members), mapper.EntrySchemaFromReq(req.EntrySchema), mapper.CreateOptionsFromReq(req))
 	if err != nil {
 		return nil, toCodeErr(err)
 	}

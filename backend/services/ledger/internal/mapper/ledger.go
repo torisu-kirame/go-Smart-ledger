@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/types"
 )
 
@@ -11,18 +12,38 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		members[i] = types.Member{Id: x.ID, Address: x.Address, Role: x.Role}
 	}
 	return &types.LedgerResp{
-		Id:            m.ID,
-		Type:          string(m.Type),
-		Name:          m.Name,
-		CreatorId:     m.CreatorID,
-		LedgerAddress: m.LedgerAddress,
-		Members:       members,
-		EntrySchema:   EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
+		Id:             m.ID,
+		Type:           string(m.Type),
+		Name:           m.Name,
+		CreatorId:      m.CreatorID,
+		LedgerAddress:  m.LedgerAddress,
+		Members:        members,
+		EntrySchema:    EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
+		ApprovalPolicy: types.ApprovalPolicyReq{Enabled: m.ApprovalPolicy.Enabled, Threshold: m.ApprovalPolicy.Threshold},
+		Encryption: types.EncryptionReq{
+			Enabled:     m.Encryption.Enabled,
+			Algo:        m.Encryption.Algo,
+			WrappedKeys: m.Encryption.WrappedKeys,
+		},
 		LatestSeq:     m.LatestSeq,
 		LatestRoot:    m.LatestRoot,
 		AnchorStatus:  m.AnchorStatus,
 		LastBackupRef: m.LastBackupRef,
 		LastBackupCid: m.LastBackupCID,
+	}
+}
+
+func CreateOptionsFromReq(req *types.CreateLedgerReq) ledgersvc.CreateOptions {
+	return ledgersvc.CreateOptions{
+		ApprovalPolicy: domain.ApprovalPolicy{
+			Enabled:   req.ApprovalPolicy.Enabled,
+			Threshold: req.ApprovalPolicy.Threshold,
+		},
+		Encryption: domain.LedgerEncryption{
+			Enabled:     req.Encryption.Enabled,
+			Algo:        req.Encryption.Algo,
+			WrappedKeys: req.Encryption.WrappedKeys,
+		},
 	}
 }
 

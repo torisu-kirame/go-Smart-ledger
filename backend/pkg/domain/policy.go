@@ -3,11 +3,16 @@ package domain
 import "errors"
 
 var (
-	ErrMultiNeedsTwo   = errors.New("multi ledger requires at least 2 members")
-	ErrPrivateOne      = errors.New("private ledger allows only one member")
-	ErrInvalidMember   = errors.New("invalid member")
-	ErrUnauthorized    = errors.New("unauthorized")
-	ErrLedgerNotFound  = errors.New("ledger not found")
+	ErrMultiNeedsTwo      = errors.New("multi ledger requires at least 2 members")
+	ErrPrivateOne         = errors.New("private ledger allows only one member")
+	ErrInvalidMember      = errors.New("invalid member")
+	ErrUnauthorized       = errors.New("unauthorized")
+	ErrLedgerNotFound     = errors.New("ledger not found")
+	ErrPendingNotFound    = errors.New("pending entry not found")
+	ErrInviteNotFound     = errors.New("invite not found")
+	ErrAlreadyMember      = errors.New("user is already a member")
+	ErrInvalidApproval    = errors.New("invalid approval")
+	ErrCannotApproveOwn   = errors.New("proposer cannot approve own entry")
 )
 
 func ValidateCreate(t LedgerType, members []Member) error {

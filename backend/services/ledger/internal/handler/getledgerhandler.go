@@ -16,7 +16,7 @@ func getLedgerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := pathvar.Vars(r)["id"]
 		l := logic.NewGetLedgerLogic(r.Context(), svcCtx)
-		resp, err := l.GetLedger(id)
+		resp, err := l.GetLedger(id, r.Header.Get("X-User-Id"))
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
