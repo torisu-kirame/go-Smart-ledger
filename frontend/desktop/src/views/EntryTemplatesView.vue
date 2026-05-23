@@ -1,10 +1,12 @@
 <template>
-  <div>
-    <div class="head">
-      <h2>记账模板</h2>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h2>记账模板</h2>
+        <p class="page-desc">管理记账字段结构。内置模板不可编辑；自定义模板可在创建账本时选用。</p>
+      </div>
       <button class="btn-primary" @click="openCreate">新建模板</button>
-    </div>
-    <p class="muted">管理记账字段结构。内置模板不可编辑；自定义模板可在创建账本时选用。</p>
+    </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
@@ -45,12 +47,7 @@
         <div v-for="(f, i) in form.fields" :key="i" class="field-row">
           <input v-model="f.key" placeholder="key（英文）" required />
           <input v-model="f.label" placeholder="显示名" required />
-          <select v-model="f.type">
-            <option value="text">文本</option>
-            <option value="number">数字</option>
-            <option value="date">日期</option>
-            <option value="user">用户</option>
-          </select>
+          <AppSelect v-model="f.type" sm :options="FIELD_TYPE_OPTIONS" />
           <label class="check"><input type="checkbox" v-model="f.required" /> 必填</label>
           <button type="button" class="btn-ghost" @click="form.fields.splice(i, 1)">删</button>
         </div>
@@ -67,7 +64,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/http'
-import { DEFAULT_ENTRY_SCHEMA } from '../utils/entrySchema'
+import AppSelect from '../components/AppSelect.vue'
+import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 
 const templates = ref([])
 const error = ref('')
@@ -159,7 +157,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; }
 .muted { color: var(--text-muted); font-size: 0.875rem; }
 .empty { padding: 2rem; text-align: center; }
 .tpl-card {

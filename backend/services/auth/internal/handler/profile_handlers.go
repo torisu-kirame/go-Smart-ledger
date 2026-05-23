@@ -165,8 +165,15 @@ func getAvatarHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		path, ct, err := userstore.ResolveAvatarFile(svcCtx.AvatarDir, userID)
 		if err != nil {
-			http.NotFound(w, r)
-			return
+			if genErr := userstore.EnsureDefaultAvatar(svcCtx.AvatarDir, userID); genErr != nil {
+				http.NotFound(w, r)
+				return
+			}
+			path, ct, err = userstore.ResolveAvatarFile(svcCtx.AvatarDir, userID)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
 		}
 		w.Header().Set("Content-Type", ct)
 		w.Header().Set("Cache-Control", "public, max-age=300")

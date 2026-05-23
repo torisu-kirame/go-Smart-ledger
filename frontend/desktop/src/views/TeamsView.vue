@@ -1,10 +1,12 @@
 <template>
-  <div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <h2>团队</h2>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h2>团队</h2>
+        <p class="page-desc">绑定一个多人账本，并邀请至少 1 位好友加入（类似拉群）</p>
+      </div>
       <button class="btn-primary" @click="openCreate">创建团队</button>
-    </div>
-    <p class="muted">绑定一个多人账本，并邀请至少 1 位好友加入（类似拉群）</p>
+    </header>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
 
@@ -26,12 +28,11 @@
         </div>
         <div class="form-row">
           <label>绑定多人账本</label>
-          <select v-model="form.ledgerId" required>
-            <option value="" disabled>请选择</option>
-            <option v-for="l in multiLedgers" :key="l.id" :value="l.id">
-              {{ l.name }}（{{ l.ledgerAddress?.slice(0, 10) }}…）
-            </option>
-          </select>
+          <AppSelect
+            v-model="form.ledgerId"
+            placeholder="请选择多人账本"
+            :options="multiLedgerOptions"
+          />
         </div>
         <div class="form-row">
           <label>邀请好友（至少 1 人）</label>
@@ -52,6 +53,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import AppSelect from '../components/AppSelect.vue'
 import { api, ApiError } from '../api/http'
 
 const teams = ref([])
@@ -63,6 +65,12 @@ const saving = ref(false)
 const form = reactive({ name: '', ledgerId: '', memberUserIds: [] })
 
 const multiLedgers = computed(() => ledgers.value.filter((l) => l.type === 'multi'))
+const multiLedgerOptions = computed(() =>
+  multiLedgers.value.map((l) => ({
+    value: l.id,
+    label: `${l.name}（${l.ledgerAddress?.slice(0, 10) || l.id.slice(0, 10)}…）`,
+  }))
+)
 
 async function load() {
   error.value = ''

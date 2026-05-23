@@ -1,9 +1,9 @@
 <template>
-  <div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
+  <div class="page">
+    <header class="page-header">
       <h2>账本管理</h2>
       <button class="btn-primary" @click="openCreate">创建账本</button>
-    </div>
+    </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
     <div class="panel">
@@ -34,32 +34,19 @@
         </div>
         <div class="form-row">
           <label>类型</label>
-          <select v-model="form.type">
-            <option value="private">私人（1人）</option>
-            <option value="multi">多人（≥2人）</option>
-          </select>
+          <AppSelect v-model="form.type" :options="ledgerTypeOptions" />
         </div>
         <div class="form-row"><label>名称</label><input v-model="form.name" required /></div>
         <div class="form-row">
           <label>记账模板</label>
-          <select v-model="form.templateId">
-            <option v-for="t in templates" :key="t.templateId" :value="t.templateId">
-              {{ templateLabel(t) }}{{ t.builtin ? '（内置）' : '' }}
-            </option>
-            <option value="custom">临时自定义（不保存）</option>
-          </select>
+          <AppSelect v-model="form.templateId" :options="templateOptions" />
         </div>
         <div v-if="form.templateId === 'custom'" class="custom-schema">
           <p class="hint">添加自定义列（至少 1 个必填字段）</p>
           <div v-for="(f, i) in form.customFields" :key="i" class="form-row member">
             <input v-model="f.key" placeholder="字段 key（英文）" />
             <input v-model="f.label" placeholder="显示名" />
-            <select v-model="f.type">
-              <option value="text">文本</option>
-              <option value="number">数字</option>
-              <option value="date">日期</option>
-              <option value="user">用户</option>
-            </select>
+            <AppSelect v-model="f.type" sm class="member-select" :options="FIELD_TYPE_OPTIONS" />
             <label class="check"><input type="checkbox" v-model="f.required" /> 必填</label>
             <button type="button" class="btn-ghost" @click="form.customFields.splice(i, 1)">删</button>
           </div>
@@ -90,7 +77,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
-import { DEFAULT_ENTRY_SCHEMA } from '../utils/entrySchema'
+import AppSelect from '../components/AppSelect.vue'
+import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 
 const auth = useAuthStore()
 const list = ref([])
@@ -106,6 +94,19 @@ const form = reactive({
   customFields: [{ key: '', label: '', type: 'text', required: true }],
   otherMembers: [{ id: '' }],
 })
+
+const ledgerTypeOptions = [
+  { value: 'private', label: '私人（1人）' },
+  { value: 'multi', label: '多人（≥2人）' },
+]
+
+const templateOptions = computed(() => [
+  ...templates.value.map((t) => ({
+    value: t.templateId,
+    label: `${templateLabel(t)}${t.builtin ? '（内置）' : ''}`,
+  })),
+  { value: 'custom', label: '临时自定义（不保存）' },
+])
 
 const selectedTemplateFields = computed(() => {
   if (form.templateId === 'custom') return ''
@@ -220,9 +221,17 @@ async function create() {
 </script>
 
 <style scoped>
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 480px; max-height: 90vh; overflow: auto; }
-.member { display: grid; grid-template-columns: 1fr 1fr auto auto auto; gap: 0.5rem; align-items: center; }
+.member {
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+}
+.member input,
+.member :deep(.app-select) {
+  max-width: 10rem;
+}
 .custom-schema { margin: 0.5rem 0 1rem; padding: 0.75rem; border: 1px dashed var(--border); border-radius: 8px; }
 .check { font-size: 0.75rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
 .hint { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 0.5rem; }

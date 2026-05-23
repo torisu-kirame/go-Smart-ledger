@@ -1,7 +1,11 @@
 <template>
-  <div>
-    <h2>Excel 导入</h2>
-    <p class="muted">按账本字段模板下载 Excel → 填写 → 上传预览 → 确认导入</p>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h2>Excel 导入</h2>
+        <p class="page-desc">按账本字段模板下载 Excel → 填写 → 上传预览 → 确认导入</p>
+      </div>
+    </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
@@ -12,16 +16,26 @@
 
     <div class="panel">
       <h3>1. 选择账本</h3>
-      <select v-model="ledgerId" style="max-width:320px" @change="onLedgerChange">
-        <option value="">请选择</option>
-        <option v-for="l in ledgers" :key="l.id" :value="l.id">{{ l.name }} ({{ l.id.slice(0,8) }}…)</option>
-      </select>
+      <AppSelect
+        v-model="ledgerId"
+        sm
+        placeholder="请选择账本"
+        :options="ledgerOptions"
+        @change="onLedgerChange"
+      />
       <p v-if="currentSchema" class="muted">字段：{{ schemaLabels }}</p>
     </div>
 
     <div class="panel">
       <h3>2. 上传并预览</h3>
-      <input type="file" accept=".xlsx,.xls" @change="onFile" />
+      <FileUploadZone
+        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        title="拖拽 Excel 到此处，或点击选择"
+        hint="支持 .xlsx / .xls"
+        :disabled="!ledgerId"
+        disabled-hint="请先在上方选择账本"
+        @file="onUploadFile"
+      />
       <p v-if="preview" class="muted">共 {{ preview.total }} 行，有效 {{ preview.valid }}，无效 {{ preview.invalid }}</p>
     </div>
 
@@ -53,8 +67,8 @@
         <label>默认记账人 ID</label>
         <input v-model="signerId" placeholder="Excel 未填记账人列时使用" />
       </div>
-      <label><input type="checkbox" v-model="autoAnchor" /> 导入后自动封账锚定</label><br />
-      <label><input type="checkbox" v-model="autoBackup" /> 封账后自动创建加密备份</label>
+      <label class="inline-check"><input type="checkbox" v-model="autoAnchor" /> 导入后自动封账锚定</label>
+      <label class="inline-check"><input type="checkbox" v-model="autoBackup" /> 封账后自动创建加密备份</label>
       <div v-if="autoBackup" class="form-row"><label>备份密码</label><input v-model="backupPassword" type="password" /></div>
       <button class="btn-primary" :disabled="busy" @click="commit">确认导入并上链</button>
     </div>
@@ -66,6 +80,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import AppSelect from '../components/AppSelect.vue'
+import FileUploadZone from '../components/FileUploadZone.vue'
 import { cellValue, resolveSchema } from '../utils/entrySchema'
 
 const route = useRoute()
@@ -92,6 +108,13 @@ const needsSigner = computed(() =>
   previewFields.value.some((f) => f.type === 'user' && f.key === 'bookkeeper')
 )
 
+const ledgerOptions = computed(() =>
+  ledgers.value.map((l) => ({
+    value: l.id,
+    label: `${l.name} (${l.id.slice(0, 8)}…)`,
+  }))
+)
+
 function onLedgerChange() {
   preview.value = null
   if (ledgerId.value && auth.user?.id) signerId.value = auth.user.id
@@ -115,8 +138,7 @@ async function downloadTpl() {
   a.click()
 }
 
-async function onFile(ev) {
-  const file = ev.target.files?.[0]
+async function onUploadFile(file) {
   if (!file || !ledgerId.value) {
     error.value = '请先选择账本'
     return

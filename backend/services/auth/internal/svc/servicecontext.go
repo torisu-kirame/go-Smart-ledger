@@ -64,9 +64,13 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		seedUser = c.Users[0].Username
 		seedPass = c.Users[0].Password
 	}
-	if err := mysqlUsers.EnsureSeed(seedUser, seedPass); err != nil {
+	seedID, err := mysqlUsers.EnsureSeed(seedUser, seedPass)
+	if err != nil {
 		_ = sqlDB.Close()
 		return nil, err
+	}
+	if seedID != "" {
+		_ = userstore.EnsureDefaultAvatar(avatarDir, seedID)
 	}
 
 	return &ServiceContext{

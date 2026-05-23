@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="page">
     <h2>备份 / 恢复</h2>
-    <p class="muted">
+    <p class="page-desc">
       对已<strong>封账锚定</strong>的账本创建加密备份；本地磁盘与 IPFS 双写，备份 CID 写入链上事件。
       恢复可将快照<strong>写回</strong>账本（覆盖模式）。
     </p>
@@ -12,10 +12,11 @@
       <h3>创建备份</h3>
       <div class="form-row">
         <label>账本</label>
-        <select v-model="ledgerId">
-          <option value="">请选择</option>
-          <option v-for="l in sealed" :key="l.id" :value="l.id">{{ l.name }}</option>
-        </select>
+        <AppSelect
+          v-model="ledgerId"
+          placeholder="请选择账本"
+          :options="sealedOptions"
+        />
         <small v-if="!sealed.length" style="color:var(--warning)">暂无已封账账本，请先在账本详情中封账锚定</small>
       </div>
       <div class="form-row"><label>备份密码</label><input v-model="password" type="password" /></div>
@@ -37,7 +38,7 @@
         <label>目标账本 ID</label>
         <input v-model="restoreLedgerId" placeholder="写回此账本" />
       </div>
-      <label class="check"><input type="checkbox" v-model="overwrite" /> 覆盖写入（目标账本已有数据时需勾选）</label>
+      <label class="inline-check"><input type="checkbox" v-model="overwrite" /> 覆盖写入（目标账本已有数据时需勾选）</label>
       <div style="margin-top:0.75rem;display:flex;gap:0.5rem">
         <button class="btn-ghost" @click="doRestorePreview">解密并预览</button>
         <button class="btn-primary" :disabled="!canRestore" @click="doRestoreCommit">写回账本</button>
@@ -56,6 +57,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import AppSelect from '../components/AppSelect.vue'
 import { api, ApiError } from '../api/http'
 
 const route = useRoute()
@@ -76,6 +78,9 @@ const error = ref('')
 const msg = ref('')
 
 const sealed = computed(() => ledgers.value.filter((l) => l.anchorStatus === 'synced'))
+const sealedOptions = computed(() =>
+  sealed.value.map((l) => ({ value: l.id, label: l.name }))
+)
 const canRestore = computed(
   () => restoreRef.value && restorePassword.value && restoreLedgerId.value
 )

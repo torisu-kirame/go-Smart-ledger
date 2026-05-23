@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="page">
     <h2>系统概览</h2>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div class="grid-3">
@@ -9,8 +9,10 @@
     </div>
     <div class="panel">
       <h3>快捷入口</h3>
-      <router-link to="/import"><button class="btn-primary">Excel 导入</button></router-link>
-      <router-link to="/backup" style="margin-left:0.5rem"><button class="btn-ghost">备份恢复</button></router-link>
+      <div class="quick-actions">
+        <router-link to="/import"><button class="btn-primary">Excel 导入</button></router-link>
+        <router-link to="/backup"><button class="btn-ghost">备份恢复</button></router-link>
+      </div>
     </div>
   </div>
 </template>
@@ -32,3 +34,7 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.quick-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+</style>

@@ -9,6 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.3
 	github.com/mojocn/base64Captcha v1.3.6
+	github.com/navnitms/go-identicon v0.1.0
 	github.com/xuri/excelize/v2 v2.9.0
 	github.com/zeromicro/go-zero v1.7.3
 	github.com/zeromicro/x v0.0.0-20240408115609-8224c482b07e

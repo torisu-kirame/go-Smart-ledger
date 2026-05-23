@@ -73,6 +73,8 @@ func registerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
+		// Default avatar: SHA-256(userID) -> go-identicon PNG on disk.
+		_ = userstore.EnsureDefaultAvatar(svcCtx.AvatarDir, user.ID)
 		pair, err := authjwt.Issue(svcCtx.JWT, user.ID, user.Username)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

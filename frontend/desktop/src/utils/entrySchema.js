@@ -1,6 +1,13 @@
 /** 内置记账模板（与后端 default 一致） */
 export const DEFAULT_TEMPLATE_ID = 'default'
 
+export const FIELD_TYPE_OPTIONS = [
+  { value: 'text', label: '文本' },
+  { value: 'number', label: '数字' },
+  { value: 'date', label: '日期' },
+  { value: 'user', label: '用户' },
+]
+
 export const DEFAULT_ENTRY_SCHEMA = {
   templateId: DEFAULT_TEMPLATE_ID,
   fields: [

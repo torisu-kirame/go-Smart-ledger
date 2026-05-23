@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="page">
     <h2>好友</h2>
-    <p class="muted">通过用户 ID 搜索并添加好友</p>
+    <p class="page-desc">通过用户 ID 搜索并添加好友</p>
     <p v-if="auth.user" class="my-id">我的用户 ID：<strong>{{ auth.user.id }}</strong> · {{ auth.user.username }}</p>
 
     <section class="card">
@@ -135,8 +135,14 @@ onMounted(loadFriends)
 .my-id { margin: 0.5rem 0 1rem; font-size: 0.9rem; }
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
 .card h3 { margin: 0 0 0.75rem; font-size: 1rem; }
-.search-row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-.search-row input { flex: 1; }
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  max-width: 26rem;
+  flex-wrap: wrap;
+}
+.search-row input { flex: 1; min-width: 10rem; max-width: 18rem; }
 .search-result { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem; background: var(--bg); border-radius: 8px; }
 .err { color: var(--danger); font-size: 0.875rem; margin-top: 0.5rem; }
 .danger { color: var(--danger); }

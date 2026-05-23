@@ -15,7 +15,7 @@ Snowflake:
 
 IPFS:
   ApiURL: http://ipfs:5001
-  Enabled: true
+  Enabled: false
 
 Log:
   Mode: console

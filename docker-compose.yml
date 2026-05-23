@@ -52,6 +52,7 @@ services:
 
   ipfs:
     image: ipfs/kubo:v0.32.1
+    profiles: ["ipfs"]
     container_name: smart-ledger-ipfs
     environment:
       IPFS_PROFILE: server
@@ -78,8 +79,6 @@ services:
     depends_on:
       miniledger:
         condition: service_healthy
-      ipfs:
-        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28888/api/v1/health"]
       interval: 10s

@@ -81,16 +81,21 @@ func (s *MySQLStore) FindByID(id string) (*User, error) {
 	return &User{ID: strconv.FormatUint(uid, 10), Username: username}, nil
 }
 
-func (s *MySQLStore) EnsureSeed(username, password string) error {
+// EnsureSeed creates the first admin user when the table is empty.
+// Returns the new user's ID when created, or "" if users already exist.
+func (s *MySQLStore) EnsureSeed(username, password string) (string, error) {
 	var n int
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n); err != nil {
-		return err
+		return "", err
 	}
 	if n > 0 {
-		return nil
+		return "", nil
 	}
-	_, err := s.Create(username, password)
-	return err
+	u, err := s.Create(username, password)
+	if err != nil {
+		return "", err
+	}
+	return u.ID, nil
 }
 
 func isDuplicate(err error) bool {

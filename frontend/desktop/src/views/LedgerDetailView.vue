@@ -1,5 +1,5 @@
 <template>
-  <div v-if="ledger">
+  <div v-if="ledger" class="page">
     <h2><router-link to="/ledgers" style="color:var(--text-muted)">←</router-link> {{ ledger.name }}</h2>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
     <div v-if="error" class="alert alert-error">{{ error }}</div>

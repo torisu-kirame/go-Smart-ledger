@@ -6,23 +6,32 @@
         <small>桌面控制台</small>
       </div>
       <nav>
-        <router-link to="/" end>概览</router-link>
-        <router-link to="/ledgers">账本管理</router-link>
-        <router-link to="/entry-templates">记账模板</router-link>
-        <router-link to="/import">Excel 导入</router-link>
-        <router-link to="/backup">备份 / 恢复</router-link>
-        <router-link to="/friends">好友</router-link>
-        <router-link to="/teams">团队</router-link>
-        <router-link to="/profile">个人中心</router-link>
+        <router-link
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          custom
+          v-slot="{ href, navigate, isActive, isExactActive }"
+        >
+          <a
+            :href="href"
+            class="nav-item"
+            :class="{ active: navActive(item, isActive, isExactActive) }"
+            @click="navigate"
+          >
+            {{ item.label }}
+          </a>
+        </router-link>
       </nav>
       <div class="foot">
-        <router-link to="/profile" class="user-link">
+        <button class="settings-btn btn-ghost" type="button" @click="goSettings()">设置</button>
+        <a class="user-link" href="/settings#personal" @click.prevent="goSettings('#personal')">
           <img v-if="auth.user?.id" class="foot-avatar" :src="footAvatar" alt="" />
           <span>{{ auth.user?.nickname || auth.user?.username }}</span>
-        </router-link>
+        </a>
         <div v-if="auth.user?.id" class="uid">ID: {{ auth.user.id }}</div>
-        <button class="btn-ghost" style="width:100%;margin:0.5rem 0" @click="onLogout">退出</button>
-        <a href="http://localhost:24441/dashboard" target="_blank" rel="noreferrer">MiniLedger 浏览器 →</a>
+        <button class="btn-ghost foot-logout" type="button" @click="onLogout">退出</button>
+        <a href="http://localhost:24441/dashboard" target="_blank" rel="noreferrer" class="ext-link">MiniLedger 浏览器 →</a>
       </div>
     </aside>
     <main class="main">
@@ -32,7 +41,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/http'
 import { useAuthStore } from '../stores/auth'
@@ -40,12 +49,37 @@ import { useAuthStore } from '../stores/auth'
 const auth = useAuthStore()
 const router = useRouter()
 
+const navItems = [
+  { to: '/', label: '概览', exact: true },
+  { to: '/ledgers', label: '账本管理', exact: false },
+  { to: '/entry-templates', label: '记账模板', exact: true },
+  { to: '/import', label: 'Excel 导入', exact: true },
+  { to: '/backup', label: '备份 / 恢复', exact: true },
+  { to: '/friends', label: '好友', exact: true },
+  { to: '/teams', label: '团队', exact: true },
+]
+
 const footAvatar = computed(() =>
   auth.user?.id ? api.userAvatarUrl(auth.user.id) : ''
 )
 
+function navActive(item, isActive, isExactActive) {
+  if (item.exact) return isExactActive
+  return isActive
+}
+
+function goSettings(hash = '') {
+  const h = typeof hash === 'string' && hash.startsWith('#') ? hash : ''
+  router.push(h ? { path: '/settings', hash: h } : '/settings')
+}
+
 onMounted(() => {
+  document.documentElement.classList.add('app-shell-active')
   if (!auth.loading && !auth.isLoggedIn) router.replace('/login')
+})
+
+onUnmounted(() => {
+  document.documentElement.classList.remove('app-shell-active')
 })
 
 async function onLogout() {
@@ -55,20 +89,113 @@ async function onLogout() {
 </script>
 
 <style scoped>
-.shell { display: flex; min-height: 100vh; }
-.sidebar {
-  width: 220px; background: var(--bg-elevated); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; padding: 1rem 0;
+.shell {
+  display: flex;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
 }
-.brand { padding: 0 1rem 1rem; border-bottom: 1px solid var(--border); }
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  height: 100vh;
+  max-height: 100vh;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+  overflow: hidden;
+}
+
+.brand {
+  flex-shrink: 0;
+  padding: 0 1rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
 .brand small { display: block; color: var(--text-muted); margin-top: 0.25rem; }
-nav { flex: 1; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
-nav a { padding: 0.55rem 0.65rem; border-radius: 8px; color: var(--text-muted); }
-nav a.router-link-active { background: rgba(61,139,253,.15); color: var(--accent); }
-.foot { padding: 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted); }
-.uid { margin-top: 0.25rem; color: var(--accent); font-family: monospace; }
-.user-link { display: flex; align-items: center; gap: 0.5rem; color: var(--text); text-decoration: none; margin-bottom: 0.25rem; }
+
+nav {
+  flex: 1;
+  min-height: 0;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+.nav-item {
+  display: block;
+  padding: 0.62rem 0.7rem;
+  border-radius: 10px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+.nav-item:hover { background: var(--hover); color: var(--text); }
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.foot {
+  flex-shrink: 0;
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.uid { margin-top: 0.25rem; color: var(--accent); font-family: monospace; font-size: 0.72rem; }
+.user-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+  margin-bottom: 0.25rem;
+  cursor: pointer;
+}
 .user-link:hover { color: var(--accent); }
 .foot-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); }
-.main { flex: 1; padding: 1.5rem; overflow: auto; }
+.foot-logout { width: 100%; margin: 0.5rem 0; }
+.settings-btn { width: 100%; margin-bottom: 0.75rem; }
+.ext-link { display: inline-block; margin-top: 0.25rem; }
+.main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100vh;
+  padding: 1.5rem 2rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  nav {
+    flex: none;
+    min-height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .main {
+    height: auto;
+    min-height: 50vh;
+    overflow: visible;
+    padding: 1rem;
+  }
+}
 </style>
