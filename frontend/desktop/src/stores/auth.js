@@ -39,6 +39,11 @@ export const useAuthStore = defineStore('auth', () => {
     setSession(res.accessToken, res.user)
   }
 
+  async function register(form) {
+    const res = await api.register(form)
+    setSession(res.accessToken, res.user)
+  }
+
   async function logout() {
     try {
       await api.logout()
@@ -48,5 +53,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { accessToken, user, loading, isLoggedIn, bootstrap, login, logout, refresh }
+  return { accessToken, user, loading, isLoggedIn, bootstrap, login, register, logout, refresh }
 })

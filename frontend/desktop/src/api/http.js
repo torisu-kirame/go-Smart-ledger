@@ -55,6 +55,12 @@ async function request(path, init = {}, retry = true) {
 export const api = {
   captcha: () => request('/auth/captcha'),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  searchUser: (userId) => request(`/users/search?userId=${encodeURIComponent(userId)}`),
+  listFriends: () => request('/friends'),
+  addFriend: (friendUserId) =>
+    request('/friends', { method: 'POST', body: JSON.stringify({ friendUserId }) }),
+  removeFriend: (friendId) => request(`/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' }),
   refresh: () => request('/auth/refresh', { method: 'POST', body: '{}' }),
   logout: () => request('/auth/logout', { method: 'POST', body: '{}' }),
   health: () => request('/health'),

@@ -1,0 +1,94 @@
+package userstore
+
+import (
+	"database/sql"
+	"strconv"
+	"strings"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+type MySQLStore struct {
+	db *sql.DB
+}
+
+func NewMySQLStore(db *sql.DB) *MySQLStore {
+	return &MySQLStore{db: db}
+}
+
+func (s *MySQLStore) Authenticate(username, password string) (*User, error) {
+	var id uint64
+	var hash string
+	err := s.db.QueryRow(
+		`SELECT id, password_hash FROM users WHERE username = ? LIMIT 1`,
+		username,
+	).Scan(&id, &hash)
+	if err == sql.ErrNoRows {
+		return nil, ErrInvalidCredentials
+	}
+	if err != nil {
+		return nil, err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
+		return nil, ErrInvalidCredentials
+	}
+	return &User{ID: strconv.FormatUint(id, 10), Username: username}, nil
+}
+
+func (s *MySQLStore) Create(username, password string) (*User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.db.Exec(
+		`INSERT INTO users (username, password_hash) VALUES (?, ?)`,
+		username, string(hash),
+	)
+	if err != nil {
+		if isDuplicate(err) {
+			return nil, ErrUserExists
+		}
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+	return &User{ID: strconv.FormatInt(id, 10), Username: username}, nil
+}
+
+func (s *MySQLStore) FindByID(id string) (*User, error) {
+	uid, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	var username string
+	err = s.db.QueryRow(
+		`SELECT username FROM users WHERE id = ? LIMIT 1`,
+		uid,
+	).Scan(&username)
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &User{ID: strconv.FormatUint(uid, 10), Username: username}, nil
+}
+
+func (s *MySQLStore) EnsureSeed(username, password string) error {
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n); err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	_, err := s.Create(username, password)
+	return err
+}
+
+func isDuplicate(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "Duplicate") || strings.Contains(msg, "1062")
+}

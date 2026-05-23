@@ -90,10 +90,12 @@ go-Smart-ledger/
 | gateway-api | **28080** | 统一 API 入口 |
 | ledger-api | **28888** | 账本业务 |
 | storage-api | **28890** | 存储/备份 |
-| auth-api | **28887** | 认证 |
+| auth-api | **28887** | 认证 / 用户 / 好友 |
+| MySQL（Compose 内） | **3306**（仅容器网络，不映射宿主机） | 用户与好友；本机已有 MySQL 占 3306 时不冲突 |
+| MySQL（本机直连） | **3306** | 本地跑 auth-api 时用 `127.0.0.1` |
 | MiniLedger API | **24441** | 链 HTTP / 区块浏览器 |
 | MiniLedger P2P | **24440** | 链 P2P |
-| 前端 Vite dev | **25173** | 桌面控制台开发服 |
+| 前端 web / Vite | **25173** | 控制台（Docker Nginx 或本地 dev） |
 
 ---
 
@@ -122,7 +124,8 @@ go-Smart-ledger/
 | F17 | 多人账本多签 / 审批流 | P1 | ⬜ 未完成 |
 | F18 | 成员 P2P 同步、加入账本 | P2 | ⬜ 未完成 |
 | F19 | 账本数据组级端到端加密 | P2 | ⬜ 未完成 |
-| F20 | 用户注册、数据库用户体系、RBAC | P1 | ⬜ 未完成 |
+| F20 | 用户注册、MySQL 用户体系 | P1 | 🟡 进行中（登录/注册/好友；无 RBAC） |
+| F31 | 好友系统：按用户 ID 搜索、添加、删除 | P1 | ✅ 已完成 |
 | F21 | 自定义账本字段 Schema / 动态模板 | P2 | ⬜ 未完成 |
 | F22 | MiniLedger 多节点 Raft 集群部署文档与 Compose | P1 | ⬜ 未完成 |
 | F23 | 上链失败重试队列、待上链状态 UI | P1 | ⬜ 未完成 |
@@ -162,11 +165,13 @@ go-Smart-ledger/
 - [x] `frontend/desktop`：Vue 3 + Pinia + Vue Router
 - [x] 页面：登录、概览、账本管理、账本详情、Excel 导入、备份/恢复
 - [x] 短期 access token 仅存内存；refresh 走 Cookie
+- [x] 用户端登录/注册页；好友页（ID 搜索、添加、删除）
 - [x] Docker 服务 `web`：Nginx 托管 `dist`，`/api` 反代至 `gateway-api`
 
 ### 工程与部署
 
-- [x] 根目录 `Makefile`、`docker-compose.yml`（含 `web` 前端容器）
+- [x] 根目录 `Makefile`、`docker-compose.yml`（含 `web`、`mysql`）
+- [x] Auth + MySQL：`users` / `friendships` 表，启动时自动建库/检测字段；脚本 `backend/infra/sql/001_schema.sql`
 - [x] `scripts/build-linux.ps1`、`scripts/docker-up.ps1`
 - [x] 端口 2xxxx 统一规范
 
@@ -181,7 +186,7 @@ go-Smart-ledger/
 | **IPFS 存储** | 批次数据 CID 上链引用；成员/节点 Pin |
 | **备份 + IPFS 双写** | 与 F14 配套，防止无人 pin |
 | **上链状态机** | 待上链 / 失败重试 / 展示 tx 或块高 |
-| **用户体系** | 注册、持久化、多用户（当前仅内存种子用户 `admin`） |
+| **RBAC / 权限** | 角色与细粒度权限（当前仅 JWT 登录用户） |
 
 ### 中低优先级
 
@@ -204,7 +209,8 @@ go-Smart-ledger/
 ### 环境要求
 
 - Go 1.22+、Docker Desktop（运行中）
-- Node.js 22+（前端开发服；MiniLedger 由 Docker 提供）
+- **MySQL 8**（`root` / `123456`；库名 `smart_ledger` 可由服务自动创建，亦可手动执行 `backend/infra/sql/001_schema.sql`）
+- Node.js 22+（仅 `make frontend-dev` 时需要；容器化前端不需要）
 - Make（推荐）；Windows 无 Make 时可用 `scripts/*.ps1`
 
 ### 一行启动全栈（推荐）
@@ -262,6 +268,10 @@ make frontend-build  # 构建前端静态资源
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-23 | 修复概览页 MiniLedger 误显示离线：网关 `/health` 聚合 ledger 链状态。 |
+| 2026-05-22 | 后端 `infra/sql/001_schema.sql` + `pkg/db` 启动时检测并创建库/表/字段/索引/外键。 |
+| 2026-05-22 | Compose `mysql` 不再映射宿主机 3306，避免与本机 MySQL 端口冲突。 |
+| 2026-05-22 | F31：MySQL 用户/好友 API；用户端登录注册与好友页；Compose 增加 `mysql`。 |
 | 2026-05-22 | F24：前端容器化 `web`（`frontend/desktop/Dockerfile` + Nginx 反代）；`make start` 仅 Docker 全栈。 |
 | 2026-05-22 | 前端 npm 改用项目内 `.npm-cache`（`.npmrc` + `scripts/frontend-install.ps1`），规避全局 node_cache EPERM。 |
 | 2026-05-22 | 修复 Docker 健康检查：`wget --spider`（HEAD）改为 GET，避免 go-zero 返回 405 导致 auth/storage 等 unhealthy。 |

@@ -12,6 +12,7 @@ const routes = [
       { path: 'ledgers/:id', component: () => import('../views/LedgerDetailView.vue') },
       { path: 'import', component: () => import('../views/ImportView.vue') },
       { path: 'backup', component: () => import('../views/BackupView.vue') },
+      { path: 'friends', component: () => import('../views/FriendsView.vue') },
     ],
   },
 ]

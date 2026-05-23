@@ -4,6 +4,7 @@
 package types
 
 type HealthResp struct {
-	Status  string `json:"status"`
-	Gateway string `json:"gateway"`
+	Status           string `json:"status"`
+	Gateway          string `json:"gateway"`
+	MiniLedgerOnline bool   `json:"miniLedgerOnline"`
 }

@@ -12,6 +12,9 @@ type Config struct {
 		CookieSecure  bool   `json:",default=false"`
 		CookieDomain  string `json:",optional"`
 	} `json:"Auth"`
+	MySQL struct {
+		DataSource string `json:",optional"`
+	} `json:"MySQL"`
 	Users []struct {
 		Username string `json:"username"`
 		Password string `json:"password"`

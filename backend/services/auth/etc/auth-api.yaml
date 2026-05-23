@@ -9,6 +9,9 @@ Auth:
   RefreshExpire: 604800
   CookieSecure: false
 
+MySQL:
+  DataSource: root:123456@tcp(127.0.0.1:3306)/smart_ledger?parseTime=true&charset=utf8mb4&loc=Local
+
 Users:
   - username: admin
     password: admin123

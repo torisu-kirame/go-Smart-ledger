@@ -32,6 +32,7 @@ func main() {
 	handler.RegisterHandlers(server, ctx)
 
 	authProxy := proxy.Handler(c.Upstreams.Auth)
+	authJWT := middleware.JWT(c.Auth.AccessSecret)(authProxy)
 	ledgerProxy := middleware.JWT(c.Auth.AccessSecret)(proxy.Handler(c.Upstreams.Ledger))
 	storageProxy := middleware.JWT(c.Auth.AccessSecret)(proxy.Handler(c.Upstreams.Storage))
 
@@ -39,9 +40,18 @@ func main() {
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/auth/captcha", Handler: authProxy},
 		{Method: http.MethodPost, Path: "/api/v1/auth/login", Handler: authProxy},
+		{Method: http.MethodPost, Path: "/api/v1/auth/register", Handler: authProxy},
 		{Method: http.MethodPost, Path: "/api/v1/auth/refresh", Handler: authProxy},
 		{Method: http.MethodPost, Path: "/api/v1/auth/logout", Handler: authProxy},
 		{Method: http.MethodGet, Path: "/api/v1/auth/health", Handler: authProxy},
+	})
+
+	// 需 JWT：用户搜索与好友（MySQL）
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/users/search", Handler: authJWT},
+		{Method: http.MethodGet, Path: "/api/v1/friends", Handler: authJWT},
+		{Method: http.MethodPost, Path: "/api/v1/friends", Handler: authJWT},
+		{Method: http.MethodDelete, Path: "/api/v1/friends/:friendId", Handler: authJWT},
 	})
 
 	// 需 JWT 短期令牌

@@ -11,6 +11,24 @@
 name: smart-ledger
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: smart-ledger-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: smart_ledger
+    # 不映射 3306，避免与本机已安装的 MySQL 冲突；容器内仍用 mysql:3306
+    # 若需从宿主机连 Compose 内库，可改为 "23306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
   miniledger:
     image: node:22-alpine
     container_name: smart-ledger-miniledger
@@ -35,6 +53,9 @@ services:
       context: ./backend
       dockerfile: deploy/Dockerfile.auth
     container_name: smart-ledger-auth-api
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "28887:28887"
     healthcheck:
@@ -122,5 +143,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  mysql-data:
   miniledger-data:
   storage-backups:
