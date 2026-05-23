@@ -10,23 +10,12 @@
       <div class="card"><h4>锚定</h4><div class="val"><span :class="['badge', ledger.anchorStatus==='synced'?'badge-ok':'badge-pending']">{{ ledger.anchorStatus }}</span></div></div>
     </div>
 
-    <div v-if="ledger.approvalPolicy?.enabled" class="panel hint-panel">
-      <span class="badge badge-multi">多签审批</span>
-      需 {{ ledger.approvalPolicy.threshold }} 人批准后记账上链（F17）
-    </div>
-    <div v-if="ledger.encryption?.enabled" class="panel hint-panel">
-      <span class="badge badge-ok">端到端加密</span>
-      记账字段在客户端加密后上链（F19）
-      <div v-if="!groupKeyReady" class="form-row" style="margin-top:0.75rem">
+    <div v-if="ledger.encryption?.enabled" class="panel">
+      <div v-if="!groupKeyReady" class="form-row">
         <label>输入加密口令以解密/记账</label>
         <input v-model="e2ePassphrase" type="password" class="field-sm" />
         <button type="button" class="btn-ghost" style="margin-top:0.35rem" @click="unlockE2E">解锁</button>
       </div>
-    </div>
-
-    <div class="panel schema-panel">
-      <h3>记账字段</h3>
-      <p class="muted">模板：{{ ledger.entrySchema?.templateId || 'default' }} · {{ schemaFieldsText }}</p>
     </div>
 
     <div class="panel">
@@ -40,7 +29,7 @@
     </div>
 
     <div v-if="ledger.type === 'multi'" class="panel">
-      <h3>邀请成员（F18）</h3>
+      <h3>邀请成员</h3>
       <div class="form-row">
         <label>好友用户 ID</label>
         <input v-model="inviteUserId" placeholder="被邀请人雪花 ID" />
@@ -49,12 +38,11 @@
     </div>
 
     <div v-if="ledger.approvalPolicy?.enabled" class="panel">
-      <h3>待审批记账（F17）</h3>
+      <h3>待审批记账</h3>
       <div v-if="!pending.length" class="muted">暂无待审批</div>
       <div v-for="p in pending" :key="p.id" class="pending-row">
         <div>
           <span class="mono">#{{ p.id.slice(0, 8) }}…</span>
-          <span class="muted"> · 提议人 {{ p.proposerId }} · 已批 {{ p.approvals?.length || 0 }}</span>
         </div>
         <div class="actions-row">
           <button class="btn-primary" :disabled="busy" @click="approve(p.id)">批准</button>
@@ -120,9 +108,6 @@ const groupKey = ref('')
 const entryData = reactive({})
 
 const schema = computed(() => resolveSchema(ledger.value))
-const schemaFieldsText = computed(() =>
-  (schema.value.fields || []).map((f) => f.label).join('、')
-)
 const memberOptions = computed(() =>
   (ledger.value?.members || []).map((m) => ({ id: m.id, username: m.id }))
 )
@@ -286,8 +271,6 @@ function goBackup() {
 </script>
 
 <style scoped>
-.schema-panel .muted { font-size: 0.875rem; color: var(--text-muted); }
-.hint-panel { font-size: 0.875rem; }
 .pending-row {
   display: flex;
   justify-content: space-between;

@@ -1,7 +1,6 @@
 <template>
   <div class="page">
     <h2>账本邀请</h2>
-    <p class="page-desc">接受邀请后将加入对应多人账本（F18）</p>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
     <div class="panel">
@@ -10,7 +9,6 @@
         <div>
           <strong>账本 ID</strong>
           <span class="mono">{{ inv.ledgerId }}</span>
-          <p class="muted">邀请人 {{ inv.inviterId }}</p>
         </div>
         <button class="btn-primary" :disabled="busy" @click="accept(inv.ledgerId)">接受加入</button>
       </div>

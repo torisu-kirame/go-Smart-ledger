@@ -3,7 +3,6 @@
     <button class="theme-switch" @click="onToggleTheme">{{ themeLabel }}</button>
     <form class="login-card" @submit.prevent="submit">
       <h1>Smart Ledger</h1>
-      <p class="sub">用户端 · 登录与注册</p>
 
       <div class="tabs">
         <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">登录</button>
@@ -28,7 +27,6 @@
       <button class="btn-primary" style="width:100%" :disabled="loading">
         {{ loading ? (mode === 'login' ? '登录中…' : '注册中…') : (mode === 'login' ? '登录' : '注册并登录') }}
       </button>
-      <p class="hint">登录后可在「个人中心」管理资料，在「好友」页通过用户 ID 添加好友</p>
     </form>
   </div>
 </template>
@@ -118,12 +116,10 @@ async function submit() {
 <style scoped>
 .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
 .login-card { width: 420px; max-width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; box-shadow: var(--shadow-lg); }
-.sub { color: var(--text-muted); margin: 0 0 1rem; }
 .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
 .tabs button { flex: 1; padding: 0.5rem; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); }
 .tabs button.active { background: rgba(61,139,253,.2); border-color: var(--accent); color: var(--accent); }
 .cap-row { display: flex; gap: 0.5rem; align-items: center; }
 .cap-row img { height: 40px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); }
-.hint { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.4; }
 .theme-switch { position: fixed; top: 16px; right: 16px; z-index: 10; }
 </style>

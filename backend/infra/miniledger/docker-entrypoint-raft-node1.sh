@@ -2,6 +2,9 @@
 set -e
 cd /app
 npm install --omit=dev
+if [ ! -e dashboard ]; then
+  ln -sf "$(pwd)/node_modules/miniledger/dashboard" dashboard
+fi
 if [ ! -d data/node1 ]; then
   echo "[raft-1] init..."
   npx miniledger init -d ./data/node1

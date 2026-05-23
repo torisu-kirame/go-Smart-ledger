@@ -1,8 +1,6 @@
 <template>
   <div class="page">
     <h2>好友</h2>
-    <p class="page-desc">通过用户 ID 搜索并添加好友</p>
-    <p v-if="auth.user" class="my-id">我的用户 ID：<strong>{{ auth.user.id }}</strong> · {{ auth.user.username }}</p>
 
     <section class="card">
       <h3>搜索用户</h3>
@@ -132,7 +130,6 @@ onMounted(loadFriends)
 
 <style scoped>
 .muted { color: var(--text-muted); font-size: 0.875rem; }
-.my-id { margin: 0.5rem 0 1rem; font-size: 0.9rem; }
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
 .card h3 { margin: 0 0 0.75rem; font-size: 1rem; }
 .search-row {

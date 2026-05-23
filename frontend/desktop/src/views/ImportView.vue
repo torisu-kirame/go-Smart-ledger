@@ -1,17 +1,13 @@
 <template>
   <div class="page">
     <header class="page-header">
-      <div>
-        <h2>Excel 导入</h2>
-        <p class="page-desc">按账本字段模板下载 Excel → 填写 → 上传预览 → 确认导入</p>
-      </div>
+      <h2>Excel 导入</h2>
     </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
     <div class="panel">
       <button class="btn-ghost" :disabled="!ledgerId" @click="downloadTpl">下载导入模板</button>
-      <span v-if="!ledgerId" class="muted" style="margin-left:0.5rem">请先选择账本</span>
     </div>
 
     <div class="panel">
@@ -23,7 +19,6 @@
         :options="ledgerOptions"
         @change="onLedgerChange"
       />
-      <p v-if="currentSchema" class="muted">字段：{{ schemaLabels }}</p>
     </div>
 
     <div class="panel">
@@ -31,12 +26,9 @@
       <FileUploadZone
         accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
         title="拖拽 Excel 到此处，或点击选择"
-        hint="支持 .xlsx / .xls"
         :disabled="!ledgerId"
-        disabled-hint="请先在上方选择账本"
         @file="onUploadFile"
       />
-      <p v-if="preview" class="muted">共 {{ preview.total }} 行，有效 {{ preview.valid }}，无效 {{ preview.invalid }}</p>
     </div>
 
     <div v-if="preview?.rows?.length" class="panel">

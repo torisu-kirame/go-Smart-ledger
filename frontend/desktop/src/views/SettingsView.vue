@@ -1,16 +1,24 @@
 <template>
   <div class="page settings-page">
-    <h2>设置</h2>
+    <h2>{{ t('settings.title') }}</h2>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
     <section class="settings-section panel">
-      <h3>主题设置</h3>
-      <p class="hint">切换界面明暗与强调色，设置会保存在本机浏览器。</p>
+      <h3>{{ t('settings.theme.title') }}</h3>
 
       <div class="form-row">
-        <label>昼夜模式</label>
+        <label>{{ t('settings.theme.language') }}</label>
+        <AppSelect
+          v-model="currentLocale"
+          :options="localeOptions"
+          @change="onLocaleChange"
+        />
+      </div>
+
+      <div class="form-row">
+        <label>{{ t('settings.theme.mode') }}</label>
         <div class="segmented">
           <button
             type="button"
@@ -18,7 +26,7 @@
             :class="{ active: themeMode === 'light' }"
             @click="setMode('light')"
           >
-            浅色
+            {{ t('settings.theme.light') }}
           </button>
           <button
             type="button"
@@ -26,13 +34,13 @@
             :class="{ active: themeMode === 'dark' }"
             @click="setMode('dark')"
           >
-            深色
+            {{ t('settings.theme.dark') }}
           </button>
         </div>
       </div>
 
       <div class="form-row">
-        <label>主题色</label>
+        <label>{{ t('settings.theme.accent') }}</label>
         <div class="accent-grid">
           <button
             v-for="p in ACCENT_PRESETS"
@@ -40,21 +48,20 @@
             type="button"
             class="accent-chip"
             :class="{ active: accentId === p.id }"
-            :title="p.name"
+            :title="accentName(p)"
             @click="setAccentColor(p.id)"
           >
             <span class="swatch" :style="{ background: p.swatch }" />
-            <span>{{ p.name }}</span>
+            <span>{{ accentName(p) }}</span>
           </button>
         </div>
       </div>
     </section>
 
     <section id="personal" class="settings-section panel">
-      <h3>个人设置</h3>
-      <p class="hint">修改头像、昵称；注销账号将永久删除数据。</p>
+      <h3>{{ t('settings.personal.title') }}</h3>
 
-      <div v-if="loading" class="muted">加载中…</div>
+      <div v-if="loading" class="muted">{{ t('settings.personal.loading') }}</div>
 
       <template v-else-if="profile">
         <div class="avatar-block">
@@ -64,42 +71,40 @@
           <FileUploadZone
             compact
             accept="image/png,image/jpeg,image/webp,image/gif"
-            title="点击或拖拽上传头像"
-            hint="JPG / PNG / WebP / GIF，最大 2MB"
+            :title="t('settings.personal.avatarTitle')"
             :disabled="uploading"
             @file="onPickAvatar"
           />
         </div>
 
         <dl class="info-list">
-          <div><dt>用户 ID</dt><dd class="mono">{{ profile.id }}</dd></div>
-          <div><dt>登录名</dt><dd>{{ profile.username }}</dd></div>
-          <div><dt>注册时间</dt><dd>{{ formatTime(profile.createdAt) }}</dd></div>
+          <div><dt>{{ t('settings.personal.userId') }}</dt><dd class="mono">{{ profile.id }}</dd></div>
+          <div><dt>{{ t('settings.personal.username') }}</dt><dd>{{ profile.username }}</dd></div>
+          <div><dt>{{ t('settings.personal.createdAt') }}</dt><dd>{{ formatTime(profile.createdAt) }}</dd></div>
         </dl>
 
         <form class="nickname-form" @submit.prevent="saveNickname">
           <div class="form-row">
-            <label>昵称</label>
-            <input v-model="nickname" maxlength="32" placeholder="展示名称，最多 32 字" />
+            <label>{{ t('settings.personal.nickname') }}</label>
+            <input v-model="nickname" maxlength="32" :placeholder="t('settings.personal.nicknamePh')" />
           </div>
           <button class="btn-primary" type="submit" :disabled="saving">
-            {{ saving ? '保存中…' : '保存昵称' }}
+            {{ saving ? t('settings.personal.saving') : t('settings.personal.saveNickname') }}
           </button>
         </form>
 
         <section class="danger-zone">
-          <h4>注销账号</h4>
-          <p class="hint">注销后不可恢复，将删除个人资料、好友关系与头像。须输入当前登录名与密码确认。</p>
+          <h4>{{ t('settings.personal.deleteTitle') }}</h4>
           <div class="form-row">
-            <label>登录名</label>
+            <label>{{ t('settings.personal.username') }}</label>
             <input v-model="deleteForm.username" autocomplete="username" />
           </div>
           <div class="form-row">
-            <label>密码</label>
+            <label>{{ t('settings.personal.password') }}</label>
             <input v-model="deleteForm.password" type="password" autocomplete="current-password" />
           </div>
           <button class="btn-danger" type="button" :disabled="deleting" @click="onDeleteAccount">
-            {{ deleting ? '注销中…' : '永久注销账号' }}
+            {{ deleting ? t('settings.personal.deleting') : t('settings.personal.deleteBtn') }}
           </button>
         </section>
       </template>
@@ -110,15 +115,19 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import AppSelect from '../components/AppSelect.vue'
 import FileUploadZone from '../components/FileUploadZone.vue'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { useI18n } from '../composables/useI18n'
 import { ACCENT_PRESETS, getAccent, getTheme, setAccent, setTheme } from '../utils/theme'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const { locale, t, setLocale, localeOptions } = useI18n()
 
+const currentLocale = ref(locale.value)
 const themeMode = ref(getTheme())
 const accentId = ref(getAccent())
 const profile = ref(null)
@@ -132,6 +141,18 @@ const error = ref('')
 const success = ref('')
 const avatarBust = ref(0)
 const avatarFailed = ref(false)
+
+const ACCENT_I18N = {
+  blue: { zh: '天蓝', en: 'Blue' },
+  teal: { zh: '青绿', en: 'Teal' },
+  violet: { zh: '紫罗兰', en: 'Violet' },
+  amber: { zh: '琥珀', en: 'Amber' },
+  rose: { zh: '玫红', en: 'Rose' },
+}
+
+function accentName(p) {
+  return ACCENT_I18N[p.id]?.[locale.value] ?? p.name
+}
 
 const avatarSrc = computed(() => {
   if (!profile.value || avatarFailed.value) return defaultAvatar(profile.value?.nickname || '?')
@@ -149,9 +170,9 @@ function onAvatarError() {
   avatarFailed.value = true
 }
 
-function formatTime(t) {
-  if (!t) return '-'
-  return new Date(t).toLocaleString()
+function formatTime(time) {
+  if (!time) return '-'
+  return new Date(time).toLocaleString(locale.value === 'en' ? 'en-US' : 'zh-CN')
 }
 
 function setMode(mode) {
@@ -160,6 +181,11 @@ function setMode(mode) {
 
 function setAccentColor(id) {
   accentId.value = setAccent(id)
+}
+
+function onLocaleChange(val) {
+  setLocale(val)
+  currentLocale.value = val
 }
 
 async function load() {
@@ -172,7 +198,7 @@ async function load() {
     avatarFailed.value = false
     avatarBust.value = Date.now()
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '加载失败'
+    error.value = e instanceof ApiError ? e.message : t('settings.loadFail')
   } finally {
     loading.value = false
   }
@@ -185,9 +211,9 @@ async function saveNickname() {
   try {
     profile.value = await api.updateProfile(nickname.value.trim())
     auth.user = { ...auth.user, nickname: profile.value.nickname, avatarUrl: profile.value.avatarUrl }
-    success.value = '昵称已更新'
+    success.value = t('settings.saveOk')
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '保存失败'
+    error.value = e instanceof ApiError ? e.message : t('settings.saveFail')
   } finally {
     saving.value = false
   }
@@ -196,7 +222,7 @@ async function saveNickname() {
 async function onPickAvatar(file) {
   if (!file) return
   if (file.size > 2 * 1024 * 1024) {
-    error.value = '图片不能超过 2MB'
+    error.value = t('settings.avatarSize')
     return
   }
   uploading.value = true
@@ -207,16 +233,16 @@ async function onPickAvatar(file) {
     auth.user = { ...auth.user, avatarUrl: profile.value.avatarUrl, nickname: profile.value.nickname }
     avatarFailed.value = false
     avatarBust.value = Date.now()
-    success.value = '头像已更新'
+    success.value = t('settings.avatarOk')
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '上传失败'
+    error.value = e instanceof ApiError ? e.message : t('settings.avatarFail')
   } finally {
     uploading.value = false
   }
 }
 
 async function onDeleteAccount() {
-  if (!confirm('确定永久注销？此操作不可撤销。')) return
+  if (!confirm(t('settings.deleteConfirm'))) return
   deleting.value = true
   error.value = ''
   success.value = ''
@@ -226,7 +252,7 @@ async function onDeleteAccount() {
     auth.user = null
     router.replace('/login')
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '注销失败'
+    error.value = e instanceof ApiError ? e.message : t('settings.deleteFail')
   } finally {
     deleting.value = false
   }
@@ -238,6 +264,10 @@ function scrollToHash() {
     document.getElementById('personal')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
 }
+
+watch(locale, (val) => {
+  currentLocale.value = val
+})
 
 onMounted(() => {
   load()

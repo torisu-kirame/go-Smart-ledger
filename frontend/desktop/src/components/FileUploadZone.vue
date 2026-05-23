@@ -17,8 +17,6 @@
     <div class="upload-body">
       <div class="upload-icon" aria-hidden="true">↑</div>
       <p class="upload-title">{{ title }}</p>
-      <p class="upload-hint">{{ hint }}</p>
-      <p v-if="disabled && disabledHint" class="upload-warn">{{ disabledHint }}</p>
       <p v-if="fileName" class="upload-file mono">{{ fileName }}</p>
     </div>
   </label>
@@ -30,8 +28,6 @@ import { ref } from 'vue'
 const props = defineProps({
   accept: { type: String, default: '' },
   title: { type: String, default: '拖拽文件到此处，或点击选择' },
-  hint: { type: String, default: '支持常见文档格式' },
-  disabledHint: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
 })
@@ -153,18 +149,6 @@ defineExpose({ clear })
   font-size: 0.9rem;
   color: var(--text);
   font-weight: 600;
-}
-
-.upload-hint {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.upload-warn {
-  margin: 0.15rem 0 0;
-  font-size: 0.78rem;
-  color: var(--warning);
 }
 
 .upload-file {

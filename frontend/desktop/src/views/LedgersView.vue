@@ -27,7 +27,6 @@
     <div v-if="show" class="modal">
       <form class="modal-card" @submit.prevent="create">
         <h3>创建账本</h3>
-        <p class="hint">账本 ID 与链上地址由系统自动生成（雪花 ID + HD 钱包 BIP44）</p>
         <div class="form-row readonly-row">
           <label>创建者（本人）</label>
           <span class="mono uid">{{ auth.user?.id || '—' }}</span>
@@ -42,7 +41,6 @@
           <AppSelect v-model="form.templateId" :options="templateOptions" />
         </div>
         <div v-if="form.templateId === 'custom'" class="custom-schema">
-          <p class="hint">添加自定义列（至少 1 个必填字段）</p>
           <div v-for="(f, i) in form.customFields" :key="i" class="form-row member">
             <input v-model="f.key" placeholder="字段 key（英文）" />
             <input v-model="f.label" placeholder="显示名" />
@@ -52,11 +50,10 @@
           </div>
           <button type="button" class="btn-ghost" @click="addCustomField">+ 字段</button>
         </div>
-        <p v-else class="hint">字段：{{ selectedTemplateFields }}</p>
         <div v-if="form.type === 'multi'" class="form-row">
           <label class="inline-check">
             <input v-model="form.enableE2E" type="checkbox" />
-            启用组级端到端加密（F19）
+            启用组级端到端加密
           </label>
         </div>
         <div v-if="form.type === 'multi' && form.enableE2E" class="form-row">
@@ -66,7 +63,6 @@
         <template v-if="form.type === 'multi'">
           <div class="form-row">
             <label>其他成员</label>
-            <p class="hint inline">填写好友的用户 ID（创建者已自动加入）</p>
           </div>
           <div v-for="(m, i) in form.otherMembers" :key="i" class="form-row member">
             <input v-model="m.id" placeholder="成员用户 ID" required />
@@ -261,8 +257,6 @@ async function create() {
 }
 .custom-schema { margin: 0.5rem 0 1rem; padding: 0.75rem; border: 1px dashed var(--border); border-radius: 8px; }
 .check { font-size: 0.75rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
-.hint { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 0.5rem; }
-.hint.inline { margin: 0; }
 .readonly-row { display: grid; gap: 0.35rem; }
 .uid { color: var(--accent); font-size: 0.875rem; }
 .empty { padding: 1.5rem; text-align: center; }

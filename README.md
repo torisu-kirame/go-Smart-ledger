@@ -267,7 +267,7 @@ make frontend-dev
 | http://localhost:25173 | Vue 控制台 |
 | http://localhost:28080/api/v1/health | 网关健康检查 |
 | http://localhost:24171 | NSQ Admin（上链重试队列监控） |
-| http://localhost:25173/chain | 控制台内嵌链浏览器（推荐） |
+| http://localhost:25173/chain | 控制台内嵌链浏览器（中文 `/explorer-zh/`，英文 `/dashboard/`） |
 | http://localhost:24441/dashboard | MiniLedger 原生浏览器（直连节点） |
 | 默认账号 | `admin` / `admin123` |
 
@@ -316,6 +316,7 @@ docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile d
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-24 | 设置页主题区增加**界面语言**（中/英）；链浏览器中文为 Smart Ledger 适配版，英文为 MiniLedger 官方 Dashboard。 |
 | 2026-05-24 | 消息队列改用 **NSQ**（nsqd/lookupd/admin）；上链重试经 topic `chain_tx_retry` 异步消费。 |
 | 2026-05-24 | F22/F23/F28：Raft 三节点 Compose；上链重试队列与链浏览器页；etcd + gRPC health 服务发现。 |
 | 2026-05-23 | F14–F16：IPFS Kubo 存储；备份本地+IPFS 双写与链上 CID；`restore/commit` 快照写回账本。 |

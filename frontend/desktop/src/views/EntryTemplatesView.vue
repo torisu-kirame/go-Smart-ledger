@@ -1,10 +1,7 @@
 <template>
   <div class="page">
     <header class="page-header">
-      <div>
-        <h2>记账模板</h2>
-        <p class="page-desc">管理记账字段结构。内置模板不可编辑；自定义模板可在创建账本时选用。</p>
-      </div>
+      <h2>记账模板</h2>
       <button class="btn-primary" @click="openCreate">新建模板</button>
     </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
@@ -15,12 +12,11 @@
       <div v-for="t in templates" :key="t.templateId" class="tpl-card">
         <div class="tpl-head">
           <div>
-            <h3>{{ t.name }}</h3>
-            <p class="muted">
-              ID: <span class="mono">{{ t.templateId }}</span>
+            <h3>
+              {{ t.name }}
               <span v-if="t.builtin" class="badge badge-ok">内置</span>
               <span v-else class="badge badge-multi">自定义</span>
-            </p>
+            </h3>
           </div>
           <div v-if="!t.builtin" class="actions">
             <button class="btn-ghost" @click="openEdit(t)">编辑</button>
@@ -30,7 +26,6 @@
         <div class="fields">
           <span v-for="f in t.fields" :key="f.key" class="field-chip">
             {{ f.label }}<span v-if="f.required" class="req">*</span>
-            <small>({{ typeLabel(f.type) }})</small>
           </span>
         </div>
       </div>
@@ -43,7 +38,6 @@
           <label>模板名称</label>
           <input v-model="form.name" required placeholder="例如：家庭日常记账" />
         </div>
-        <p class="hint">字段定义（至少 1 个必填项）</p>
         <div v-for="(f, i) in form.fields" :key="i" class="field-row">
           <input v-model="f.key" placeholder="key（英文）" required />
           <input v-model="f.label" placeholder="显示名" required />
@@ -172,13 +166,11 @@ onMounted(load)
   font-size: 0.75rem; background: rgba(61,139,253,.1); border: 1px solid var(--border);
   padding: 0.2rem 0.5rem; border-radius: 6px;
 }
-.field-chip small { color: var(--text-muted); margin-left: 0.2rem; }
 .req { color: var(--danger); }
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 480px; max-height: 90vh; overflow: auto; }
 .modal-card.wide { width: 640px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr 100px auto auto; gap: 0.5rem; margin: 0.35rem 0; align-items: center; }
-.hint { font-size: 0.75rem; color: var(--text-muted); margin: 0.5rem 0; }
 .check { font-size: 0.75rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
 .foot-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 .alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.75rem; }

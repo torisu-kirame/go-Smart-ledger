@@ -200,13 +200,6 @@ label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bott
   font-size: 1.45rem;
 }
 
-.page-desc {
-  margin: 0.35rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  max-width: 42rem;
-}
-
 .field-sm {
   max-width: var(--field-sm) !important;
 }
@@ -324,9 +317,3 @@ tbody tr:hover { background: var(--hover); }
   font-size: 0.875rem;
 }
 
-.hint {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin: 0 0 0.75rem;
-  line-height: 1.45;
-}

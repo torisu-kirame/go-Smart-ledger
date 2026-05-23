@@ -3,7 +3,6 @@
     <header class="page-header">
       <div>
         <h2>团队</h2>
-        <p class="page-desc">绑定一个多人账本，并邀请至少 1 位好友加入（类似拉群）</p>
       </div>
       <button class="btn-primary" @click="openCreate">创建团队</button>
     </header>
@@ -14,8 +13,6 @@
       <div v-if="!teams.length" class="muted">暂无团队</div>
       <div v-for="t in teams" :key="t.id" class="team-card">
         <h3>{{ t.name }}</h3>
-        <p class="muted">账本 ID：{{ t.ledgerId }}</p>
-        <p class="muted">成员：{{ t.members?.map((m) => m.nickname || m.username).join('、') }}</p>
       </div>
     </div>
 
@@ -36,7 +33,6 @@
         </div>
         <div class="form-row">
           <label>邀请好友（至少 1 人）</label>
-          <div v-if="!friends.length" class="muted">暂无好友，请先在「好友」页添加</div>
           <label v-for="f in friends" :key="f.id" class="check-row">
             <input type="checkbox" :value="f.id" v-model="form.memberUserIds" />
             <span>{{ f.nickname || f.username }}（ID: {{ f.id }}）</span>

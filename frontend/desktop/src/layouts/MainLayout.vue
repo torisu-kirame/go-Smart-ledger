@@ -3,7 +3,6 @@
     <aside class="sidebar">
       <div class="brand">
         <strong>Smart Ledger</strong>
-        <small>桌面控制台</small>
       </div>
       <nav>
         <router-link
@@ -24,14 +23,13 @@
         </router-link>
       </nav>
       <div class="foot">
-        <button class="settings-btn btn-ghost" type="button" @click="goSettings()">设置</button>
+        <button class="settings-btn btn-ghost" type="button" @click="goSettings()">{{ t('layout.settings') }}</button>
         <a class="user-link" href="/settings#personal" @click.prevent="goSettings('#personal')">
           <img v-if="auth.user?.id" class="foot-avatar" :src="footAvatar" alt="" />
           <span>{{ auth.user?.nickname || auth.user?.username }}</span>
         </a>
-        <div v-if="auth.user?.id" class="uid">ID: {{ auth.user.id }}</div>
-        <button class="btn-ghost foot-logout" type="button" @click="onLogout">退出</button>
-        <router-link to="/chain" class="ext-link">链浏览器</router-link>
+        <button class="btn-ghost foot-logout" type="button" @click="onLogout">{{ t('layout.logout') }}</button>
+        <router-link to="/chain" class="ext-link">{{ t('layout.chainLink') }}</router-link>
       </div>
     </aside>
     <main class="main">
@@ -45,21 +43,23 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { useI18n } from '../composables/useI18n'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 
-const navItems = [
-  { to: '/', label: '概览', exact: true },
-  { to: '/ledgers', label: '账本管理', exact: false },
-  { to: '/entry-templates', label: '记账模板', exact: true },
-  { to: '/import', label: 'Excel 导入', exact: true },
-  { to: '/backup', label: '备份 / 恢复', exact: true },
-  { to: '/friends', label: '好友', exact: true },
-  { to: '/teams', label: '团队', exact: true },
-  { to: '/invites', label: '账本邀请', exact: true },
-  { to: '/chain', label: '链浏览器', exact: true },
-]
+const navItems = computed(() => [
+  { to: '/', label: t('layout.nav.home'), exact: true },
+  { to: '/ledgers', label: t('layout.nav.ledgers'), exact: false },
+  { to: '/entry-templates', label: t('layout.nav.templates'), exact: true },
+  { to: '/import', label: t('layout.nav.import'), exact: true },
+  { to: '/backup', label: t('layout.nav.backup'), exact: true },
+  { to: '/friends', label: t('layout.nav.friends'), exact: true },
+  { to: '/teams', label: t('layout.nav.teams'), exact: true },
+  { to: '/invites', label: t('layout.nav.invites'), exact: true },
+  { to: '/chain', label: t('layout.nav.chain'), exact: true },
+])
 
 const footAvatar = computed(() =>
   auth.user?.id ? api.userAvatarUrl(auth.user.id) : ''
@@ -116,8 +116,6 @@ async function onLogout() {
   padding: 0 1rem 1rem;
   border-bottom: 1px solid var(--border);
 }
-.brand small { display: block; color: var(--text-muted); margin-top: 0.25rem; }
-
 nav {
   flex: 1;
   min-height: 0;
@@ -148,7 +146,6 @@ nav {
   font-size: 0.75rem;
   color: var(--text-muted);
 }
-.uid { margin-top: 0.25rem; color: var(--accent); font-family: monospace; font-size: 0.72rem; }
 .user-link {
   display: flex;
   align-items: center;

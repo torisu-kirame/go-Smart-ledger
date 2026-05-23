@@ -1,10 +1,6 @@
 <template>
   <div class="page">
     <h2>备份 / 恢复</h2>
-    <p class="page-desc">
-      对已<strong>封账锚定</strong>的账本创建加密备份；本地磁盘与 IPFS 双写，备份 CID 写入链上事件。
-      恢复可将快照<strong>写回</strong>账本（覆盖模式）。
-    </p>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
@@ -17,7 +13,6 @@
           placeholder="请选择账本"
           :options="sealedOptions"
         />
-        <small v-if="!sealed.length" style="color:var(--warning)">暂无已封账账本，请先在账本详情中封账锚定</small>
       </div>
       <div class="form-row"><label>备份密码</label><input v-model="password" type="password" /></div>
       <button class="btn-primary" :disabled="!ledgerId || !password" @click="doBackup">创建加密备份（本地 + IPFS）</button>

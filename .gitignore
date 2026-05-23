@@ -8,6 +8,8 @@ data/avatars/
 backend/services/auth/data/
 backend/infra/miniledger/node_modules/
 backend/infra/miniledger/data/
+# Docker entrypoint 运行时符号链接，勿纳入版本库（Windows Git 无法 open）
+backend/infra/miniledger/dashboard
 # Linux 交叉编译产物（Docker 用，不提交）
 backend/bin/linux/
 

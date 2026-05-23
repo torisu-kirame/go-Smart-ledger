@@ -2,8 +2,7 @@
   <div class="page chain-page">
     <header class="head">
       <div>
-        <h2>MiniLedger 链浏览器</h2>
-        <p class="muted">官方 Dashboard 内嵌 + 链状态与待上链队列</p>
+        <h2>{{ t('chain.title') }}</h2>
       </div>
       <div class="tabs">
         <button
@@ -11,23 +10,24 @@
           :class="{ active: tab === 'dashboard' }"
           @click="tab = 'dashboard'"
         >
-          官方浏览器
+          {{ t('chain.tabOfficial') }}
         </button>
         <button
           type="button"
           :class="{ active: tab === 'overview' }"
           @click="tab = 'overview'; loadOverview()"
         >
-          概览 / 队列
+          {{ t('chain.tabOverview') }}
         </button>
       </div>
     </header>
 
     <div v-if="tab === 'dashboard'" class="frame-wrap">
       <iframe
+        :key="locale"
         class="explorer-frame"
-        src="/miniledger/dashboard"
-        title="MiniLedger Dashboard"
+        :src="dashboardSrc"
+        :title="t('chain.iframeTitle')"
       />
     </div>
 
@@ -35,39 +35,36 @@
       <div v-if="error" class="alert alert-error">{{ error }}</div>
       <div class="grid-3">
         <div class="card">
-          <h4>链节点</h4>
-          <div class="val">{{ status?.online ? '在线' : '离线' }}</div>
-          <small v-if="status?.height != null">高度 {{ status.height }}</small>
+          <h4>{{ t('chain.cardNode') }}</h4>
+          <div class="val">{{ status?.online ? t('chain.nodeOnline') : t('chain.nodeOffline') }}</div>
         </div>
         <div class="card">
-          <h4>共识角色</h4>
+          <h4>{{ t('chain.cardRole') }}</h4>
           <div class="val">{{ status?.role || '—' }}</div>
-          <small>{{ status?.uptime || '' }}</small>
         </div>
         <div class="card">
-          <h4>待上链队列</h4>
-          <div class="val">{{ status?.queuePending ?? 0 }} 待重试</div>
-          <small v-if="status?.queueFailed">{{ status.queueFailed }} 已失败</small>
+          <h4>{{ t('chain.cardQueue') }}</h4>
+          <div class="val">{{ status?.queuePending ?? 0 }} {{ t('chain.pendingRetry') }}</div>
         </div>
       </div>
 
       <div class="panel" v-if="consensus">
-        <h3>共识状态</h3>
+        <h3>{{ t('chain.consensus') }}</h3>
         <pre class="json-block">{{ pretty(consensus) }}</pre>
       </div>
 
       <div class="panel">
         <div class="panel-head">
-          <h3>最近区块</h3>
-          <button class="btn-ghost" type="button" @click="loadOverview">刷新</button>
+          <h3>{{ t('chain.recentBlocks') }}</h3>
+          <button class="btn-ghost" type="button" @click="loadOverview">{{ t('chain.refresh') }}</button>
         </div>
         <table v-if="blocks.length" class="data-table">
           <thead>
             <tr>
-              <th>高度</th>
-              <th>哈希</th>
-              <th>交易数</th>
-              <th>时间</th>
+              <th>{{ t('chain.colHeight') }}</th>
+              <th>{{ t('chain.colHash') }}</th>
+              <th>{{ t('chain.colTxs') }}</th>
+              <th>{{ t('chain.colTime') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -79,23 +76,23 @@
             </tr>
           </tbody>
         </table>
-        <p v-else class="muted">暂无区块数据</p>
+        <p v-else class="muted">{{ t('chain.noBlocks') }}</p>
       </div>
 
       <div class="panel">
         <div class="panel-head">
-          <h3>上链重试队列（F23）</h3>
-          <button class="btn-ghost" type="button" @click="loadQueue">刷新</button>
+          <h3>{{ t('chain.queueTitle') }}</h3>
+          <button class="btn-ghost" type="button" @click="loadQueue">{{ t('chain.refresh') }}</button>
         </div>
-        <p v-if="!queue.length" class="muted">当前没有待重试的上链任务</p>
+        <p v-if="!queue.length" class="muted">{{ t('chain.noQueue') }}</p>
         <table v-else class="data-table">
           <thead>
             <tr>
-              <th>标签</th>
-              <th>账本</th>
-              <th>状态</th>
-              <th>尝试</th>
-              <th>错误</th>
+              <th>{{ t('chain.colLabel') }}</th>
+              <th>{{ t('chain.colLedger') }}</th>
+              <th>{{ t('chain.colStatus') }}</th>
+              <th>{{ t('chain.colAttempts') }}</th>
+              <th>{{ t('chain.colError') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -103,7 +100,7 @@
             <tr v-for="item in queue" :key="item.id">
               <td>{{ item.label }}</td>
               <td class="mono">{{ item.ledgerId || '—' }}</td>
-              <td>{{ item.status }}</td>
+              <td>{{ queueStatusLabel(item.status) }}</td>
               <td>{{ item.attempts }}</td>
               <td class="err-cell">{{ item.lastError || '—' }}</td>
               <td>
@@ -113,7 +110,7 @@
                   type="button"
                   @click="retry(item.id)"
                 >
-                  立即重试
+                  {{ t('chain.retry') }}
                 </button>
               </td>
             </tr>
@@ -125,8 +122,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api, ApiError } from '../api/http'
+import { useI18n } from '../composables/useI18n'
+import { dashboardPath } from '../utils/locale'
+
+const { locale, t } = useI18n()
 
 const tab = ref('dashboard')
 const status = ref(null)
@@ -134,6 +135,19 @@ const consensus = ref(null)
 const blocks = ref([])
 const queue = ref([])
 const error = ref('')
+
+const dashboardSrc = computed(() => dashboardPath(locale.value))
+
+function queueStatusLabel(s) {
+  const map = {
+    pending: 'chain.statusPending',
+    retrying: 'chain.statusRetrying',
+    failed: 'chain.statusFailed',
+    done: 'chain.statusDone',
+  }
+  const key = map[s]
+  return key ? t(key) : s
+}
 
 function pretty(v) {
   return JSON.stringify(v, null, 2)
@@ -157,7 +171,7 @@ async function loadOverview() {
     blocks.value = res?.blocks || res?.items || (Array.isArray(res) ? res : [])
     await loadQueue()
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '加载链状态失败'
+    error.value = e instanceof ApiError ? e.message : t('chain.loadFail')
   }
 }
 
@@ -172,9 +186,13 @@ async function retry(id) {
     await loadQueue()
     status.value = await api.chainStatus()
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '重试失败'
+    error.value = e instanceof ApiError ? e.message : t('chain.retryFail')
   }
 }
+
+watch(locale, () => {
+  if (tab.value === 'overview') loadOverview()
+})
 
 onMounted(() => {
   if (tab.value === 'overview') loadOverview()
@@ -185,7 +203,7 @@ onMounted(() => {
 .chain-page { display: flex; flex-direction: column; gap: 1rem; min-height: 0; }
 .head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .head h2 { margin: 0; }
-.muted { color: var(--text-muted); margin: 0.25rem 0 0; font-size: 0.875rem; }
+.muted { color: var(--text-muted); font-size: 0.875rem; }
 .tabs { display: flex; gap: 0.5rem; }
 .tabs button {
   padding: 0.4rem 0.85rem;
@@ -201,17 +219,19 @@ onMounted(() => {
   color: #fff;
 }
 .frame-wrap {
-  flex: 1;
-  min-height: calc(100vh - 12rem);
+  flex: 1 1 auto;
+  height: min(720px, calc(100vh - 11rem));
+  min-height: 480px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
   background: #0d1117;
 }
 .explorer-frame {
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 640px;
+  min-height: 480px;
   border: 0;
 }
 .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
@@ -230,5 +250,4 @@ onMounted(() => {
 .data-table td { padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; }
 .mono { font-family: ui-monospace, monospace; font-size: 0.8rem; }
 .err-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card small { display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.75rem; }
 </style>

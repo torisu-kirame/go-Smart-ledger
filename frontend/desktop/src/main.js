@@ -5,8 +5,10 @@ import router from './router'
 import { useAuthStore } from './stores/auth'
 import './assets/global.css'
 import { initTheme } from './utils/theme'
+import { initLocale } from './utils/locale'
 
-initTheme() // applies saved theme + accent
+initTheme()
+initLocale()
 
 const app = createApp(App)
 const pinia = createPinia()

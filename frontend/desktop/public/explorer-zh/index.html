@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniLedger 区块浏览器</title>
+  <link rel="stylesheet" href="/explorer-zh/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo"><span>Mini</span>Ledger</div>
+      <nav>
+        <div class="nav-section">浏览器</div>
+        <a href="#/" class="nav-link active" data-route="/">概览</a>
+        <a href="#/blocks" class="nav-link" data-route="/blocks">区块</a>
+        <a href="#/transactions" class="nav-link" data-route="/transactions">交易</a>
+        <a href="#/state" class="nav-link" data-route="/state">状态</a>
+        <div class="nav-section">网络</div>
+        <a href="#/network" class="nav-link" data-route="/network">节点与共识</a>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">连接中…</span>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <h1 id="page-title">概览</h1>
+        <div class="meta">
+          <span>区块高度：<strong id="chain-height">—</strong></span>
+          <span>运行时间：<strong id="chain-uptime">—</strong></span>
+        </div>
+      </header>
+      <div id="view" class="view"></div>
+    </main>
+  </div>
+  <script src="/explorer-zh/app.js" type="module"></script>
+</body>
+</html>

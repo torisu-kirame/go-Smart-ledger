@@ -34,7 +34,7 @@ miniledger join ws://127.0.0.1:24440 -d ./node3 --p2p-port 24444 --api-port 2444
 
 ## 控制台内嵌浏览器
 
-Vue 控制台 **链浏览器** 路由 `/chain` 通过 Nginx 反代 `/miniledger/` 嵌入官方 Dashboard；单节点时反代到 `miniledger:24441`，Raft 模式下请确保 `web` 与 `miniledger-1` 在同一 compose 网络。
+Vue 控制台 **链浏览器** 路由 `/chain` 通过 Nginx 反代 `/dashboard/` 嵌入官方 Dashboard（MiniLedger 静态资源使用绝对路径 `/dashboard/*`）。`docker-entrypoint.sh` 会将 `node_modules/miniledger/dashboard` 链接到 `/app/dashboard`，否则节点 API 不注册 `/dashboard` 会返回 404。
 
 ## 验证
 
