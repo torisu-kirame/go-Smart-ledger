@@ -21,6 +21,8 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		LatestSeq:     m.LatestSeq,
 		LatestRoot:    m.LatestRoot,
 		AnchorStatus:  m.AnchorStatus,
+		LastBackupRef: m.LastBackupRef,
+		LastBackupCid: m.LastBackupCID,
 	}
 }
 

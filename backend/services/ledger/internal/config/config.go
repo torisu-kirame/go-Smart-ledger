@@ -14,4 +14,8 @@ type Config struct {
 	Snowflake struct {
 		NodeID int64 `json:",default=2"`
 	} `json:"Snowflake"`
+	IPFS struct {
+		ApiURL  string `json:",optional"`
+		Enabled bool   `json:",default=true"`
+	} `json:"IPFS"`
 }

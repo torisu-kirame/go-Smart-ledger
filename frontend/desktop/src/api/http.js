@@ -137,9 +137,14 @@ export const api = {
     request(`/ledgers/${id}/import/commit`, { method: 'POST', body: JSON.stringify(body) }),
   ledgerBackup: (id, password) =>
     request(`/ledgers/${id}/backup`, { method: 'POST', body: JSON.stringify({ password }) }),
-  restorePreview: (id, ref, password) =>
+  restorePreview: (id, body) =>
     request(`/ledgers/${id}/restore/preview`, {
       method: 'POST',
-      body: JSON.stringify({ ref, password }),
+      body: JSON.stringify(body),
+    }),
+  restoreCommit: (id, body) =>
+    request(`/ledgers/${id}/restore/commit`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 }

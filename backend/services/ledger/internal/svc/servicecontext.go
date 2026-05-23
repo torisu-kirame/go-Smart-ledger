@@ -1,6 +1,7 @@
 package svc
 
 import (
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ipfsclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
@@ -13,7 +14,8 @@ type ServiceContext struct {
 	Config config.Config
 	Ledger *ledgersvc.Service
 	Chain  *miniledgerclient.Client
-	Backup *storage.DiskBackup
+	Backup *storage.DualBackup
+	IPFS   *ipfsclient.Client
 }
 
 func NewServiceContext(c config.Config) (*ServiceContext, error) {
@@ -21,9 +23,13 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		return nil, err
 	}
 	chain := miniledgerclient.New(c.MiniLedger.BaseURL)
-	b, err := storage.NewDiskBackup(c.BackupDir)
+	disk, err := storage.NewDiskBackup(c.BackupDir)
 	if err != nil {
 		return nil, err
+	}
+	var ipfs *ipfsclient.Client
+	if c.IPFS.Enabled && c.IPFS.ApiURL != "" {
+		ipfs = ipfsclient.New(c.IPFS.ApiURL)
 	}
 	var hd *ledgerhd.Deriver
 	if c.HDWallet.Mnemonic != "" {
@@ -36,6 +42,7 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		Config: c,
 		Chain:  chain,
 		Ledger: ledgersvc.New(chain, hd),
-		Backup: b,
+		Backup: storage.NewDualBackup(disk, ipfs),
+		IPFS:   ipfs,
 	}, nil
 }

@@ -26,6 +26,7 @@ func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/ledgers/:id/import/commit", Handler: importCommitHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/backup", Handler: ledgerBackupHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/restore/preview", Handler: restorePreviewHandler(serverCtx)},
+		{Method: http.MethodPost, Path: "/ledgers/:id/restore/commit", Handler: restoreCommitHandler(serverCtx)},
 	}, prefix)
 }
 
@@ -142,15 +143,17 @@ func importCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		if body.AutoBackup && body.BackupPassword != "" {
-			ref, err := createBackup(r, svcCtx, id, body.BackupPassword)
+			bk, err := createBackup(r, svcCtx, id, body.BackupPassword, body.SignerID)
 			if err != nil {
 				httpx.OkJsonCtx(r.Context(), w, map[string]any{
-					"import": res,
+					"import":      res,
 					"backupError": err.Error(),
 				})
 				return
 			}
-			res.BackupRef = ref
+			if ref, ok := bk["ref"].(string); ok {
+				res.BackupRef = ref
+			}
 		}
 		httpx.OkJsonCtx(r.Context(), w, map[string]any{"import": res})
 	}
@@ -181,18 +184,20 @@ func ledgerBackupHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "请先封账锚定后再备份"))
 			return
 		}
-		ref, err := createBackup(r, svcCtx, id, body.Password)
+		result, err := createBackup(r, svcCtx, id, body.Password, r.Header.Get("X-User-Id"))
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(500, err.Error()))
 			return
 		}
-		httpx.OkJsonCtx(r.Context(), w, map[string]string{"ref": ref})
+		httpx.OkJsonCtx(r.Context(), w, result)
 	}
 }
 
 type restoreBody struct {
-	Ref      string `json:"ref"`
-	Password string `json:"password"`
+	Ref       string `json:"ref"`
+	Password  string `json:"password"`
+	IPFSCID   string `json:"ipfsCid,optional"`
+	Overwrite bool   `json:"overwrite,optional"`
 }
 
 func restorePreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -203,24 +208,91 @@ func restorePreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
-		plain, err := svcCtx.Backup.Get(r.Context(), body.Ref, body.Password)
+		snap, err := loadSnapshotFromBackup(r, svcCtx, body)
 		if err != nil {
-			httpx.ErrorCtx(r.Context(), w, xerrors.New(404, "备份不存在或密码错误"))
-			return
-		}
-		var snap ledgersvc.LedgerSnapshot
-		if err := json.Unmarshal(plain, &snap); err != nil {
-			httpx.ErrorCtx(r.Context(), w, xerrors.New(500, "invalid backup payload"))
+			writeRestoreErr(w, r, err)
 			return
 		}
 		httpx.OkJsonCtx(r.Context(), w, snap)
 	}
 }
 
-func createBackup(r *http.Request, svcCtx *svc.ServiceContext, ledgerID, password string) (string, error) {
+func restoreCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ledgerID := pathvar.Vars(r)["id"]
+		var body restoreBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		snap, err := loadSnapshotFromBackup(r, svcCtx, body)
+		if err != nil {
+			writeRestoreErr(w, r, err)
+			return
+		}
+		signer := r.Header.Get("X-User-Id")
+		if err := svcCtx.Ledger.RestoreSnapshot(r.Context(), ledgerID, snap, ledgersvc.RestoreOptions{
+			Overwrite: body.Overwrite,
+			SignerID:  signer,
+		}); err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		meta, _ := svcCtx.Ledger.Get(r.Context(), ledgerID)
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{
+			"ledgerId":   ledgerID,
+			"restored":   true,
+			"latestSeq":  meta.LatestSeq,
+			"latestRoot": meta.LatestRoot,
+		})
+	}
+}
+
+func loadSnapshotFromBackup(r *http.Request, svcCtx *svc.ServiceContext, body restoreBody) (*ledgersvc.LedgerSnapshot, error) {
+	if body.Ref == "" || body.Password == "" {
+		return nil, xerrors.New(400, "ref and password required")
+	}
+	plain, err := svcCtx.Backup.Get(r.Context(), body.Ref, body.Password, body.IPFSCID)
+	if err != nil {
+		return nil, xerrors.New(404, "备份不存在或密码错误")
+	}
+	var snap ledgersvc.LedgerSnapshot
+	if err := json.Unmarshal(plain, &snap); err != nil {
+		return nil, xerrors.New(500, "invalid backup payload")
+	}
+	return &snap, nil
+}
+
+func writeRestoreErr(w http.ResponseWriter, r *http.Request, err error) {
+	if xe, ok := err.(*xerrors.CodeMsg); ok {
+		httpx.ErrorCtx(r.Context(), w, xe)
+		return
+	}
+	httpx.ErrorCtx(r.Context(), w, err)
+}
+
+func createBackup(r *http.Request, svcCtx *svc.ServiceContext, ledgerID, password, signerID string) (map[string]any, error) {
 	_, raw, err := svcCtx.Ledger.BuildSnapshot(r.Context(), ledgerID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return svcCtx.Backup.Put(r.Context(), ledgerID, password, raw)
+	putRes, err := svcCtx.Backup.Put(r.Context(), ledgerID, password, raw)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{
+		"ref":     putRes.Ref,
+		"ipfsCid": putRes.IPFSCID,
+	}
+	if signerID == "" {
+		return out, nil
+	}
+	anchor, err := svcCtx.Ledger.RecordBackupAnchor(r.Context(), ledgerID, signerID, putRes.Ref, putRes.IPFSCID)
+	if err != nil {
+		out["anchorError"] = err.Error()
+		return out, nil
+	}
+	out["anchoredOnChain"] = anchor.Anchored
+	out["anchorSeq"] = anchor.Seq
+	return out, nil
 }

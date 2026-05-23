@@ -305,7 +305,8 @@ func MapDomainError(err error) int {
 		errors.Is(err, domain.ErrInvalidMember),
 		errors.Is(err, domain.ErrUnauthorized),
 		errors.Is(err, domain.ErrEntryValidation),
-		errors.Is(err, domain.ErrInvalidSchema):
+		errors.Is(err, domain.ErrInvalidSchema),
+		errors.Is(err, ErrRestoreConflict):
 		return 400
 	default:
 		return 500

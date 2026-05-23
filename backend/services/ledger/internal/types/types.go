@@ -67,6 +67,7 @@ type EventResp struct {
 type HealthResp struct {
 	Status           string `json:"status"`
 	MiniLedgerOnline bool   `json:"miniLedgerOnline"`
+	IPFSOnline       bool   `json:"ipfsOnline"`
 }
 
 type LedgerResp struct {
@@ -77,10 +78,12 @@ type LedgerResp struct {
 	LedgerAddress string          `json:"ledgerAddress,omitempty"`
 	Members       []Member        `json:"members"`
 	EntrySchema   EntrySchemaResp `json:"entrySchema"`
-	LatestSeq     uint64          `json:"latestSeq"`
-	LatestRoot   string   `json:"latestRoot"`
-	BlockHeight  uint64   `json:"blockHeight,omitempty"`
-	AnchorStatus string   `json:"anchorStatus"`
+	LatestSeq      uint64 `json:"latestSeq"`
+	LatestRoot     string `json:"latestRoot"`
+	BlockHeight    uint64 `json:"blockHeight,omitempty"`
+	AnchorStatus   string `json:"anchorStatus"`
+	LastBackupRef  string `json:"lastBackupRef,omitempty"`
+	LastBackupCid  string `json:"lastBackupCid,omitempty"`
 }
 
 type ListEventsReq struct {

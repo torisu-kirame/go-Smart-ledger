@@ -86,6 +86,7 @@ func main() {
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/commit", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/backup", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/restore/preview", Handler: ledgerProxy},
+		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/restore/commit", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/storage/backup", Handler: storageProxy},
 		{Method: http.MethodPost, Path: "/api/v1/storage/backup/fetch", Handler: storageProxy},
 		{Method: http.MethodGet, Path: "/api/v1/storage/health", Handler: storageProxy},

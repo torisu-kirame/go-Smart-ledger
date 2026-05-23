@@ -26,6 +26,8 @@ type LedgerMeta struct {
 	LatestSeq     uint64      `json:"latestSeq"`
 	LatestRoot    string      `json:"latestRoot"`
 	AnchorStatus  string      `json:"anchorStatus"`
+	LastBackupRef string      `json:"lastBackupRef,omitempty"`
+	LastBackupCID string      `json:"lastBackupCid,omitempty"`
 	CreatedAt     time.Time   `json:"createdAt"`
 	UpdatedAt     time.Time   `json:"updatedAt"`
 }
@@ -93,8 +95,9 @@ func (e *EntryPayload) ForChain(schema EntrySchema) EntryPayload {
 }
 
 const (
-	EventLedgerCreated = "LedgerCreated"
-	EventEntryAdded    = "EntryAdded"
-	EventImportBatch   = "ImportBatch"
-	EventBatchSealed   = "BatchSealed"
+	EventLedgerCreated  = "LedgerCreated"
+	EventEntryAdded     = "EntryAdded"
+	EventImportBatch    = "ImportBatch"
+	EventBatchSealed    = "BatchSealed"
+	EventBackupAnchored = "BackupAnchored"
 )

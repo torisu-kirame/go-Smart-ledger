@@ -20,5 +20,9 @@ func NewHealthLogic(ctx context.Context, svcCtx *svc.ServiceContext) *HealthLogi
 
 func (l *HealthLogic) Health() (*types.HealthResp, error) {
 	online := l.svcCtx.Ledger.Online(l.ctx)
-	return &types.HealthResp{Status: "ok", MiniLedgerOnline: online}, nil
+	ipfsOnline := false
+	if l.svcCtx.IPFS != nil && l.svcCtx.IPFS.Enabled() {
+		ipfsOnline = l.svcCtx.IPFS.Ping(l.ctx) == nil
+	}
+	return &types.HealthResp{Status: "ok", MiniLedgerOnline: online, IPFSOnline: ipfsOnline}, nil
 }
