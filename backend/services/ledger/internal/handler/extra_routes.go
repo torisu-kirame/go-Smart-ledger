@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/importxlsx"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/logic"
@@ -19,7 +20,8 @@ import (
 func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	prefix := rest.WithPrefix("/api/v1")
 	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/import/template", Handler: templateHandler()},
+		{Method: http.MethodGet, Path: "/entry-schema/templates", Handler: schemaTemplatesHandler()},
+		{Method: http.MethodGet, Path: "/import/template", Handler: templateHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/import/preview", Handler: importPreviewHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/import/commit", Handler: importCommitHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/backup", Handler: ledgerBackupHandler(serverCtx)},
@@ -27,9 +29,36 @@ func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	}, prefix)
 }
 
-func templateHandler() http.HandlerFunc {
+func schemaTemplatesHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := importxlsx.BuildTemplate()
+		templates := domain.BuiltinTemplates()
+		out := make([]map[string]any, len(templates))
+		for i, t := range templates {
+			out[i] = map[string]any{
+				"templateId": t.TemplateID,
+				"fields":     t.Fields,
+			}
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"templates": out})
+	}
+}
+
+func templateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		schema := domain.DefaultEntrySchema()
+		if lid := r.URL.Query().Get("ledgerId"); lid != "" {
+			if meta, err := svcCtx.Ledger.Get(r.Context(), lid); err == nil {
+				schema = domain.ResolveEntrySchema(meta.EntrySchema)
+			}
+		} else if tid := r.URL.Query().Get("templateId"); tid != "" {
+			for _, t := range domain.BuiltinTemplates() {
+				if t.TemplateID == tid {
+					schema = t
+					break
+				}
+			}
+		}
+		data, err := importxlsx.BuildTemplate(schema)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
@@ -57,7 +86,14 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
-		rows, err := importxlsx.Parse(data)
+		id := pathvar.Vars(r)["id"]
+		meta, err := svcCtx.Ledger.Get(r.Context(), id)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		schema := domain.ResolveEntrySchema(meta.EntrySchema)
+		rows, err := importxlsx.Parse(data, schema)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
 			return
@@ -71,10 +107,11 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			}
 		}
 		httpx.OkJsonCtx(r.Context(), w, map[string]any{
-			"rows":    rows,
-			"valid":   valid,
-			"invalid": invalid,
-			"total":   len(rows),
+			"rows":        rows,
+			"valid":       valid,
+			"invalid":     invalid,
+			"total":       len(rows),
+			"entrySchema": schema,
 		})
 	}
 }

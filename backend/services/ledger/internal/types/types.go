@@ -21,19 +21,39 @@ type AppendEntryReq struct {
 }
 
 type CreateLedgerReq struct {
-	Type      string   `json:"type"`
-	Name      string   `json:"name"`
-	CreatorId string   `json:"creatorId"`
-	Members   []Member `json:"members"`
+	Type        string         `json:"type"`
+	Name        string         `json:"name"`
+	CreatorId   string         `json:"creatorId"`
+	Members     []Member       `json:"members"`
+	EntrySchema EntrySchemaReq `json:"entrySchema,optional"`
+}
+
+type EntrySchemaReq struct {
+	TemplateId string         `json:"templateId,optional"`
+	Fields     []EntryFieldDef `json:"fields,optional"`
+}
+
+type EntrySchemaResp struct {
+	TemplateId string          `json:"templateId,omitempty"`
+	Fields     []EntryFieldDef `json:"fields"`
+}
+
+type EntryFieldDef struct {
+	Key      string `json:"key"`
+	Label    string `json:"label"`
+	Type     string `json:"type"`
+	Required bool   `json:"required"`
 }
 
 type EntryReq struct {
-	SignerId string `json:"signerId"`
-	Date     string `json:"date"`
-	Type     string `json:"type"`
-	Amount   string `json:"amount"`
-	Category string `json:"category,optional"`
-	Note     string `json:"note,optional"`
+	SignerId string            `json:"signerId,optional"`
+	SchemaId string            `json:"schemaId,optional"`
+	Data     map[string]string `json:"data,optional"`
+	Date     string            `json:"date,optional"`
+	Type     string            `json:"type,optional"`
+	Amount   string            `json:"amount,optional"`
+	Category string            `json:"category,optional"`
+	Note     string            `json:"note,optional"`
 }
 
 type EventResp struct {
@@ -50,13 +70,14 @@ type HealthResp struct {
 }
 
 type LedgerResp struct {
-	Id            string   `json:"id"`
-	Type          string   `json:"type"`
-	Name          string   `json:"name"`
-	CreatorId     string   `json:"creatorId"`
-	LedgerAddress string   `json:"ledgerAddress,omitempty"`
-	Members       []Member `json:"members"`
-	LatestSeq    uint64   `json:"latestSeq"`
+	Id            string          `json:"id"`
+	Type          string          `json:"type"`
+	Name          string          `json:"name"`
+	CreatorId     string          `json:"creatorId"`
+	LedgerAddress string          `json:"ledgerAddress,omitempty"`
+	Members       []Member        `json:"members"`
+	EntrySchema   EntrySchemaResp `json:"entrySchema"`
+	LatestSeq     uint64          `json:"latestSeq"`
 	LatestRoot   string   `json:"latestRoot"`
 	BlockHeight  uint64   `json:"blockHeight,omitempty"`
 	AnchorStatus string   `json:"anchorStatus"`

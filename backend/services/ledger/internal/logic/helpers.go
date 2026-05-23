@@ -24,6 +24,8 @@ func ToCodeErr(err error) error {
 		errors.Is(err, domain.ErrPrivateOne),
 		errors.Is(err, domain.ErrInvalidMember),
 		errors.Is(err, domain.ErrUnauthorized),
+		errors.Is(err, domain.ErrEntryValidation),
+		errors.Is(err, domain.ErrInvalidSchema),
 		errors.Is(err, ledgersvc.ErrImportHasErrors):
 		return xerrors.New(400, err.Error())
 	default:

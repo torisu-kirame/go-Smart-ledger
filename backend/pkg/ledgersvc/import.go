@@ -37,9 +37,7 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, ro
 	if err != nil {
 		return nil, err
 	}
-	if err := domain.CanAppend(meta, signerID); err != nil {
-		return nil, err
-	}
+	schema := domain.ResolveEntrySchema(meta.EntrySchema)
 	imported := 0
 	skipped := 0
 	for _, row := range rows {
@@ -47,13 +45,21 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, ro
 			skipped++
 			continue
 		}
-		entry, err := importxlsx.ToEntry(row)
+		entry, err := importxlsx.ToEntry(row, schema)
 		if err != nil {
 			skipped++
 			continue
 		}
-		raw, _ := json.Marshal(entry)
-		if _, err := s.appendEvent(ctx, meta, signerID, domain.EventEntryAdded, raw); err != nil {
+		sid, err := domain.SignerFromEntry(schema, entry.NormalizeData(), signerID)
+		if err != nil {
+			skipped++
+			continue
+		}
+		if err := domain.CanAppend(meta, sid); err != nil {
+			return nil, err
+		}
+		raw, _ := json.Marshal(entry.ForChain(schema))
+		if _, err := s.appendEvent(ctx, meta, sid, domain.EventEntryAdded, raw); err != nil {
 			return nil, err
 		}
 		imported++

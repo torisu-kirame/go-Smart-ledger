@@ -6,8 +6,9 @@
         <small>桌面控制台</small>
       </div>
       <nav>
-        <router-link to="/">概览</router-link>
+        <router-link to="/" end>概览</router-link>
         <router-link to="/ledgers">账本管理</router-link>
+        <router-link to="/entry-templates">记账模板</router-link>
         <router-link to="/import">Excel 导入</router-link>
         <router-link to="/backup">备份 / 恢复</router-link>
         <router-link to="/friends">好友</router-link>

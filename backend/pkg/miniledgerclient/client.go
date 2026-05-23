@@ -77,7 +77,8 @@ func (c *Client) Submit(ctx context.Context, tx TxRequest) error {
 func (c *Client) Query(ctx context.Context, sql string, params ...interface{}) ([]StateRow, error) {
 	body := QueryRequest{SQL: sql, Params: params}
 	var out struct {
-		Rows []StateRow `json:"rows"`
+		Rows    []StateRow `json:"rows"`
+		Results []StateRow `json:"results"`
 	}
 	_, err := c.postJSON(ctx, "/state/query", body, &out)
 	if err != nil {
@@ -87,6 +88,9 @@ func (c *Client) Query(ctx context.Context, sql string, params ...interface{}) (
 			return rows, nil
 		}
 		return nil, err
+	}
+	if len(out.Results) > 0 {
+		return out.Results, nil
 	}
 	return out.Rows, nil
 }

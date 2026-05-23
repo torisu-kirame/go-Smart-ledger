@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
@@ -19,20 +18,32 @@ var (
 
 const maxRows = 5000
 
-// RowPreview is one parsed row with optional validation error.
+// RowPreview is one parsed row with dynamic columns in Cells.
 type RowPreview struct {
-	Line    int    `json:"line"`
-	Date    string `json:"date"`
-	Type    string `json:"type"`
-	Amount  string `json:"amount"`
-	Category string `json:"category,omitempty"`
-	Note    string `json:"note,omitempty"`
+	Line   int               `json:"line"`
+	Cells  map[string]string `json:"cells"`
+	Error  string            `json:"error,omitempty"`
+	// Legacy flat fields for older frontends
+	Date         string `json:"date,omitempty"`
+	Type         string `json:"type,omitempty"`
+	Amount       string `json:"amount,omitempty"`
+	Category     string `json:"category,omitempty"`
+	Note         string `json:"note,omitempty"`
 	Counterparty string `json:"counterparty,omitempty"`
-	Error   string `json:"error,omitempty"`
 }
 
-// Parse reads xlsx bytes and returns preview rows.
-func Parse(data []byte) ([]RowPreview, error) {
+// Parse reads xlsx using ledger entry schema column labels.
+func Parse(data []byte, schema domain.EntrySchema) ([]RowPreview, error) {
+	schema = domain.ResolveEntrySchema(schema)
+	return parseWithSchema(data, schema)
+}
+
+// ParseLegacy uses classic 日期/类型/金额 columns.
+func ParseLegacy(data []byte) ([]RowPreview, error) {
+	return parseWithSchema(data, domain.ClassicEntrySchema())
+}
+
+func parseWithSchema(data []byte, schema domain.EntrySchema) ([]RowPreview, error) {
 	if len(data) == 0 {
 		return nil, ErrEmptyFile
 	}
@@ -56,10 +67,13 @@ func Parse(data []byte) ([]RowPreview, error) {
 	for i, h := range rows[0] {
 		header[normHeader(h)] = i
 	}
-	required := []string{"日期", "类型", "金额"}
-	for _, k := range required {
-		if _, ok := header[k]; !ok {
-			return nil, fmt.Errorf("missing column: %s", k)
+	labelToKey := map[string]string{}
+	for _, fdef := range schema.Fields {
+		labelToKey[normHeader(fdef.Label)] = fdef.Key
+	}
+	for _, fdef := range schema.Fields {
+		if _, ok := header[normHeader(fdef.Label)]; !ok && fdef.Required {
+			return nil, fmt.Errorf("missing column: %s", fdef.Label)
 		}
 	}
 	var out []RowPreview
@@ -71,22 +85,20 @@ func Parse(data []byte) ([]RowPreview, error) {
 		if len(out) >= maxRows {
 			return nil, ErrTooManyRows
 		}
-		p := RowPreview{
-			Line: line + 1,
-			Date: cell(r, header["日期"]),
-			Type: normType(cell(r, header["类型"])),
-			Amount: strings.TrimSpace(cell(r, header["金额"])),
+		cells := map[string]string{}
+		for label, key := range labelToKey {
+			if idx, ok := header[normHeader(label)]; ok {
+				cells[key] = cell(r, idx)
+			}
 		}
-		if idx, ok := header["分类"]; ok {
-			p.Category = cell(r, idx)
+		if schema.TemplateID == domain.TemplateClassic {
+			if cells["type"] != "" {
+				cells["type"] = normType(cells["type"])
+			}
 		}
-		if idx, ok := header["备注"]; ok {
-			p.Note = cell(r, idx)
-		}
-		if idx, ok := header["对方"]; ok {
-			p.Counterparty = cell(r, idx)
-		}
-		if err := validateRow(&p); err != nil {
+		p := RowPreview{Line: line + 1, Cells: cells}
+		fillLegacyFlat(&p)
+		if err := validateRow(schema, &p); err != nil {
 			p.Error = err.Error()
 		}
 		out = append(out, p)
@@ -98,37 +110,54 @@ func Parse(data []byte) ([]RowPreview, error) {
 }
 
 // ToEntry converts valid preview row to domain entry.
-func ToEntry(p RowPreview) (domain.EntryPayload, error) {
+func ToEntry(p RowPreview, schema domain.EntrySchema) (domain.EntryPayload, error) {
 	if p.Error != "" {
 		return domain.EntryPayload{}, errors.New(p.Error)
 	}
+	data := p.Cells
+	if len(data) == 0 {
+		data = map[string]string{
+			"date": p.Date, "type": p.Type, "amount": p.Amount,
+			"category": p.Category, "note": p.Note, "counterparty": p.Counterparty,
+		}
+	}
+	schema = domain.ResolveEntrySchema(schema)
+	if err := domain.ValidateEntryData(schema, data); err != nil {
+		return domain.EntryPayload{}, err
+	}
 	return domain.EntryPayload{
-		Date:         p.Date,
-		Type:         p.Type,
-		Amount:       p.Amount,
-		Category:     p.Category,
-		Note:         p.Note,
-		Counterparty: p.Counterparty,
+		SchemaID: schema.TemplateID,
+		Data:     data,
 	}, nil
 }
 
-// BuildTemplate creates an xlsx template file bytes.
-func BuildTemplate() ([]byte, error) {
+// BuildTemplate creates xlsx bytes from schema field labels.
+func BuildTemplate(schema domain.EntrySchema) ([]byte, error) {
+	schema = domain.ResolveEntrySchema(schema)
 	f := excelize.NewFile()
 	defer f.Close()
 	sheet := "Sheet1"
-	headers := []string{"日期", "类型", "金额", "分类", "备注", "对方"}
-	for i, h := range headers {
+	for i, fdef := range schema.Fields {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-		_ = f.SetCellValue(sheet, cell, h)
+		_ = f.SetCellValue(sheet, cell, fdef.Label)
 	}
-	examples := [][]string{
-		{"2026-05-22", "支出", "128.50", "餐饮", "午餐", "餐厅A"},
-		{"2026-05-22", "收入", "5000.00", "工资", "五月工资", "公司"},
-	}
-	for ri, row := range examples {
-		for ci, v := range row {
-			cell, _ := excelize.CoordinatesToCellName(ci+1, ri+2)
+	// example row for default template
+	if schema.TemplateID == domain.TemplateDefault {
+		ex := []string{"", "张三", "128.50", "2026-05-22", "午餐"}
+		for ci, v := range ex {
+			if ci >= len(schema.Fields) {
+				break
+			}
+			cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
+			_ = f.SetCellValue(sheet, cell, v)
+		}
+	} else if schema.TemplateID == domain.TemplateClassic {
+		ex := []string{"2026-05-22", "支出", "128.50", "餐饮", "午餐", "餐厅A"}
+		for ci, v := range ex {
+			if ci >= len(schema.Fields) {
+				break
+			}
+			cell, _ := excelize.CoordinatesToCellName(ci+1, 2)
 			_ = f.SetCellValue(sheet, cell, v)
 		}
 	}
@@ -137,6 +166,25 @@ func BuildTemplate() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func fillLegacyFlat(p *RowPreview) {
+	if p.Cells == nil {
+		return
+	}
+	p.Date = p.Cells["date"]
+	p.Type = p.Cells["type"]
+	p.Amount = p.Cells["amount"]
+	p.Category = p.Cells["category"]
+	p.Note = p.Cells["note"]
+	p.Counterparty = p.Cells["counterparty"]
+}
+
+func validateRow(schema domain.EntrySchema, p *RowPreview) error {
+	if err := domain.ValidateEntryData(schema, p.Cells); err != nil {
+		return err
+	}
+	return nil
 }
 
 func normHeader(s string) string {
@@ -169,20 +217,4 @@ func normType(s string) string {
 	default:
 		return s
 	}
-}
-
-func validateRow(p *RowPreview) error {
-	if p.Date == "" {
-		return errors.New("日期不能为空")
-	}
-	if p.Type != "income" && p.Type != "expense" {
-		return errors.New("类型须为 收入/支出 或 income/expense")
-	}
-	if p.Amount == "" {
-		return errors.New("金额不能为空")
-	}
-	if _, err := strconv.ParseFloat(strings.ReplaceAll(p.Amount, ",", ""), 64); err != nil {
-		return errors.New("金额格式无效")
-	}
-	return nil
 }

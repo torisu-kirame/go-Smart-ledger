@@ -2,11 +2,13 @@
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h2>账本管理</h2>
-      <button class="btn-primary" @click="show = true">创建账本</button>
+      <button class="btn-primary" @click="openCreate">创建账本</button>
     </div>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
+    <div v-if="success" class="alert alert-success">{{ success }}</div>
     <div class="panel">
-      <div class="table-wrap">
+      <div v-if="!list.length" class="muted empty">暂无账本，点击右上角创建</div>
+      <div v-else class="table-wrap">
         <table>
           <thead><tr><th>名称</th><th>类型</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
           <tbody>
@@ -25,7 +27,11 @@
     <div v-if="show" class="modal">
       <form class="modal-card" @submit.prevent="create">
         <h3>创建账本</h3>
-        <p class="hint">账本 ID 与成员链上地址由雪花算法 + HD 钱包（BIP44）自动生成</p>
+        <p class="hint">账本 ID 与链上地址由系统自动生成（雪花 ID + HD 钱包 BIP44）</p>
+        <div class="form-row readonly-row">
+          <label>创建者（本人）</label>
+          <span class="mono uid">{{ auth.user?.id || '—' }}</span>
+        </div>
         <div class="form-row">
           <label>类型</label>
           <select v-model="form.type">
@@ -34,14 +40,46 @@
           </select>
         </div>
         <div class="form-row"><label>名称</label><input v-model="form.name" required /></div>
-        <div v-for="(m, i) in form.members" :key="i" class="form-row member">
-          <input v-model="m.id" placeholder="成员用户 ID" required />
-          <button v-if="form.type === 'multi' && form.members.length > 2" type="button" class="btn-ghost" @click="form.members.splice(i,1)">删</button>
+        <div class="form-row">
+          <label>记账模板</label>
+          <select v-model="form.templateId">
+            <option v-for="t in templates" :key="t.templateId" :value="t.templateId">
+              {{ templateLabel(t) }}{{ t.builtin ? '（内置）' : '' }}
+            </option>
+            <option value="custom">临时自定义（不保存）</option>
+          </select>
         </div>
-        <button v-if="form.type === 'multi'" type="button" class="btn-ghost" @click="addMember">+ 成员</button>
+        <div v-if="form.templateId === 'custom'" class="custom-schema">
+          <p class="hint">添加自定义列（至少 1 个必填字段）</p>
+          <div v-for="(f, i) in form.customFields" :key="i" class="form-row member">
+            <input v-model="f.key" placeholder="字段 key（英文）" />
+            <input v-model="f.label" placeholder="显示名" />
+            <select v-model="f.type">
+              <option value="text">文本</option>
+              <option value="number">数字</option>
+              <option value="date">日期</option>
+              <option value="user">用户</option>
+            </select>
+            <label class="check"><input type="checkbox" v-model="f.required" /> 必填</label>
+            <button type="button" class="btn-ghost" @click="form.customFields.splice(i, 1)">删</button>
+          </div>
+          <button type="button" class="btn-ghost" @click="addCustomField">+ 字段</button>
+        </div>
+        <p v-else class="hint">字段：{{ selectedTemplateFields }}</p>
+        <template v-if="form.type === 'multi'">
+          <div class="form-row">
+            <label>其他成员</label>
+            <p class="hint inline">填写好友的用户 ID（创建者已自动加入）</p>
+          </div>
+          <div v-for="(m, i) in form.otherMembers" :key="i" class="form-row member">
+            <input v-model="m.id" placeholder="成员用户 ID" required />
+            <button v-if="form.otherMembers.length > 1" type="button" class="btn-ghost" @click="form.otherMembers.splice(i, 1)">删</button>
+          </div>
+          <button type="button" class="btn-ghost" @click="form.otherMembers.push({ id: '' })">+ 成员</button>
+        </template>
         <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
-          <button type="button" class="btn-ghost" @click="show=false">取消</button>
-          <button class="btn-primary" :disabled="saving">创建</button>
+          <button type="button" class="btn-ghost" @click="show = false">取消</button>
+          <button class="btn-primary" :disabled="saving">{{ saving ? '创建中…' : '创建' }}</button>
         </div>
       </form>
     </div>
@@ -49,65 +87,130 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { DEFAULT_ENTRY_SCHEMA } from '../utils/entrySchema'
 
 const auth = useAuthStore()
 const list = ref([])
 const error = ref('')
+const success = ref('')
 const show = ref(false)
 const saving = ref(false)
+const templates = ref([DEFAULT_ENTRY_SCHEMA])
 const form = reactive({
   type: 'private',
   name: '',
-  members: [{ id: '' }],
+  templateId: 'default',
+  customFields: [{ key: '', label: '', type: 'text', required: true }],
+  otherMembers: [{ id: '' }],
 })
+
+const selectedTemplateFields = computed(() => {
+  if (form.templateId === 'custom') return ''
+  const t = templates.value.find((x) => x.templateId === form.templateId)
+  return (t?.fields || []).map((f) => f.label).join('、')
+})
+
+function templateLabel(t) {
+  return t.name || t.templateId
+}
+
+function addCustomField() {
+  form.customFields.push({ key: '', label: '', type: 'text', required: false })
+}
 
 function shortAddr(a) {
   if (!a) return '—'
   return a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a
 }
 
-function syncMembers() {
-  const uid = auth.user?.id || ''
-  if (form.type === 'private') {
-    form.members = [{ id: uid }]
-  } else if (form.members.length < 2) {
-    form.members = [{ id: uid }, { id: '' }]
-  } else if (!form.members[0]?.id) {
-    form.members[0].id = uid
+function resetForm() {
+  form.type = 'private'
+  form.name = ''
+  form.templateId = 'default'
+  form.customFields = [{ key: '', label: '', type: 'text', required: true }]
+  form.otherMembers = [{ id: '' }]
+}
+
+function buildEntrySchema() {
+  if (form.templateId === 'custom') {
+    const fields = form.customFields
+      .filter((f) => f.key.trim() && f.label.trim())
+      .map((f) => ({
+        key: f.key.trim(),
+        label: f.label.trim(),
+        type: f.type,
+        required: !!f.required,
+      }))
+    if (!fields.length) throw new ApiError('请至少定义 1 个自定义字段', 400)
+    return { templateId: 'custom', fields }
   }
+  const t = templates.value.find((x) => x.templateId === form.templateId)
+  if (t?.fields?.length) {
+    return { templateId: t.templateId, fields: t.fields }
+  }
+  return { templateId: form.templateId }
 }
 
-watch(() => form.type, syncMembers)
-
-function addMember() {
-  form.members.push({ id: '' })
+function openCreate() {
+  error.value = ''
+  success.value = ''
+  resetForm()
+  show.value = true
 }
+
+watch(() => form.type, () => {
+  if (form.type === 'multi' && !form.otherMembers.length) {
+    form.otherMembers = [{ id: '' }]
+  }
+})
 
 async function load() {
-  list.value = await api.listLedgers()
+  const data = await api.listLedgers()
+  list.value = Array.isArray(data) ? data : []
 }
 
-onMounted(() => {
-  syncMembers()
+onMounted(async () => {
+  try {
+    const res = await api.listEntryTemplates()
+    if (res.templates?.length) templates.value = res.templates
+  } catch {
+    templates.value = [DEFAULT_ENTRY_SCHEMA]
+  }
   load()
 })
+
+function buildMembers() {
+  const uid = auth.user?.id
+  if (!uid) throw new ApiError('未登录或用户 ID 缺失，请重新登录', 401)
+  if (form.type === 'private') {
+    return [{ id: uid, address: '' }]
+  }
+  const others = form.otherMembers.map((m) => m.id.trim()).filter(Boolean)
+  if (others.length < 1) {
+    throw new ApiError('多人账本至少需要 1 名其他成员', 400)
+  }
+  return [{ id: uid, address: '' }, ...others.map((id) => ({ id, address: '' }))]
+}
 
 async function create() {
   saving.value = true
   error.value = ''
+  success.value = ''
   try {
-    const members = form.members.filter((m) => m.id).map((m) => ({ id: m.id, address: '' }))
-    await api.createLedger({
+    const members = buildMembers()
+    const created = await api.createLedger({
       type: form.type,
-      name: form.name,
-      creatorId: auth.user?.id || '',
+      name: form.name.trim(),
+      creatorId: auth.user.id,
       members,
+      entrySchema: buildEntrySchema(),
     })
     show.value = false
     await load()
+    success.value = `已创建账本「${created.name}」（ID: ${created.id}）`
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '创建失败'
   } finally {
@@ -119,6 +222,14 @@ async function create() {
 <style scoped>
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 480px; max-height: 90vh; overflow: auto; }
-.member { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
-.hint { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 1rem; }
+.member { display: grid; grid-template-columns: 1fr 1fr auto auto auto; gap: 0.5rem; align-items: center; }
+.custom-schema { margin: 0.5rem 0 1rem; padding: 0.75rem; border: 1px dashed var(--border); border-radius: 8px; }
+.check { font-size: 0.75rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.hint { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 0.5rem; }
+.hint.inline { margin: 0; }
+.readonly-row { display: grid; gap: 0.35rem; }
+.uid { color: var(--accent); font-size: 0.875rem; }
+.empty { padding: 1.5rem; text-align: center; }
+.alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.75rem; }
+.muted { color: var(--text-muted); }
 </style>

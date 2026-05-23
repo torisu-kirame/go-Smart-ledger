@@ -25,6 +25,7 @@ func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 
 	registerProfileHandlers(server, serverCtx)
 	registerTeamHandlers(server, serverCtx)
+	registerEntryTemplateHandlers(server, serverCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/search", Handler: userSearchHandler(serverCtx)},

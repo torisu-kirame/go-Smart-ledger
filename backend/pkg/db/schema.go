@@ -117,6 +117,34 @@ var schemaTables = []tableSchema{
 			},
 		},
 	},
+	{
+		name: "entry_templates",
+		createSQL: `CREATE TABLE IF NOT EXISTS entry_templates (
+			id BIGINT UNSIGNED NOT NULL,
+			owner_id BIGINT UNSIGNED NOT NULL,
+			name VARCHAR(128) NOT NULL,
+			fields_json JSON NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_entry_templates_owner (owner_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "id", addSQL: "ADD COLUMN id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "owner_id", addSQL: "ADD COLUMN owner_id BIGINT UNSIGNED NOT NULL"},
+			{name: "name", addSQL: "ADD COLUMN name VARCHAR(128) NOT NULL"},
+			{name: "fields_json", addSQL: "ADD COLUMN fields_json JSON NOT NULL"},
+			{name: "created_at", addSQL: "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+			{name: "updated_at", addSQL: "ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_entry_templates_owner",
+				createSQL:  "ALTER TABLE entry_templates ADD CONSTRAINT fk_entry_templates_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
 }
 
 type tableSchema struct {

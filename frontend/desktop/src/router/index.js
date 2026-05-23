@@ -8,6 +8,7 @@ const routes = [
     component: () => import('../layouts/MainLayout.vue'),
     children: [
       { path: '', component: () => import('../views/DashboardView.vue') },
+      { path: 'entry-templates', component: () => import('../views/EntryTemplatesView.vue') },
       { path: 'ledgers', component: () => import('../views/LedgersView.vue') },
       { path: 'ledgers/:id', component: () => import('../views/LedgerDetailView.vue') },
       { path: 'import', component: () => import('../views/ImportView.vue') },

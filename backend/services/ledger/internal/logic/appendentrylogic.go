@@ -21,6 +21,8 @@ func NewAppendEntryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Appen
 
 func (l *AppendEntryLogic) AppendEntry(id string, req *types.AppendEntryReq) (*types.EventResp, error) {
 	entry := domain.EntryPayload{
+		SchemaID: req.Entry.SchemaId,
+		Data:     req.Entry.Data,
 		Date:     req.Entry.Date,
 		Type:     req.Entry.Type,
 		Amount:   req.Entry.Amount,

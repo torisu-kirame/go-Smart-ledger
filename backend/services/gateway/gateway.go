@@ -64,6 +64,11 @@ func main() {
 		{Method: http.MethodGet, Path: "/api/v1/teams", Handler: authJWT},
 		{Method: http.MethodPost, Path: "/api/v1/teams", Handler: authJWT},
 		{Method: http.MethodGet, Path: "/api/v1/teams/:teamId", Handler: authJWT},
+		{Method: http.MethodGet, Path: "/api/v1/entry-templates", Handler: authJWT},
+		{Method: http.MethodPost, Path: "/api/v1/entry-templates", Handler: authJWT},
+		{Method: http.MethodGet, Path: "/api/v1/entry-templates/:templateId", Handler: authJWT},
+		{Method: http.MethodPut, Path: "/api/v1/entry-templates/:templateId", Handler: authJWT},
+		{Method: http.MethodDelete, Path: "/api/v1/entry-templates/:templateId", Handler: authJWT},
 	})
 
 	// 需 JWT 短期令牌
@@ -75,6 +80,7 @@ func main() {
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/events", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/anchor", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/verify", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/entry-schema/templates", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/import/template", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/preview", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/commit", Handler: ledgerProxy},

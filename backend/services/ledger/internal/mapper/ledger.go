@@ -17,9 +17,10 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		CreatorId:     m.CreatorID,
 		LedgerAddress: m.LedgerAddress,
 		Members:       members,
-		LatestSeq:    m.LatestSeq,
-		LatestRoot:   m.LatestRoot,
-		AnchorStatus: m.AnchorStatus,
+		EntrySchema:   EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
+		LatestSeq:     m.LatestSeq,
+		LatestRoot:    m.LatestRoot,
+		AnchorStatus:  m.AnchorStatus,
 	}
 }
 

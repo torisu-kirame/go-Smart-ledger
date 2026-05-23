@@ -27,8 +27,12 @@ func (s *Service) Online(ctx context.Context) bool {
 	return s.chain.Ping(ctx) == nil
 }
 
-func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creatorID string, members []domain.Member) (*domain.LedgerMeta, error) {
+func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creatorID string, members []domain.Member, schema domain.EntrySchema) (*domain.LedgerMeta, error) {
 	if err := domain.ValidateCreate(t, members); err != nil {
+		return nil, err
+	}
+	schema = domain.ResolveEntrySchema(schema)
+	if err := domain.ValidateSchema(schema); err != nil {
 		return nil, err
 	}
 	idInt, err := snowflake.NextInt64()
@@ -53,6 +57,7 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		CreatorID:     creatorID,
 		LedgerAddress: ledgerAddr,
 		Members:       members,
+		EntrySchema:   schema,
 		LatestSeq:     0,
 		LatestRoot:    domain.MerkleRoot(nil),
 		AnchorStatus:  "pending",
@@ -63,7 +68,7 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		return nil, err
 	}
 	payload, _ := json.Marshal(map[string]any{
-		"name": name, "type": t, "members": members, "ledgerAddress": ledgerAddr,
+		"name": name, "type": t, "members": members, "ledgerAddress": ledgerAddr, "entrySchema": schema,
 	})
 	if _, err := s.appendEvent(ctx, meta, creatorID, domain.EventLedgerCreated, payload); err != nil {
 		return nil, err
@@ -77,15 +82,15 @@ func (s *Service) Get(ctx context.Context, id string) (*domain.LedgerMeta, error
 
 func (s *Service) List(ctx context.Context) ([]*domain.LedgerMeta, error) {
 	rows, err := s.chain.Query(ctx,
-		`SELECT key, value FROM world_state WHERE key LIKE ? ORDER BY key`,
-		domain.LedgerIndexPrefix())
+		`SELECT key, value FROM world_state WHERE key LIKE ? AND key NOT LIKE ? ORDER BY key`,
+		domain.LedgerIndexPrefix(), domain.LedgerIndexPrefix()+":event:%")
 	if err != nil {
 		return nil, err
 	}
 	var out []*domain.LedgerMeta
 	for _, row := range rows {
 		var meta domain.LedgerMeta
-		if err := json.Unmarshal(row.Value, &meta); err != nil {
+		if err := unmarshalStateValue(row.Value, &meta); err != nil {
 			continue
 		}
 		if meta.ID != "" {
@@ -100,10 +105,19 @@ func (s *Service) AppendEntry(ctx context.Context, ledgerID, signerID string, en
 	if err != nil {
 		return nil, err
 	}
+	schema := domain.ResolveEntrySchema(meta.EntrySchema)
+	data := entry.NormalizeData()
+	if err := domain.ValidateEntryData(schema, data); err != nil {
+		return nil, err
+	}
+	signerID, err = domain.SignerFromEntry(schema, data, signerID)
+	if err != nil {
+		return nil, err
+	}
 	if err := domain.CanAppend(meta, signerID); err != nil {
 		return nil, err
 	}
-	raw, _ := json.Marshal(entry)
+	raw, _ := json.Marshal(entry.ForChain(schema))
 	return s.appendEvent(ctx, meta, signerID, domain.EventEntryAdded, raw)
 }
 
@@ -119,7 +133,7 @@ func (s *Service) ListEvents(ctx context.Context, ledgerID string, from, to uint
 	var out []domain.EventRecord
 	for _, row := range rows {
 		var ev domain.EventRecord
-		if err := json.Unmarshal(row.Value, &ev); err != nil {
+		if err := unmarshalStateValue(row.Value, &ev); err != nil {
 			continue
 		}
 		if ev.Seq >= from && (to == 0 || ev.Seq <= to) {
@@ -239,10 +253,22 @@ func (s *Service) loadMeta(ctx context.Context, id string) (*domain.LedgerMeta, 
 		return nil, domain.ErrLedgerNotFound
 	}
 	var meta domain.LedgerMeta
-	if err := json.Unmarshal(rows[0].Value, &meta); err != nil {
+	if err := unmarshalStateValue(rows[0].Value, &meta); err != nil {
 		return nil, err
 	}
 	return &meta, nil
+}
+
+// unmarshalStateValue decodes MiniLedger world_state values (object or JSON string).
+func unmarshalStateValue(raw json.RawMessage, dest interface{}) error {
+	if err := json.Unmarshal(raw, dest); err == nil {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(s), dest)
 }
 
 func ledgerIndexFromID(id int64) uint32 {
@@ -277,7 +303,9 @@ func MapDomainError(err error) int {
 	case errors.Is(err, domain.ErrMultiNeedsTwo),
 		errors.Is(err, domain.ErrPrivateOne),
 		errors.Is(err, domain.ErrInvalidMember),
-		errors.Is(err, domain.ErrUnauthorized):
+		errors.Is(err, domain.ErrUnauthorized),
+		errors.Is(err, domain.ErrEntryValidation),
+		errors.Is(err, domain.ErrInvalidSchema):
 		return 400
 	default:
 		return 500

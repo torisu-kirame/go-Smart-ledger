@@ -7,6 +7,7 @@ import (
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/authjwt"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/db"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/entrytemplatestore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/friendstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/teamstore"
@@ -22,8 +23,9 @@ type ServiceContext struct {
 	Profiles  userstore.ProfileStore
 	Accounts  userstore.AccountStore
 	Friends   *friendstore.Store
-	Teams     *teamstore.Store
-	DB        *sql.DB
+	Teams          *teamstore.Store
+	EntryTemplates *entrytemplatestore.Store
+	DB             *sql.DB
 	AvatarDir string
 }
 
@@ -77,6 +79,7 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		Profiles:  mysqlUsers,
 		Accounts:  mysqlUsers,
 		Friends:   friendstore.New(sqlDB),
-		Teams:     teamstore.New(sqlDB),
+		Teams:          teamstore.New(sqlDB),
+		EntryTemplates: entrytemplatestore.New(sqlDB),
 	}, nil
 }

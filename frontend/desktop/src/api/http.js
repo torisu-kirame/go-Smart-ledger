@@ -46,7 +46,7 @@ async function request(path, init = {}, retry = true) {
     }
   }
   if (!res.ok) {
-    const msg = body?.message || body?.error || res.statusText
+    const msg = body?.msg || body?.message || body?.error || res.statusText
     throw new ApiError(msg, res.status)
   }
   return body
@@ -81,11 +81,35 @@ export const api = {
   refresh: () => request('/auth/refresh', { method: 'POST', body: '{}' }),
   logout: () => request('/auth/logout', { method: 'POST', body: '{}' }),
   health: () => request('/health'),
+  listEntrySchemaTemplates: () => request('/entry-schema/templates'),
+  listEntryTemplates: () => request('/entry-templates'),
+  getEntryTemplate: (id) => request(`/entry-templates/${encodeURIComponent(id)}`),
+  createEntryTemplate: (body) => request('/entry-templates', { method: 'POST', body: JSON.stringify(body) }),
+  updateEntryTemplate: (id, body) =>
+    request(`/entry-templates/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteEntryTemplate: (id) =>
+    request(`/entry-templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   listLedgers: () => request('/ledgers'),
   getLedger: (id) => request(`/ledgers/${id}`),
-  createLedger: (data) => request('/ledgers', { method: 'POST', body: JSON.stringify(data) }),
+  createLedger: (data) =>
+    request('/ledgers', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        entrySchema: data.entrySchema || { templateId: 'default' },
+      }),
+    }),
   appendEntry: (id, entry) =>
-    request(`/ledgers/${id}/entries`, { method: 'POST', body: JSON.stringify({ entry }) }),
+    request(`/ledgers/${id}/entries`, {
+      method: 'POST',
+      body: JSON.stringify({
+        entry: {
+          signerId: entry.signerId,
+          schemaId: entry.schemaId,
+          data: entry.data,
+        },
+      }),
+    }),
   listEvents: (id, from = 1, to = 0) => {
     const q = new URLSearchParams({ from: String(from) })
     if (to > 0) q.set('to', String(to))
@@ -97,8 +121,13 @@ export const api = {
       body: JSON.stringify({ seqFrom, seqTo }),
     }),
   verify: (id) => request(`/ledgers/${id}/verify`),
-  downloadTemplate: () =>
-    fetch(`${BASE}/import/template`, { credentials: 'include', headers: { Authorization: `Bearer ${getToken() || ''}` } }),
+  downloadTemplate: (ledgerId) => {
+    const q = ledgerId ? `?ledgerId=${encodeURIComponent(ledgerId)}` : ''
+    return fetch(`${BASE}/import/template${q}`, {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${getToken() || ''}` },
+    })
+  },
   importPreview: (id, file) => {
     const fd = new FormData()
     fd.append('file', file)
