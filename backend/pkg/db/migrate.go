@@ -55,11 +55,11 @@ func Migrate(db *sql.DB, dbName string) error {
 			return fmt.Errorf("table %s: %w", tbl.name, err)
 		}
 	}
-	// friendships 外键依赖 users，表创建后再补外键
-	fkTbl := schemaTables[1]
-	for _, fk := range fkTbl.foreignKeys {
-		if err := ensureForeignKey(db, dbName, fkTbl.name, fk); err != nil {
-			return fmt.Errorf("fk %s on %s: %w", fk.name, fkTbl.name, err)
+	for _, tbl := range schemaTables {
+		for _, fk := range tbl.foreignKeys {
+			if err := ensureForeignKey(db, dbName, tbl.name, fk); err != nil {
+				return fmt.Errorf("fk %s on %s: %w", fk.name, tbl.name, err)
+			}
 		}
 	}
 	return nil

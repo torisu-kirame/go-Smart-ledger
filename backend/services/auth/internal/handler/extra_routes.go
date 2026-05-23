@@ -10,6 +10,7 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/userstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/types"
+	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/userinfo"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
@@ -22,9 +23,8 @@ func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/register", Handler: registerHandler(serverCtx)},
 	}, rest.WithPrefix("/api/v1/auth"))
 
-	if serverCtx.Friends == nil {
-		return
-	}
+	registerProfileHandlers(server, serverCtx)
+	registerTeamHandlers(server, serverCtx)
 
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/search", Handler: userSearchHandler(serverCtx)},
@@ -82,7 +82,7 @@ func registerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			AccessToken: pair.AccessToken,
 			ExpiresIn:   pair.ExpiresIn,
 			TokenType:   "Bearer",
-			User:        types.UserInfo{Id: user.ID, Username: user.Username},
+			User:        userinfo.FromStore(svcCtx, user.ID, user.Username),
 		})
 	}
 }
@@ -108,7 +108,13 @@ func userSearchHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
-		httpx.OkJsonCtx(r.Context(), w, types.UserInfo{Id: user.ID, Username: user.Username})
+		if svcCtx.Profiles != nil {
+			if p, err := svcCtx.Profiles.GetProfile(userID); err == nil {
+				httpx.OkJsonCtx(r.Context(), w, userinfo.ToPublic(p))
+				return
+			}
+		}
+		httpx.OkJsonCtx(r.Context(), w, userinfo.FromStore(svcCtx, user.ID, user.Username))
 	}
 }
 

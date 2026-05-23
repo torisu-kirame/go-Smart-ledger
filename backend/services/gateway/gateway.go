@@ -46,12 +46,24 @@ func main() {
 		{Method: http.MethodGet, Path: "/api/v1/auth/health", Handler: authProxy},
 	})
 
-	// 需 JWT：用户搜索与好友（MySQL）
+	// 用户头像（公开读取，无需 JWT）
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/users/:userId/avatar", Handler: authProxy},
+	})
+
+	// 需 JWT：个人资料、好友
+	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/api/v1/users/me", Handler: authJWT},
+		{Method: http.MethodPatch, Path: "/api/v1/users/me", Handler: authJWT},
+		{Method: http.MethodPost, Path: "/api/v1/users/me/avatar", Handler: authJWT},
+		{Method: http.MethodPost, Path: "/api/v1/users/me/delete-account", Handler: authJWT},
 		{Method: http.MethodGet, Path: "/api/v1/users/search", Handler: authJWT},
 		{Method: http.MethodGet, Path: "/api/v1/friends", Handler: authJWT},
 		{Method: http.MethodPost, Path: "/api/v1/friends", Handler: authJWT},
 		{Method: http.MethodDelete, Path: "/api/v1/friends/:friendId", Handler: authJWT},
+		{Method: http.MethodGet, Path: "/api/v1/teams", Handler: authJWT},
+		{Method: http.MethodPost, Path: "/api/v1/teams", Handler: authJWT},
+		{Method: http.MethodGet, Path: "/api/v1/teams/:teamId", Handler: authJWT},
 	})
 
 	// 需 JWT 短期令牌

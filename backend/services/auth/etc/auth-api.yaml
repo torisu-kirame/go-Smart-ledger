@@ -9,8 +9,14 @@ Auth:
   RefreshExpire: 604800
   CookieSecure: false
 
-MySQL:
+Database:
   DataSource: root:123456@tcp(127.0.0.1:3306)/smart_ledger?parseTime=true&charset=utf8mb4&loc=Local
+
+Avatar:
+  Dir: data/avatars
+
+Snowflake:
+  NodeID: 1
 
 Users:
   - username: admin

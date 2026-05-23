@@ -8,6 +8,7 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/authjwt"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/captcha"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/svc"
+	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/userinfo"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/types"
 	"github.com/zeromicro/go-zero/core/logx"
 	xerrors "github.com/zeromicro/x/errors"
@@ -44,9 +45,6 @@ func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
 		AccessToken: pair.AccessToken,
 		ExpiresIn:   pair.ExpiresIn,
 		TokenType:   "Bearer",
-		User: types.UserInfo{
-			Id:       user.ID,
-			Username: user.Username,
-		},
+		User: userinfo.FromStore(l.svcCtx, user.ID, user.Username),
 	}, nil
 }

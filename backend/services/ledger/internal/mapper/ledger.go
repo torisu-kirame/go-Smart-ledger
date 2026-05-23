@@ -11,11 +11,12 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		members[i] = types.Member{Id: x.ID, Address: x.Address, Role: x.Role}
 	}
 	return &types.LedgerResp{
-		Id:           m.ID,
-		Type:         string(m.Type),
-		Name:         m.Name,
-		CreatorId:    m.CreatorID,
-		Members:      members,
+		Id:            m.ID,
+		Type:          string(m.Type),
+		Name:          m.Name,
+		CreatorId:     m.CreatorID,
+		LedgerAddress: m.LedgerAddress,
+		Members:       members,
 		LatestSeq:    m.LatestSeq,
 		LatestRoot:   m.LatestRoot,
 		AnchorStatus: m.AnchorStatus,

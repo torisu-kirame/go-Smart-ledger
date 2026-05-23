@@ -17,6 +17,8 @@ var (
 type Friend struct {
 	ID        string    `json:"id"`
 	Username  string    `json:"username"`
+	Nickname  string    `json:"nickname"`
+	AvatarUrl string    `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -34,7 +36,9 @@ func (s *Store) List(userID string) ([]Friend, error) {
 		return nil, err
 	}
 	rows, err := s.db.Query(`
-		SELECT u.id, u.username, f.created_at
+		SELECT u.id, u.username, COALESCE(NULLIF(u.nickname, ''), u.username),
+		       COALESCE(NULLIF(u.avatar_url, ''), CONCAT('/api/v1/users/', u.id, '/avatar')),
+		       f.created_at
 		FROM friendships f
 		INNER JOIN users u ON u.id = f.friend_id
 		WHERE f.user_id = ?
@@ -46,18 +50,37 @@ func (s *Store) List(userID string) ([]Friend, error) {
 	var out []Friend
 	for rows.Next() {
 		var id uint64
-		var username string
+		var username, nickname, avatarURL string
 		var created time.Time
-		if err := rows.Scan(&id, &username, &created); err != nil {
+		if err := rows.Scan(&id, &username, &nickname, &avatarURL, &created); err != nil {
 			return nil, err
 		}
 		out = append(out, Friend{
 			ID:        strconv.FormatUint(id, 10),
 			Username:  username,
+			Nickname:  nickname,
+			AvatarUrl: avatarURL,
 			CreatedAt: created,
 		})
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) AreFriends(userID, friendID string) (bool, error) {
+	uid, err := parseID(userID)
+	if err != nil {
+		return false, err
+	}
+	fid, err := parseID(friendID)
+	if err != nil {
+		return false, err
+	}
+	var n int
+	err = s.db.QueryRow(
+		`SELECT COUNT(*) FROM friendships WHERE user_id = ? AND friend_id = ?`,
+		uid, fid,
+	).Scan(&n)
+	return n > 0, err
 }
 
 func (s *Store) Add(userID, friendID string) error {

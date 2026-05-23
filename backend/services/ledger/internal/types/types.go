@@ -50,11 +50,12 @@ type HealthResp struct {
 }
 
 type LedgerResp struct {
-	Id           string   `json:"id"`
-	Type         string   `json:"type"`
-	Name         string   `json:"name"`
-	CreatorId    string   `json:"creatorId"`
-	Members      []Member `json:"members"`
+	Id            string   `json:"id"`
+	Type          string   `json:"type"`
+	Name          string   `json:"name"`
+	CreatorId     string   `json:"creatorId"`
+	LedgerAddress string   `json:"ledgerAddress,omitempty"`
+	Members       []Member `json:"members"`
 	LatestSeq    uint64   `json:"latestSeq"`
 	LatestRoot   string   `json:"latestRoot"`
 	BlockHeight  uint64   `json:"blockHeight,omitempty"`

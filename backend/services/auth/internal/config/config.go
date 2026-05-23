@@ -12,9 +12,16 @@ type Config struct {
 		CookieSecure  bool   `json:",default=false"`
 		CookieDomain  string `json:",optional"`
 	} `json:"Auth"`
-	MySQL struct {
-		DataSource string `json:",optional"`
-	} `json:"MySQL"`
+	// Database 外部 MySQL，见 etc/auth-api.yaml（不在 Compose 内托管）
+	Database struct {
+		DataSource string
+	} `json:"Database"`
+	Avatar struct {
+		Dir string `json:",default=data/avatars"`
+	} `json:"Avatar"`
+	Snowflake struct {
+		NodeID int64 `json:",default=1"`
+	} `json:"Snowflake"`
 	Users []struct {
 		Username string `json:"username"`
 		Password string `json:"password"`

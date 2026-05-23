@@ -19,6 +19,9 @@ func createLedgerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
+		if req.CreatorId == "" {
+			req.CreatorId = r.Header.Get("X-User-Id")
+		}
 
 		l := logic.NewCreateLedgerLogic(r.Context(), svcCtx)
 		resp, err := l.CreateLedger(&req)

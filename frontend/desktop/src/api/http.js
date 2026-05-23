@@ -56,11 +56,28 @@ export const api = {
   captcha: () => request('/auth/captcha'),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  getProfile: () => request('/users/me'),
+  updateProfile: (nickname) =>
+    request('/users/me', { method: 'PATCH', body: JSON.stringify({ nickname }) }),
+  deleteAccount: (username, password) =>
+    request('/users/me/delete-account', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  uploadAvatar: (file) => {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    return request('/users/me/avatar', { method: 'POST', body: fd })
+  },
+  userAvatarUrl: (userId) => `/api/v1/users/${encodeURIComponent(userId)}/avatar`,
   searchUser: (userId) => request(`/users/search?userId=${encodeURIComponent(userId)}`),
   listFriends: () => request('/friends'),
   addFriend: (friendUserId) =>
     request('/friends', { method: 'POST', body: JSON.stringify({ friendUserId }) }),
   removeFriend: (friendId) => request(`/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' }),
+  listTeams: () => request('/teams'),
+  createTeam: (body) => request('/teams', { method: 'POST', body: JSON.stringify(body) }),
+  getTeam: (id) => request(`/teams/${encodeURIComponent(id)}`),
   refresh: () => request('/auth/refresh', { method: 'POST', body: '{}' }),
   logout: () => request('/auth/logout', { method: 'POST', body: '{}' }),
   health: () => request('/health'),

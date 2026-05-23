@@ -34,6 +34,26 @@ type RefreshResp struct {
 }
 
 type UserInfo struct {
-	Id       string `json:"id"`
+	Id        string `json:"id"`
+	Username  string `json:"username"`
+	Nickname  string `json:"nickname,omitempty"`
+	AvatarUrl string `json:"avatarUrl,omitempty"`
+	CreatedAt string `json:"createdAt,omitempty"`
+}
+
+type UserPublicProfile struct {
+	Id        string `json:"id"`
+	Username  string `json:"username"`
+	Nickname  string `json:"nickname"`
+	AvatarUrl string `json:"avatarUrl"`
+	CreatedAt string `json:"createdAt,omitempty"`
+}
+
+type UpdateProfileReq struct {
+	Nickname string `json:"nickname"`
+}
+
+type DeleteAccountReq struct {
 	Username string `json:"username"`
+	Password string `json:"password"`
 }

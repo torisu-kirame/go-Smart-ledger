@@ -1,12 +1,8 @@
 <template>
   <div>
     <h2>好友</h2>
-    <p class="muted">通过用户 ID 搜索并添加好友（数据存于 MySQL）</p>
+    <p class="muted">通过用户 ID 搜索并添加好友</p>
     <p v-if="auth.user" class="my-id">我的用户 ID：<strong>{{ auth.user.id }}</strong> · {{ auth.user.username }}</p>
-
-    <div v-if="!mysqlEnabled" class="alert alert-error">
-      当前后端未连接 MySQL，好友功能不可用。请在 auth-api 配置 DataSource 后重启。
-    </div>
 
     <section class="card">
       <h3>搜索用户</h3>
@@ -15,7 +11,10 @@
         <button class="btn-primary" :disabled="loadingSearch" @click="onSearch">搜索</button>
       </div>
       <div v-if="searchResult" class="search-result">
-        <span>{{ searchResult.username }}（ID: {{ searchResult.id }}）</span>
+        <div class="user-cell">
+          <img class="mini-avatar" :src="api.userAvatarUrl(searchResult.id)" alt="" />
+          <span>{{ searchResult.nickname || searchResult.username }}（ID: {{ searchResult.id }}）</span>
+        </div>
         <button
           class="btn-primary"
           :disabled="adding || searchResult.id === auth.user?.id"
@@ -38,7 +37,12 @@
         <tbody>
           <tr v-for="f in friends" :key="f.id">
             <td>{{ f.id }}</td>
-            <td>{{ f.username }}</td>
+            <td>
+              <div class="user-cell">
+                <img class="mini-avatar" :src="api.userAvatarUrl(f.id)" alt="" />
+                <span>{{ f.nickname || f.username }}</span>
+              </div>
+            </td>
             <td>{{ formatTime(f.createdAt) }}</td>
             <td><button class="btn-ghost danger" @click="onRemove(f.id)">删除</button></td>
           </tr>
@@ -55,7 +59,6 @@ import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
-const mysqlEnabled = ref(true)
 const searchId = ref('')
 const searchResult = ref(null)
 const searchError = ref('')
@@ -76,13 +79,8 @@ async function loadFriends() {
   try {
     const res = await api.listFriends()
     friends.value = res.friends || []
-    mysqlEnabled.value = true
   } catch (e) {
-    if (e instanceof ApiError && (e.status === 404 || e.message.includes('Not Found'))) {
-      mysqlEnabled.value = false
-    } else {
-      listError.value = e instanceof ApiError ? e.message : '加载失败'
-    }
+    listError.value = e instanceof ApiError ? e.message : '加载失败'
   } finally {
     loadingList.value = false
   }
@@ -144,4 +142,6 @@ onMounted(loadFriends)
 .danger { color: var(--danger); }
 .table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.875rem; }
 .table th, .table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+.user-cell { display: flex; align-items: center; gap: 0.5rem; }
+.mini-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); }
 </style>

@@ -9,9 +9,15 @@ Auth:
   RefreshExpire: 604800
   CookieSecure: false
 
-# 使用 Compose 内 mysql 服务；若要用本机 3306，改为 host.docker.internal:3306 并去掉 auth 对 mysql 的 depends_on
-MySQL:
-  DataSource: root:123456@tcp(mysql:3306)/smart_ledger?parseTime=true&charset=utf8mb4&loc=Local
+# 使用宿主机 MySQL（Compose 不内置数据库）
+Database:
+  DataSource: root:123456@tcp(host.docker.internal:3306)/smart_ledger?parseTime=true&charset=utf8mb4&loc=Local
+
+Avatar:
+  Dir: /data/avatars
+
+Snowflake:
+  NodeID: 1
 
 Users:
   - username: admin

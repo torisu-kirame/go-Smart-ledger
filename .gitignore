@@ -4,6 +4,8 @@
 .env
 backend/bin/
 backend/data/
+data/avatars/
+backend/services/auth/data/
 backend/infra/miniledger/node_modules/
 backend/infra/miniledger/data/
 # Linux 交叉编译产物（Docker 用，不提交）

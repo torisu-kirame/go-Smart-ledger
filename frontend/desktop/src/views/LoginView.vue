@@ -27,7 +27,7 @@
       <button class="btn-primary" style="width:100%" :disabled="loading">
         {{ loading ? (mode === 'login' ? '登录中…' : '注册中…') : (mode === 'login' ? '登录' : '注册并登录') }}
       </button>
-      <p class="hint">MySQL 用户体系 · 登录后可在「好友」页通过用户 ID 添加好友</p>
+      <p class="hint">登录后可在「个人中心」管理资料，在「好友」页通过用户 ID 添加好友</p>
     </form>
   </div>
 </template>

@@ -16,11 +16,12 @@ type Member struct {
 }
 
 type LedgerMeta struct {
-	ID           string     `json:"id"`
-	Type         LedgerType `json:"type"`
-	Name         string     `json:"name"`
-	CreatorID    string     `json:"creatorId"`
-	Members      []Member   `json:"members"`
+	ID            string     `json:"id"`
+	Type          LedgerType `json:"type"`
+	Name          string     `json:"name"`
+	CreatorID     string     `json:"creatorId"`
+	LedgerAddress string     `json:"ledgerAddress,omitempty"`
+	Members       []Member   `json:"members"`
 	LatestSeq    uint64     `json:"latestSeq"`
 	LatestRoot   string     `json:"latestRoot"`
 	AnchorStatus string     `json:"anchorStatus"`

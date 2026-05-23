@@ -2,23 +2,25 @@ package ledgersvc
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 )
 
 // Service implements ledger business rules on top of Chainscore MiniLedger.
 type Service struct {
 	chain *miniledgerclient.Client
+	hd    *ledgerhd.Deriver
 }
 
-func New(chain *miniledgerclient.Client) *Service {
-	return &Service{chain: chain}
+func New(chain *miniledgerclient.Client, hd *ledgerhd.Deriver) *Service {
+	return &Service{chain: chain, hd: hd}
 }
 
 func (s *Service) Online(ctx context.Context) bool {
@@ -29,27 +31,40 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 	if err := domain.ValidateCreate(t, members); err != nil {
 		return nil, err
 	}
-	id, err := newID()
+	idInt, err := snowflake.NextInt64()
 	if err != nil {
 		return nil, err
 	}
+	id := strconv.FormatInt(idInt, 10)
+	members = assignMemberAddresses(s.hd, idInt, members)
+	ledgerAddr := ""
+	if s.hd != nil {
+		idx := ledgerIndexFromID(idInt)
+		ledgerAddr, err = s.hd.LedgerAddress(idx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	now := time.Now().UTC()
 	meta := &domain.LedgerMeta{
-		ID:           id,
-		Type:         t,
-		Name:         name,
-		CreatorID:    creatorID,
-		Members:      members,
-		LatestSeq:    0,
-		LatestRoot:   domain.MerkleRoot(nil),
-		AnchorStatus: "pending",
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:            id,
+		Type:          t,
+		Name:          name,
+		CreatorID:     creatorID,
+		LedgerAddress: ledgerAddr,
+		Members:       members,
+		LatestSeq:     0,
+		LatestRoot:    domain.MerkleRoot(nil),
+		AnchorStatus:  "pending",
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err
 	}
-	payload, _ := json.Marshal(map[string]any{"name": name, "type": t, "members": members})
+	payload, _ := json.Marshal(map[string]any{
+		"name": name, "type": t, "members": members, "ledgerAddress": ledgerAddr,
+	})
 	if _, err := s.appendEvent(ctx, meta, creatorID, domain.EventLedgerCreated, payload); err != nil {
 		return nil, err
 	}
@@ -230,12 +245,28 @@ func (s *Service) loadMeta(ctx context.Context, id string) (*domain.LedgerMeta, 
 	return &meta, nil
 }
 
-func newID() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+func ledgerIndexFromID(id int64) uint32 {
+	return uint32(id & 0x7fffffff)
+}
+
+func assignMemberAddresses(hd *ledgerhd.Deriver, ledgerID int64, members []domain.Member) []domain.Member {
+	if hd == nil {
+		return members
 	}
-	return hex.EncodeToString(b), nil
+	idx := ledgerIndexFromID(ledgerID)
+	out := make([]domain.Member, len(members))
+	for i, m := range members {
+		out[i] = m
+		if m.Address == "" {
+			addr, err := hd.MemberAddress(idx, uint32(i))
+			if err == nil {
+				out[i].Address = ledgerhd.NormalizeAddress(addr)
+			}
+		} else {
+			out[i].Address = ledgerhd.NormalizeAddress(m.Address)
+		}
+	}
+	return out
 }
 
 // MapDomainError converts domain errors to HTTP-friendly codes.

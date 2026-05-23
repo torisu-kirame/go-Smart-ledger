@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,9 +41,17 @@ func (s *MySQLStore) Create(username, password string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.db.Exec(
-		`INSERT INTO users (username, password_hash) VALUES (?, ?)`,
-		username, string(hash),
+	idStr, err := snowflake.NextString()
+	if err != nil {
+		return nil, err
+	}
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.db.Exec(
+		`INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)`,
+		id, username, string(hash),
 	)
 	if err != nil {
 		if isDuplicate(err) {
@@ -50,8 +59,7 @@ func (s *MySQLStore) Create(username, password string) (*User, error) {
 		}
 		return nil, err
 	}
-	id, _ := res.LastInsertId()
-	return &User{ID: strconv.FormatInt(id, 10), Username: username}, nil
+	return &User{ID: idStr, Username: username}, nil
 }
 
 func (s *MySQLStore) FindByID(id string) (*User, error) {

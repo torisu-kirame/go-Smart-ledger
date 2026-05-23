@@ -8,17 +8,21 @@ var schemaTables = []tableSchema{
 	{
 		name: "users",
 		createSQL: `CREATE TABLE IF NOT EXISTS users (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			id BIGINT UNSIGNED NOT NULL,
 			username VARCHAR(64) NOT NULL,
 			password_hash VARCHAR(255) NOT NULL,
+			nickname VARCHAR(64) NOT NULL DEFAULT '',
+			avatar_url VARCHAR(512) NOT NULL DEFAULT '',
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
 			UNIQUE KEY uk_username (username)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 		columns: []columnSchema{
-			{name: "id", addSQL: "ADD COLUMN id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT FIRST"},
+			{name: "id", addSQL: "ADD COLUMN id BIGINT UNSIGNED NOT NULL FIRST"},
 			{name: "username", addSQL: "ADD COLUMN username VARCHAR(64) NOT NULL"},
 			{name: "password_hash", addSQL: "ADD COLUMN password_hash VARCHAR(255) NOT NULL"},
+			{name: "nickname", addSQL: "ADD COLUMN nickname VARCHAR(64) NOT NULL DEFAULT ''"},
+			{name: "avatar_url", addSQL: "ADD COLUMN avatar_url VARCHAR(512) NOT NULL DEFAULT ''"},
 			{name: "created_at", addSQL: "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
 		},
 		indexes: []indexSchema{
@@ -55,6 +59,60 @@ var schemaTables = []tableSchema{
 			{
 				name:       "fk_friendships_friend",
 				createSQL:  "ALTER TABLE friendships ADD CONSTRAINT fk_friendships_friend FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
+	{
+		name: "teams",
+		createSQL: `CREATE TABLE IF NOT EXISTS teams (
+			id BIGINT UNSIGNED NOT NULL,
+			name VARCHAR(128) NOT NULL,
+			ledger_id VARCHAR(32) NOT NULL,
+			creator_id BIGINT UNSIGNED NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_teams_creator (creator_id),
+			KEY idx_teams_ledger (ledger_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "id", addSQL: "ADD COLUMN id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "name", addSQL: "ADD COLUMN name VARCHAR(128) NOT NULL"},
+			{name: "ledger_id", addSQL: "ADD COLUMN ledger_id VARCHAR(32) NOT NULL"},
+			{name: "creator_id", addSQL: "ADD COLUMN creator_id BIGINT UNSIGNED NOT NULL"},
+			{name: "created_at", addSQL: "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_teams_creator",
+				createSQL:  "ALTER TABLE teams ADD CONSTRAINT fk_teams_creator FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
+	{
+		name: "team_members",
+		createSQL: `CREATE TABLE IF NOT EXISTS team_members (
+			team_id BIGINT UNSIGNED NOT NULL,
+			user_id BIGINT UNSIGNED NOT NULL,
+			joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (team_id, user_id),
+			KEY idx_team_members_user (user_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "team_id", addSQL: "ADD COLUMN team_id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "user_id", addSQL: "ADD COLUMN user_id BIGINT UNSIGNED NOT NULL"},
+			{name: "joined_at", addSQL: "ADD COLUMN joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_team_members_team",
+				createSQL:  "ALTER TABLE team_members ADD CONSTRAINT fk_team_members_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+				referenced: "teams",
+			},
+			{
+				name:       "fk_team_members_user",
+				createSQL:  "ALTER TABLE team_members ADD CONSTRAINT fk_team_members_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
 				referenced: "users",
 			},
 		},

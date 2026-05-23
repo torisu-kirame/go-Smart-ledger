@@ -7,6 +7,12 @@ MiniLedger:
 
 BackupDir: ./data/backups
 
+HDWallet:
+  Mnemonic: "test test test test test test test test test test test junk"
+
+Snowflake:
+  NodeID: 2
+
 Log:
   Mode: console
   Level: info
