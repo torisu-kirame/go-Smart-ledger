@@ -1,6 +1,7 @@
 package svc
 
 import (
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/evmanchor"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ipfsclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
@@ -42,6 +43,23 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 			return nil, err
 		}
 	}
+	extCfg, err := evmanchor.LoadConfigFromEnv(evmanchor.Config{
+		Enabled:             c.ExternalAnchor.Enabled,
+		RPCURL:              c.ExternalAnchor.RPCURL,
+		ChainID:             c.ExternalAnchor.ChainID,
+		ChainName:           c.ExternalAnchor.ChainName,
+		Contract:            c.ExternalAnchor.Contract,
+		PrivateKeyHex:       c.ExternalAnchor.PrivateKeyHex,
+		ExplorerURLTemplate: c.ExternalAnchor.ExplorerURLTemplate,
+	})
+	if err != nil {
+		return nil, err
+	}
+	external, err := evmanchor.New(extCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	var queue *txqueue.Queue
 	if c.TxQueue.Enabled {
 		queue, err = txqueue.New(chain.Submit, txqueue.Options{
@@ -56,7 +74,7 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 	return &ServiceContext{
 		Config: c,
 		Chain:  chain,
-		Ledger: ledgersvc.New(chain, hd, queue),
+		Ledger: ledgersvc.New(chain, hd, queue, external),
 		Backup: storage.NewDualBackup(disk, ipfs),
 		IPFS:   ipfs,
 		Queue:  queue,

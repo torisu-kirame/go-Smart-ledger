@@ -71,6 +71,9 @@ services:
       context: ./backend
       dockerfile: deploy/Dockerfile.auth
     container_name: smart-ledger-auth-api
+    env_file:
+      - path: .env
+        required: false
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -110,6 +113,9 @@ services:
       context: ./backend
       dockerfile: deploy/Dockerfile.ledger
     container_name: smart-ledger-ledger-api
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - ledger-data:/data
     ports:
@@ -150,6 +156,9 @@ services:
       context: ./backend
       dockerfile: deploy/Dockerfile.gateway
     container_name: smart-ledger-gateway
+    env_file:
+      - path: .env
+        required: false
     ports:
       - "28080:28080"
     depends_on:

@@ -139,9 +139,9 @@ go-Smart-ledger/
 | F24 | 前端纳入 Docker（Nginx 托管 dist） | P1 | ✅ 已完成 |
 | F25 | 移动端 Vue3 / Uni-app | P2 | ⬜ 未完成 |
 | F26 | 集成测试 / CI（GitHub Actions） | P2 | ⬜ 未完成 |
-| F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ⬜ 未完成 |
+| F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ✅ 已完成 |
 | F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
-| F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ⬜ 未完成 |
+| F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ✅ 已完成 |
 | F30 | 项目根 README 计划与进度维护 | P0 | ✅ 已完成 |
 
 **状态图例**：✅ 已完成 · 🟡 进行中 · ⬜ 未完成
@@ -168,6 +168,8 @@ go-Smart-ledger/
 - [x] **F23 上链重试**：`pkg/txqueue` + **NSQ** 异步重试；本地 JSON 状态 + topic `chain_tx_retry`；`/api/v1/chain/queue`；概览与链浏览器页展示待上链
 - [x] **F28 服务发现**：etcd 注册/发现；ledger gRPC health（:28898）；`docker-compose.discovery.yml`；`GET /api/v1/discovery/services`
 - [x] **链浏览器页**：控制台 `/chain` 内嵌 MiniLedger Dashboard（Nginx `/miniledger/` 反代）
+- [x] **F27 生产加固**：`SL_*` 环境变量注入 JWT/Cookie；网关 IP 限流；`docker-compose.https.yml` + Nginx TLS 示例；见 `docs/production-security.md`
+- [x] **F29 EVM 锚定**：`LedgerAnchor` 合约 + `pkg/evmanchor`；封账时可选上链 Merkle 根；见 `docs/evm-anchor.md`
 
 ### 后端
 

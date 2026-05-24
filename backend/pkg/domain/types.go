@@ -27,11 +27,24 @@ type LedgerMeta struct {
 	Encryption     LedgerEncryption `json:"encryption,omitempty"`
 	LatestSeq      uint64           `json:"latestSeq"`
 	LatestRoot     string           `json:"latestRoot"`
-	AnchorStatus   string           `json:"anchorStatus"`
-	LastBackupRef  string           `json:"lastBackupRef,omitempty"`
-	LastBackupCID  string           `json:"lastBackupCid,omitempty"`
-	CreatedAt      time.Time        `json:"createdAt"`
-	UpdatedAt      time.Time        `json:"updatedAt"`
+	AnchorStatus    string                `json:"anchorStatus"`
+	ExternalAnchor  *ExternalAnchorRecord `json:"externalAnchor,omitempty"`
+	LastBackupRef   string                `json:"lastBackupRef,omitempty"`
+	LastBackupCID   string                `json:"lastBackupCid,omitempty"`
+	CreatedAt       time.Time             `json:"createdAt"`
+	UpdatedAt       time.Time             `json:"updatedAt"`
+}
+
+// ExternalAnchorRecord stores an EVM/L2 anchor transaction (F29).
+type ExternalAnchorRecord struct {
+	TxHash      string    `json:"txHash"`
+	ChainID     uint64    `json:"chainId"`
+	ChainName   string    `json:"chainName,omitempty"`
+	ExplorerURL string    `json:"explorerUrl,omitempty"`
+	MerkleRoot  string    `json:"merkleRoot,omitempty"`
+	SeqFrom     uint64    `json:"seqFrom,omitempty"`
+	SeqTo       uint64    `json:"seqTo,omitempty"`
+	AnchoredAt  time.Time `json:"anchoredAt"`
 }
 
 type EventRecord struct {
@@ -100,8 +113,9 @@ const (
 	EventLedgerCreated  = "LedgerCreated"
 	EventEntryAdded     = "EntryAdded"
 	EventImportBatch    = "ImportBatch"
-	EventBatchSealed    = "BatchSealed"
-	EventBackupAnchored = "BackupAnchored"
+	EventBatchSealed       = "BatchSealed"
+	EventBackupAnchored    = "BackupAnchored"
+	EventExternalAnchored  = "ExternalAnchored"
 )
 // Collaboration events: EntryProposed, EntryApproved, EntryRejected,
 // MemberInvited, MemberJoined, GroupKeyRotated — see collaboration.go

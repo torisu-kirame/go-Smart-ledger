@@ -22,11 +22,13 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	c.ApplyEnv()
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
 
 	server.Use(middleware.CORS(c.Cors.AllowedOrigins))
+	server.Use(middleware.RateLimit(c.Security))
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)

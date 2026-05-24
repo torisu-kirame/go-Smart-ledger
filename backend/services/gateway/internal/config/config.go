@@ -21,4 +21,17 @@ type Config struct {
 	Cors struct {
 		AllowedOrigins []string `json:",default=http://localhost:25173"`
 	} `json:"Cors"`
+	Security SecurityConfig `json:"Security"`
+}
+
+// SecurityConfig groups production hardening options (F27).
+type SecurityConfig struct {
+	TrustForwardedProto bool `json:",default=true"`
+	RateLimit           struct {
+		Enabled   bool `json:",default=true"`
+		GlobalRPM int  `json:",default=600"`
+		Burst     int  `json:",default=80"`
+		AuthRPM   int  `json:",default=30"`
+		AuthBurst int  `json:",default=10"`
+	} `json:"RateLimit"`
 }

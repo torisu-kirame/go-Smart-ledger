@@ -27,8 +27,9 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		},
 		LatestSeq:     m.LatestSeq,
 		LatestRoot:    m.LatestRoot,
-		AnchorStatus:  m.AnchorStatus,
-		LastBackupRef: m.LastBackupRef,
+		AnchorStatus:    m.AnchorStatus,
+		ExternalAnchor:  externalToResp(m.ExternalAnchor),
+		LastBackupRef:   m.LastBackupRef,
 		LastBackupCid: m.LastBackupCID,
 	}
 }
@@ -44,6 +45,19 @@ func CreateOptionsFromReq(req *types.CreateLedgerReq) ledgersvc.CreateOptions {
 			Algo:        req.Encryption.Algo,
 			WrappedKeys: req.Encryption.WrappedKeys,
 		},
+	}
+}
+
+func externalToResp(e *domain.ExternalAnchorRecord) *types.ExternalAnchorResp {
+	if e == nil {
+		return nil
+	}
+	return &types.ExternalAnchorResp{
+		TxHash:      e.TxHash,
+		ChainId:     e.ChainID,
+		ChainName:   e.ChainName,
+		ExplorerUrl: e.ExplorerURL,
+		MerkleRoot:  e.MerkleRoot,
 	}
 }
 

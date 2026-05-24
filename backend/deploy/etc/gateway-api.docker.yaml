@@ -14,6 +14,16 @@ Cors:
   AllowedOrigins:
     - http://localhost:25173
     - http://127.0.0.1:25173
+    - https://localhost:25174
+
+Security:
+  TrustForwardedProto: true
+  RateLimit:
+    Enabled: true
+    GlobalRPM: 600
+    Burst: 80
+    AuthRPM: 30
+    AuthBurst: 10
 
 Log:
   Mode: console

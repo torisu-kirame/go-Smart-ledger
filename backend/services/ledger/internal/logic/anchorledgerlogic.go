@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/types"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -32,11 +33,28 @@ func (l *AnchorLedgerLogic) AnchorLedger(id string, req *types.AnchorReq) (*type
 			seq = meta.LatestSeq
 		}
 	}
-	return &types.AnchorResp{
+	resp := &types.AnchorResp{
 		LedgerId: id,
 		Seq:      seq,
 		Root:     root,
 		TxHash:   tx,
 		Status:   "synced",
-	}, nil
+	}
+	if meta != nil && meta.ExternalAnchor != nil {
+		resp.ExternalAnchor = externalToResp(meta.ExternalAnchor)
+	}
+	return resp, nil
+}
+
+func externalToResp(e *domain.ExternalAnchorRecord) *types.ExternalAnchorResp {
+	if e == nil {
+		return nil
+	}
+	return &types.ExternalAnchorResp{
+		TxHash:      e.TxHash,
+		ChainId:     e.ChainID,
+		ChainName:   e.ChainName,
+		ExplorerUrl: e.ExplorerURL,
+		MerkleRoot:  e.MerkleRoot,
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/evmanchor"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
@@ -17,13 +18,17 @@ import (
 
 // Service implements ledger business rules on top of Chainscore MiniLedger.
 type Service struct {
-	chain *miniledgerclient.Client
-	hd    *ledgerhd.Deriver
-	queue *txqueue.Queue
+	chain    *miniledgerclient.Client
+	hd       *ledgerhd.Deriver
+	queue    *txqueue.Queue
+	external evmanchor.Anchorer
 }
 
-func New(chain *miniledgerclient.Client, hd *ledgerhd.Deriver, queue *txqueue.Queue) *Service {
-	return &Service{chain: chain, hd: hd, queue: queue}
+func New(chain *miniledgerclient.Client, hd *ledgerhd.Deriver, queue *txqueue.Queue, external evmanchor.Anchorer) *Service {
+	if external == nil {
+		external = evmanchor.Noop()
+	}
+	return &Service{chain: chain, hd: hd, queue: queue, external: external}
 }
 
 func (s *Service) Online(ctx context.Context) bool {
@@ -165,7 +170,35 @@ func (s *Service) Anchor(ctx context.Context, ledgerID string, seqFrom, seqTo ui
 	if err := s.putMeta(ctx, meta); err != nil {
 		return "", err
 	}
-	return "miniledger-anchored", nil
+	txHash = "miniledger-anchored"
+	if s.external != nil && s.external.Enabled() {
+		ext, err := s.external.Anchor(ctx, ledgerID, meta.LatestRoot, seqFrom, seqTo)
+		if err != nil {
+			return "", fmt.Errorf("miniledger sealed but external anchor failed: %w", err)
+		}
+		if ext != nil {
+			meta.ExternalAnchor = &domain.ExternalAnchorRecord{
+				TxHash:      ext.TxHash,
+				ChainID:     ext.ChainID,
+				ChainName:   ext.ChainName,
+				ExplorerURL: ext.ExplorerURL,
+				MerkleRoot:  meta.LatestRoot,
+				SeqFrom:     seqFrom,
+				SeqTo:       seqTo,
+				AnchoredAt:  ext.AnchoredAt,
+			}
+			meta.UpdatedAt = time.Now().UTC()
+			if err := s.putMeta(ctx, meta); err != nil {
+				return "", err
+			}
+			extPayload, _ := json.Marshal(map[string]any{
+				"txHash": ext.TxHash, "chainId": ext.ChainID, "root": meta.LatestRoot,
+			})
+			_, _ = s.appendEvent(ctx, meta, meta.CreatorID, domain.EventExternalAnchored, extPayload)
+			txHash = ext.TxHash
+		}
+	}
+	return txHash, nil
 }
 
 func (s *Service) Verify(ctx context.Context, ledgerID string) (bool, error) {

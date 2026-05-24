@@ -10,6 +10,20 @@
       <div class="card"><h4>锚定</h4><div class="val"><span :class="['badge', ledger.anchorStatus==='synced'?'badge-ok':'badge-pending']">{{ ledger.anchorStatus }}</span></div></div>
     </div>
 
+    <div v-if="ledger.externalAnchor?.txHash" class="panel external-anchor">
+      <h3>链外锚定（EVM）</h3>
+      <p class="mono">{{ ledger.externalAnchor.txHash }}</p>
+      <p v-if="ledger.externalAnchor.chainName || ledger.externalAnchor.chainId">
+        {{ ledger.externalAnchor.chainName || 'Chain' }} · ID {{ ledger.externalAnchor.chainId }}
+      </p>
+      <a
+        v-if="ledger.externalAnchor.explorerUrl"
+        :href="ledger.externalAnchor.explorerUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >在区块浏览器查看</a>
+    </div>
+
     <div v-if="ledger.encryption?.enabled" class="panel">
       <div v-if="!groupKeyReady" class="form-row">
         <label>输入加密口令以解密/记账</label>
@@ -251,7 +265,9 @@ async function doAnchor() {
   busy.value = true
   try {
     const r = await api.anchor(id)
-    msg.value = `封账成功 · ${r.status}`
+    msg.value = r.externalAnchor?.txHash
+      ? `封账成功 · 链外锚定 ${r.externalAnchor.txHash.slice(0, 14)}…`
+      : `封账成功 · ${r.status}`
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '锚定失败'
@@ -281,4 +297,6 @@ function goBackup() {
   flex-wrap: wrap;
 }
 .mono { font-family: ui-monospace, monospace; }
+.external-anchor .mono { word-break: break-all; font-size: 0.85rem; }
+.external-anchor a { color: var(--accent); }
 </style>

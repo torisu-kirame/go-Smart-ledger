@@ -42,6 +42,15 @@ IPFS:
   ApiURL: http://ipfs:5001
   Enabled: false
 
+# F29: set Enabled true + contract after deploying LedgerAnchor (see docs/evm-anchor.md)
+ExternalAnchor:
+  Enabled: false
+  RPCURL: http://anvil:8545
+  ChainID: 31337
+  ChainName: anvil
+  Contract: ""
+  ExplorerURLTemplate: ""
+
 Log:
   Mode: console
   Level: info

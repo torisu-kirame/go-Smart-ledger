@@ -37,4 +37,13 @@ type Config struct {
 		ApiURL  string `json:",optional"`
 		Enabled bool   `json:",default=true"`
 	} `json:"IPFS"`
+	ExternalAnchor struct {
+		Enabled             bool   `json:",default=false"`
+		RPCURL              string `json:",optional"`
+		ChainID             uint64 `json:",optional"`
+		ChainName           string `json:",optional"`
+		Contract            string `json:",optional"`
+		PrivateKeyHex       string `json:",optional"`
+		ExplorerURLTemplate string `json:",optional"`
+	} `json:"ExternalAnchor"`
 }

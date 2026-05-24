@@ -9,11 +9,20 @@ type AnchorReq struct {
 }
 
 type AnchorResp struct {
-	LedgerId string `json:"ledgerId"`
-	Seq      uint64 `json:"seq"`
-	Root     string `json:"root"`
-	TxHash   string `json:"txHash,omitempty"`
-	Status   string `json:"status"`
+	LedgerId            string               `json:"ledgerId"`
+	Seq                 uint64               `json:"seq"`
+	Root                string               `json:"root"`
+	TxHash              string               `json:"txHash,omitempty"`
+	Status              string               `json:"status"`
+	ExternalAnchor      *ExternalAnchorResp  `json:"externalAnchor,omitempty"`
+}
+
+type ExternalAnchorResp struct {
+	TxHash      string `json:"txHash"`
+	ChainId     uint64 `json:"chainId"`
+	ChainName   string `json:"chainName,omitempty"`
+	ExplorerUrl string `json:"explorerUrl,omitempty"`
+	MerkleRoot  string `json:"merkleRoot,omitempty"`
 }
 
 type AppendEntryReq struct {
@@ -98,9 +107,10 @@ type LedgerResp struct {
 	LatestSeq      uint64            `json:"latestSeq"`
 	LatestRoot     string            `json:"latestRoot"`
 	BlockHeight    uint64            `json:"blockHeight,omitempty"`
-	AnchorStatus   string            `json:"anchorStatus"`
-	LastBackupRef  string            `json:"lastBackupRef,omitempty"`
-	LastBackupCid  string            `json:"lastBackupCid,omitempty"`
+	AnchorStatus     string               `json:"anchorStatus"`
+	ExternalAnchor   *ExternalAnchorResp  `json:"externalAnchor,omitempty"`
+	LastBackupRef    string               `json:"lastBackupRef,omitempty"`
+	LastBackupCid    string               `json:"lastBackupCid,omitempty"`
 }
 
 type ListEventsReq struct {
