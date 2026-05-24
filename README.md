@@ -9,6 +9,8 @@
 ## 目录
 
 - [架构概览](#架构概览)
+- [数据存储与私有化](#数据存储与私有化)
+- [离线 AI：OpenClaw 与账本 RAG](#离线-aiopenclaw-与账本-rag)
 - [仓库结构](#仓库结构)
 - [端口一览](#端口一览)
 - [项目计划（功能清单）](#项目计划功能清单)
@@ -57,6 +59,69 @@ flowchart TB
 
 ---
 
+## 数据存储与私有化
+
+### 当前形态：私有化部署的「本地/内网服务」，不是公网 SaaS
+
+| 数据类型 | 存放位置 | 线上/线下 | 谁能访问 |
+|----------|----------|-----------|----------|
+| 用户、好友、团队 | **自建 MySQL**（Compose 外） | 内网/自建库 | 登录用户；无跨租户 |
+| 账本元数据与记账事件 | **MiniLedger 世界状态**（节点本地 SQLite） | 链服务内网 | **账本成员**（`ListForUser` / `GetForUser` 校验） |
+| 加密备份快照 | storage 磁盘 + 可选 **IPFS**（profile） | 内网卷 / 自建 IPFS | 持有备份密码者；CID 可上链存证 |
+| 可选 EVM 锚定 | 公链/L2 合约 | 仅 Merkle 根哈希上链 | 链上公开的是根，不是明细 |
+
+结论：**账本明细默认落在你们自己控制的机器与网络里**（Docker 内网或机房），**不是**上传到项目方运营的公有云多租户库。若把 Compose 端口暴露到公网且不改密钥，则等同于「自建服务对外上线」——安全责任在部署方。
+
+### 与「仅相关用户/团队可见」的差距
+
+| 能力 | 现状 | 说明 |
+|------|------|------|
+| 成员隔离 | ✅ | 私人账本创建者；多人账本成员列表 + 邀请加入 |
+| 团队维度 | ✅ 部分 | 「团队」绑定多人账本，便于协作入口 |
+| 细粒度 RBAC | ⬜ | 无角色/权限矩阵（Fxx RBAC 未做） |
+| 传输与静态加密 | 部分 | HTTPS/Cookie Secure（F27）；备份 Argon2+AES；可选账本 E2E（F19） |
+| 审计与脱敏导出 | 部分 | 链上事件可追溯；RAG 导出需 JWT（见下） |
+
+### 推荐私有化落地（生产）
+
+1. **网络**：控制台与 API 仅内网或 VPN；前置 Nginx/TLS（[`docs/production-security.md`](docs/production-security.md)）；不将 MiniLedger/MySQL 端口直接暴露公网。
+2. **密钥**：`SL_ACCESS_SECRET` / `SL_REFRESH_SECRET`、MySQL 口令、`HDWallet.Mnemonic`、EVM 私钥均走环境变量或 KMS（见 `.env.example`）。
+3. **数据面**：MySQL 与 MiniLedger 数据卷仅授权运维可挂载；定期加密备份；IPFS 用私有集群或关闭 `ipfs` profile。
+4. **权限**：在 RBAC 完成前，依赖「账本成员」边界；敏感账本开启 **F19 组级 E2E**，RAG/导出仅在客户端解密后进行。
+5. **合规**：运维签署访问制度；链外锚定（F29）只上 Merkle 根，避免把明细写入公链。
+
+```text
+推荐拓扑（单机私有化）:
+
+  [用户浏览器] --HTTPS--> [Nginx :443]
+                              |
+                    [gateway :28080 JWT]
+                     /      |        \
+              [auth]   [ledger]   [storage]
+                 |         |
+            [MySQL]   [MiniLedger :24441]
+            (内网)      (Docker 卷，不对外)
+```
+
+---
+
+## 离线 AI：OpenClaw 与账本 RAG
+
+在**不出网**前提下，可用 [OpenClaw](https://github.com/openclaw/openclaw) + 本地 Ollama 对**已授权账本**做问答与检索。
+
+| 组件 | 路径 / 说明 |
+|------|-------------|
+| 克隆脚本 | `scripts/setup-openclaw.ps1` / `.sh` → 根目录 **`openclaw/`**（已 `.gitignore`，不进入本仓库） |
+| 集成配置 | [`integrations/openclaw/`](integrations/openclaw/) 工作区、`openclaw.example.json` |
+| 控制台 AI 设置 | **设置 → 离线 AI（OpenClaw）**：Ollama 地址、对话/向量模型、复制配置片段 |
+| RAG 导出 API | `GET /api/v1/ledgers/:id/rag-export`（JWT，仅成员） |
+| 文档 | [`docs/openclaw-integration.md`](docs/openclaw-integration.md) |
+| 本地 LLM | `docker compose -f docker-compose.openclaw.yml up -d`（Ollama） |
+
+流程简述：登录控制台 →（可选）设置里配置 Ollama → 用脚本或 Agent 拉取 `rag-export` → OpenClaw `memory-lancedb` 本地向量库 → 对话 Agent 仅基于本机索引回答。
+
+---
+
 ## 仓库结构
 
 ```text
@@ -64,6 +129,10 @@ go-Smart-ledger/
 ├── README.md                 # 本文件：计划 + 进度
 ├── Makefile                  # 全栈构建入口
 ├── docker-compose.yml        # 一键启动后端 + MiniLedger
+├── docker-compose.openclaw.yml  # 可选：本地 Ollama
+├── integrations/openclaw/    # OpenClaw 工作区与示例配置（不含上游源码）
+├── openclaw/                 # 由 setup-openclaw 克隆（gitignore）
+├── docs/                     # production-security、evm-anchor、openclaw-integration
 ├── backend/                  # Go 后端工作区
 │   ├── pkg/                  # 领域、JWT、xlsx、MiniLedger 客户端等
 │   ├── services/
@@ -143,6 +212,7 @@ go-Smart-ledger/
 | F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
 | F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ✅ 已完成 |
 | F30 | 项目根 README 计划与进度维护 | P0 | ✅ 已完成 |
+| F34 | OpenClaw 离线 RAG + 可配置本地 AI | P2 | 🟡 进行中 |
 
 **状态图例**：✅ 已完成 · 🟡 进行中 · ⬜ 未完成
 
@@ -170,6 +240,7 @@ go-Smart-ledger/
 - [x] **链浏览器页**：控制台 `/chain` 内嵌 MiniLedger Dashboard（Nginx `/miniledger/` 反代）
 - [x] **F27 生产加固**：`SL_*` 环境变量注入 JWT/Cookie；网关 IP 限流；`docker-compose.https.yml` + Nginx TLS 示例；见 `docs/production-security.md`
 - [x] **F29 EVM 锚定**：`LedgerAnchor` 合约 + `pkg/evmanchor`；封账时可选上链 Merkle 根；见 `docs/evm-anchor.md`
+- [x] **F34 OpenClaw（基础）**：`setup-openclaw` 脚本、`integrations/openclaw`、`/rag-export` API、设置页 AI 配置
 
 ### 后端
 
@@ -212,8 +283,8 @@ go-Smart-ledger/
 ### 中低优先级
 
 - 真 P2P 节点直连同步（当前为链上邀请 + HTTP 增量同步）
-- 移动端、CI、生产安全加固
-- 自定义字段 Schema、公链 L2 合约锚定
+- 移动端、CI
+- **F34**：控制台内嵌 OpenClaw 对话 UI、自动增量索引账本
 
 ### 已知限制
 
@@ -327,6 +398,7 @@ docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile d
 | 2026-05-23 | F32/F33：雪花 ID（用户/账本/团队）；HD 钱包派生账本与成员地址；团队页（多人账本+好友）；README 与 MySQL 表 `teams`/`team_members`。 |
 | 2026-05-23 | 移除 Compose 内置 MySQL；用户数据仅存 `Database.DataSource` 配置库；账号注销（校验用户名+密码）。 |
 | 2026-05-23 | 用户个人中心：昵称修改、头像上传；`users` 表扩展 `nickname`/`avatar_url`。 |
+| 2026-05-24 | README：数据私有化落地说明；OpenClaw 离线 RAG 集成（setup 脚本、rag-export API、设置页 AI 配置）。 |
 | 2026-05-23 | 修复概览页 MiniLedger 误显示离线：网关 `/health` 聚合 ledger 链状态。 |
 | 2026-05-22 | 后端 `infra/sql/001_schema.sql` + `pkg/db` 启动时检测并创建库/表/字段/索引/外键。 |
 | 2026-05-22 | Compose `mysql` 不再映射宿主机 3306，避免与本机 MySQL 端口冲突。 |

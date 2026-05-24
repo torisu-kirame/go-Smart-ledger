@@ -58,6 +58,48 @@
       </div>
     </section>
 
+    <section id="ai" class="settings-section panel">
+      <h3>{{ t('settings.ai.title') }}</h3>
+      <label class="inline-check">
+        <input v-model="ai.enabled" type="checkbox" @change="persistAi" />
+        {{ t('settings.ai.enabled') }}
+      </label>
+      <div class="form-row">
+        <label>{{ t('settings.ai.provider') }}</label>
+        <AppSelect
+          v-model="ai.provider"
+          :options="aiProviderOptions"
+          @change="persistAi"
+        />
+      </div>
+      <div class="form-row">
+        <label>{{ t('settings.ai.baseUrl') }}</label>
+        <input v-model="ai.baseUrl" type="url" @change="persistAi" />
+      </div>
+      <div class="form-row">
+        <label>{{ t('settings.ai.chatModel') }}</label>
+        <input v-model="ai.chatModel" @change="persistAi" />
+      </div>
+      <div class="form-row">
+        <label>{{ t('settings.ai.embedModel') }}</label>
+        <input v-model="ai.embedModel" @change="persistAi" />
+      </div>
+      <div class="form-row">
+        <label>{{ t('settings.ai.apiKey') }}</label>
+        <input v-model="ai.apiKey" type="password" autocomplete="off" @change="persistAi" />
+      </div>
+      <div class="form-row">
+        <label>{{ t('settings.ai.gateway') }}</label>
+        <input v-model="ai.openclawGateway" type="url" @change="persistAi" />
+      </div>
+      <div class="actions-row">
+        <button type="button" class="btn-ghost" @click="copyOpenClawConfig">
+          {{ t('settings.ai.copyConfig') }}
+        </button>
+      </div>
+      <p v-if="aiCopied" class="ok-line">{{ t('settings.ai.copied') }}</p>
+    </section>
+
     <section id="personal" class="settings-section panel">
       <h3>{{ t('settings.personal.title') }}</h3>
 
@@ -121,6 +163,7 @@ import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import { ACCENT_PRESETS, getAccent, getTheme, setAccent, setTheme } from '../utils/theme'
+import { exportOpenClawSnippet, loadAiConfig, saveAiConfig } from '../utils/aiConfig'
 
 const router = useRouter()
 const route = useRoute()
@@ -141,6 +184,13 @@ const error = ref('')
 const success = ref('')
 const avatarBust = ref(0)
 const avatarFailed = ref(false)
+const ai = ref(loadAiConfig())
+const aiCopied = ref(false)
+const aiProviderOptions = computed(() => [
+  { value: 'ollama', label: 'Ollama' },
+  { value: 'openai', label: 'OpenAI 兼容' },
+  { value: 'lmstudio', label: 'LM Studio' },
+])
 
 const ACCENT_I18N = {
   blue: { zh: '天蓝', en: 'Blue' },
@@ -186,6 +236,22 @@ function setAccentColor(id) {
 function onLocaleChange(val) {
   setLocale(val)
   currentLocale.value = val
+}
+
+function persistAi() {
+  saveAiConfig(ai.value)
+  aiCopied.value = false
+}
+
+async function copyOpenClawConfig() {
+  persistAi()
+  const text = exportOpenClawSnippet(ai.value)
+  try {
+    await navigator.clipboard.writeText(text)
+    aiCopied.value = true
+  } catch {
+    error.value = t('settings.ai.copyFail')
+  }
 }
 
 async function load() {
@@ -374,6 +440,12 @@ watch(() => route.hash, scrollToHash)
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.ok-line {
+  color: var(--success);
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0;
 }
 
 .info-list {

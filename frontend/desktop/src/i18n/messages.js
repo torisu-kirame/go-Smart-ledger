@@ -38,6 +38,19 @@ export const messages = {
     },
     settings: {
       title: '设置',
+      ai: {
+        title: '离线 AI（OpenClaw）',
+        enabled: '启用本地 AI 助手集成',
+        provider: '模型提供方',
+        baseUrl: 'API 地址（聊天与向量）',
+        chatModel: '对话模型',
+        embedModel: '向量模型',
+        apiKey: 'API Key（Ollama 可填 ollama）',
+        gateway: 'OpenClaw Gateway 地址',
+        copyConfig: '复制 OpenClaw 配置片段',
+        copied: '已复制到剪贴板，可粘贴到 openclaw/openclaw.json',
+        copyFail: '复制失败',
+      },
       theme: {
         title: '主题设置',
         mode: '昼夜模式',
@@ -149,6 +162,19 @@ export const messages = {
     },
     settings: {
       title: 'Settings',
+      ai: {
+        title: 'Offline AI (OpenClaw)',
+        enabled: 'Enable local AI assistant integration',
+        provider: 'Model provider',
+        baseUrl: 'API base URL (chat + embeddings)',
+        chatModel: 'Chat model',
+        embedModel: 'Embedding model',
+        apiKey: 'API key (use "ollama" for Ollama)',
+        gateway: 'OpenClaw Gateway URL',
+        copyConfig: 'Copy OpenClaw config snippet',
+        copied: 'Copied — paste into openclaw/openclaw.json',
+        copyFail: 'Copy failed',
+      },
       theme: {
         title: 'Appearance',
         mode: 'Color mode',

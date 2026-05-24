@@ -1,0 +1,17 @@
+# Optional local LLM for OpenClaw RAG (offline). OpenClaw Gateway runs on host/WSL.
+#   docker compose -f docker-compose.openclaw.yml up -d
+
+name: smart-ledger
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smart-ledger-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-models:

@@ -19,3 +19,7 @@ frontend/desktop/.npm-cache/
 frontend/desktop/dist/
 frontend/mobile/node_modules/
 /docx/
+
+# OpenClaw upstream clone (scripts/setup-openclaw.*)
+/openclaw/
+data/openclaw/

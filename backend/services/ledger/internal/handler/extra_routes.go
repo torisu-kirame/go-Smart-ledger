@@ -27,7 +27,25 @@ func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		{Method: http.MethodPost, Path: "/ledgers/:id/backup", Handler: ledgerBackupHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/restore/preview", Handler: restorePreviewHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/restore/commit", Handler: restoreCommitHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/rag-export", Handler: ragExportHandler(serverCtx)},
 	}, prefix)
+}
+
+func ragExportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		id := pathvar.Vars(r)["id"]
+		out, err := svcCtx.Ledger.ExportRAG(r.Context(), id, uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
 }
 
 func schemaTemplatesHandler() http.HandlerFunc {

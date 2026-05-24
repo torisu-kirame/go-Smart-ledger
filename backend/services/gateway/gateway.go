@@ -101,6 +101,7 @@ func main() {
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/invites", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/invites/accept", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/sync", Handler: ledgerProxy},
+		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/rag-export", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/encryption/rotate", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/storage/backup", Handler: storageProxy},
 		{Method: http.MethodPost, Path: "/api/v1/storage/backup/fetch", Handler: storageProxy},

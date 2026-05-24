@@ -100,6 +100,7 @@ export const api = {
     request(`/entry-templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   listLedgers: () => request('/ledgers'),
   getLedger: (id) => request(`/ledgers/${id}`),
+  ragExport: (id) => request(`/ledgers/${encodeURIComponent(id)}/rag-export`),
   createLedger: (data) =>
     request('/ledgers', {
       method: 'POST',
