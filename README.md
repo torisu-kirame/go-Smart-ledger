@@ -10,6 +10,7 @@
 
 - [架构概览](#架构概览)
 - [数据存储与私有化](#数据存储与私有化)
+- [本地 SQLite · 云端备份 · 多人同步](#本地-sqlite--云端备份--多人同步)
 - [离线 AI：OpenClaw 与账本 RAG](#离线-aiopenclaw-与账本-rag)
 - [仓库结构](#仓库结构)
 - [端口一览](#端口一览)
@@ -61,16 +62,27 @@ flowchart TB
 
 ## 数据存储与私有化
 
-### 当前形态：私有化部署的「本地/内网服务」，不是公网 SaaS
+### 推荐模型（本地优先 + 可选云端 + 多人同步）
 
-| 数据类型 | 存放位置 | 线上/线下 | 谁能访问 |
-|----------|----------|-----------|----------|
-| 用户、好友、团队 | **自建 MySQL**（Compose 外） | 内网/自建库 | 登录用户；无跨租户 |
-| 账本元数据与记账事件 | **MiniLedger 世界状态**（节点本地 SQLite） | 链服务内网 | **账本成员**（`ListForUser` / `GetForUser` 校验） |
-| 加密备份快照 | storage 磁盘 + 可选 **IPFS**（profile） | 内网卷 / 自建 IPFS | 持有备份密码者；CID 可上链存证 |
-| 可选 EVM 锚定 | 公链/L2 合约 | 仅 Merkle 根哈希上链 | 链上公开的是根，不是明细 |
+| 数据 | 默认落点 | 用户可选 |
+|------|----------|----------|
+| 记账事件（权威） | 团队 **MiniLedger** 节点（服务端 SQLite） | — |
+| 本机可读副本 | 用户浏览器 **本机 SQLite**（`sql.js` → IndexedDB 磁盘文件） | 「同步到本机」 |
+| 加密全量备份 | 服务器本地卷 | **云端**：IPFS / 未来对象存储（均为密文） |
+| 账号/好友/团队 | 自建 **MySQL** | — |
 
-结论：**账本明细默认落在你们自己控制的机器与网络里**（Docker 内网或机房），**不是**上传到项目方运营的公有云多租户库。若把 Compose 端口暴露到公网且不改密钥，则等同于「自建服务对外上线」——安全责任在部署方。
+多人账本：成员通过 API **增量同步**（`sinceSeq`）把链上事件合并进各自本机库；写入仍以服务端链为准。
+
+详见 [`docs/local-first-storage.md`](docs/local-first-storage.md)。
+
+### 当前部署形态
+
+| 数据类型 | 存放位置 | 谁能访问 |
+|----------|----------|----------|
+| 用户、好友、团队 | **自建 MySQL** | 登录用户 |
+| 账本元数据与事件（权威） | **MiniLedger** 世界状态 | **账本成员** |
+| 用户本机缓存 | 浏览器 IndexedDB 中的 SQLite 文件 | 仅该浏览器/设备 |
+| 加密备份 | storage + 可选 **IPFS** | 持有备份密码者 |
 
 ### 与「仅相关用户/团队可见」的差距
 
@@ -102,6 +114,19 @@ flowchart TB
             [MySQL]   [MiniLedger :24441]
             (内网)      (Docker 卷，不对外)
 ```
+
+---
+
+## 本地 SQLite · 云端备份 · 多人同步
+
+| 操作 | 入口 |
+|------|------|
+| 同步单账本到本机 | 账本详情 → **同步到本机** |
+| 同步全部账本 | 账本管理 → **全部同步到本机** |
+| 云端备份 | 账本详情 → **加密备份（含云端）** / 备份页（需开启 IPFS 等） |
+| API | `GET /api/v1/ledgers/:id/sync?sinceSeq=`（JWT，仅成员） |
+
+实现代码：`frontend/desktop/src/localdb/db.js`。桌面端需 `npm install` 安装 `sql.js` 后构建。
 
 ---
 
@@ -213,6 +238,7 @@ go-Smart-ledger/
 | F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ✅ 已完成 |
 | F30 | 项目根 README 计划与进度维护 | P0 | ✅ 已完成 |
 | F34 | OpenClaw 离线 RAG + 可配置本地 AI | P2 | 🟡 进行中 |
+| F35 | 本机 SQLite 副本 + 多人账本增量同步 | P1 | 🟡 进行中 |
 
 **状态图例**：✅ 已完成 · 🟡 进行中 · ⬜ 未完成
 
@@ -241,6 +267,7 @@ go-Smart-ledger/
 - [x] **F27 生产加固**：`SL_*` 环境变量注入 JWT/Cookie；网关 IP 限流；`docker-compose.https.yml` + Nginx TLS 示例；见 `docs/production-security.md`
 - [x] **F29 EVM 锚定**：`LedgerAnchor` 合约 + `pkg/evmanchor`；封账时可选上链 Merkle 根；见 `docs/evm-anchor.md`
 - [x] **F34 OpenClaw（基础）**：`setup-openclaw` 脚本、`integrations/openclaw`、`/rag-export` API、设置页 AI 配置
+- [x] **F35 本地优先（基础）**：浏览器 SQLite 缓存、`sync` API 对接、详情/列表「同步到本机」；见 `docs/local-first-storage.md`
 
 ### 后端
 
@@ -398,6 +425,7 @@ docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile d
 | 2026-05-23 | F32/F33：雪花 ID（用户/账本/团队）；HD 钱包派生账本与成员地址；团队页（多人账本+好友）；README 与 MySQL 表 `teams`/`team_members`。 |
 | 2026-05-23 | 移除 Compose 内置 MySQL；用户数据仅存 `Database.DataSource` 配置库；账号注销（校验用户名+密码）。 |
 | 2026-05-23 | 用户个人中心：昵称修改、头像上传；`users` 表扩展 `nickname`/`avatar_url`。 |
+| 2026-05-24 | F35：本机 SQLite（sql.js）+ 多人账本增量同步 UI；README/docs 本地优先与云端备份说明。 |
 | 2026-05-24 | README：数据私有化落地说明；OpenClaw 离线 RAG 集成（setup 脚本、rag-export API、设置页 AI 配置）。 |
 | 2026-05-23 | 修复概览页 MiniLedger 误显示离线：网关 `/health` 聚合 ledger 链状态。 |
 | 2026-05-22 | 后端 `infra/sql/001_schema.sql` + `pkg/db` 启动时检测并创建库/表/字段/索引/外键。 |

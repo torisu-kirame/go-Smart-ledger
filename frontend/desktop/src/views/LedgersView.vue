@@ -2,7 +2,12 @@
   <div class="page">
     <header class="page-header">
       <h2>账本管理</h2>
-      <button class="btn-primary" @click="openCreate">创建账本</button>
+      <div class="header-actions">
+        <button class="btn-ghost" type="button" :disabled="syncingAll || !list.length" @click="syncAllLocal">
+          {{ syncingAll ? '同步中…' : '全部同步到本机' }}
+        </button>
+        <button class="btn-primary" type="button" @click="openCreate">创建账本</button>
+      </div>
     </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -86,9 +91,11 @@ import { useAuthStore } from '../stores/auth'
 import AppSelect from '../components/AppSelect.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 import { buildEncryptionForCreate, saveLocalGroupKey } from '../utils/e2eCrypto'
+import { syncLedgerToLocal } from '../localdb/db'
 
 const auth = useAuthStore()
 const list = ref([])
+const syncingAll = ref(false)
 const error = ref('')
 const success = ref('')
 const show = ref(false)
@@ -184,6 +191,24 @@ async function load() {
   list.value = Array.isArray(data) ? data : []
 }
 
+async function syncAllLocal() {
+  syncingAll.value = true
+  error.value = ''
+  success.value = ''
+  let total = 0
+  try {
+    for (const l of list.value) {
+      const res = await syncLedgerToLocal(api, l.id)
+      total += res.newCount
+    }
+    success.value = `已将 ${list.value.length} 个账本同步到本机 SQLite（新增 ${total} 条事件）`
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '批量同步失败'
+  } finally {
+    syncingAll.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await api.listEntryTemplates()
@@ -262,4 +287,6 @@ async function create() {
 .empty { padding: 1.5rem; text-align: center; }
 .alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.75rem; }
 .muted { color: var(--text-muted); }
+.header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 </style>

@@ -33,12 +33,23 @@
     </div>
 
     <div class="panel">
+      <h3>本地与同步</h3>
+      <p v-if="localStats" class="local-line">
+        本机 SQLite：{{ localStats.events }} 条事件已缓存
+        <span v-if="lastLocalSync"> · 上次同步 {{ lastLocalSync }}</span>
+      </p>
+      <div class="actions-row">
+        <button class="btn-primary" :disabled="busy" @click="doSyncLocal">同步到本机</button>
+        <button class="btn-ghost" :disabled="busy" @click="doSync">刷新链上事件</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h3>链上操作</h3>
       <div class="actions-row">
         <button class="btn-ghost" :disabled="busy" @click="doVerify">校验完整性</button>
         <button class="btn-primary" :disabled="busy" @click="doAnchor">封账并锚定</button>
-        <button class="btn-ghost" :disabled="busy" @click="doSync">同步事件</button>
-        <button v-if="ledger.anchorStatus==='synced'" class="btn-ghost" @click="goBackup">加密备份</button>
+        <button v-if="ledger.anchorStatus==='synced'" class="btn-ghost" @click="goBackup">加密备份（含云端）</button>
       </div>
     </div>
 
@@ -105,6 +116,7 @@ import {
   saveLocalGroupKey,
   unwrapGroupKey,
 } from '../utils/e2eCrypto'
+import { listLocalEvents, listLocalLedgers, syncLedgerToLocal } from '../localdb/db'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,6 +132,8 @@ const inviteUserId = ref('')
 const e2ePassphrase = ref('')
 const groupKey = ref('')
 const entryData = reactive({})
+const localStats = ref(null)
+const lastLocalSync = ref('')
 
 const schema = computed(() => resolveSchema(ledger.value))
 const memberOptions = computed(() =>
@@ -150,6 +164,19 @@ async function load() {
   const saved = loadLocalGroupKey(id)
   if (saved) groupKey.value = saved
   initEntryDefaults()
+  await refreshLocalStats()
+}
+
+async function refreshLocalStats() {
+  try {
+    const evs = await listLocalEvents(id, 100000)
+    localStats.value = { events: evs.length }
+    const rows = await listLocalLedgers()
+    const cur = rows.find((r) => r.id === id)
+    if (cur?.synced_at) lastLocalSync.value = new Date(cur.synced_at).toLocaleString()
+  } catch {
+    localStats.value = null
+  }
 }
 
 onMounted(load)
@@ -200,6 +227,12 @@ async function addEntry() {
     entryData.note = ''
     entryData.payee = ''
     await load()
+    try {
+      await syncLedgerToLocal(api, id)
+      await refreshLocalStats()
+    } catch {
+      /* 记账成功但本地缓存失败时不阻断 */
+    }
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '失败'
   } finally {
@@ -246,14 +279,34 @@ async function sendInvite() {
   }
 }
 
+async function doSyncLocal() {
+  busy.value = true
+  error.value = ''
+  try {
+    const res = await syncLedgerToLocal(api, id)
+    if (res.ledger) ledger.value = res.ledger
+    events.value = await api.listEvents(id)
+    await refreshLocalStats()
+    msg.value =
+      res.newCount > 0
+        ? `已同步 ${res.newCount} 条到本机 SQLite（序号至 ${res.latestSeq}）`
+        : `本机已是最新（序号 ${res.latestSeq}）`
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '本地同步失败'
+  } finally {
+    busy.value = false
+  }
+}
+
 async function doSync() {
   busy.value = true
   try {
-    const since = ledger.value?.latestSeq ? Math.max(0, ledger.value.latestSeq - 20) : 0
-    const res = await api.syncLedger(id, since)
-    events.value = res.events || []
-    if (res.ledger) ledger.value = res.ledger
-    msg.value = `已同步 ${events.value.length} 条新事件`
+    events.value = await api.listEvents(id)
+    if (ledger.value) {
+      const res = await api.syncLedger(id, ledger.value.latestSeq || 0)
+      if (res.ledger) ledger.value = res.ledger
+    }
+    msg.value = `已刷新 ${events.value.length} 条链上事件`
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '同步失败'
   } finally {
@@ -299,4 +352,5 @@ function goBackup() {
 .mono { font-family: ui-monospace, monospace; }
 .external-anchor .mono { word-break: break-all; font-size: 0.85rem; }
 .external-anchor a { color: var(--accent); }
+.local-line { font-size: 0.875rem; color: var(--text-muted); margin: 0 0 0.75rem; }
 </style>
