@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -54,16 +55,75 @@ type StateRow struct {
 }
 
 func (c *Client) Ping(ctx context.Context) error {
-	_, err := c.Status(ctx)
-	return err
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/status", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("miniledger /status: %s (%s)", resp.Status, string(body))
+	}
+	return nil
 }
 
 func (c *Client) Status(ctx context.Context) (*Status, error) {
-	var st Status
-	if err := c.getJSON(ctx, "/status", &st); err != nil {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/status", nil)
+	if err != nil {
 		return nil, err
 	}
-	return &st, nil
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("miniledger /status: %s (%s)", resp.Status, string(raw))
+	}
+	return parseStatus(raw)
+}
+
+func parseStatus(raw []byte) (*Status, error) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	st := &Status{}
+	if v, ok := m["height"]; ok {
+		st.Height = parseUintField(v)
+	}
+	if v, ok := m["uptime"]; ok {
+		_ = json.Unmarshal(v, &st.Uptime)
+	}
+	if v, ok := m["role"]; ok {
+		_ = json.Unmarshal(v, &st.Role)
+	}
+	return st, nil
+}
+
+func parseUintField(v json.RawMessage) uint64 {
+	var n uint64
+	if json.Unmarshal(v, &n) == nil {
+		return n
+	}
+	var s string
+	if json.Unmarshal(v, &s) == nil {
+		u, _ := strconv.ParseUint(s, 10, 64)
+		return u
+	}
+	var f float64
+	if json.Unmarshal(v, &f) == nil {
+		return uint64(f)
+	}
+	return 0
 }
 
 // Submit posts a transaction to MiniLedger.
