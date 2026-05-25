@@ -10,6 +10,7 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/entrytemplatestore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/friendstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/teamchat"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/teamstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/userstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/auth/internal/config"
@@ -24,6 +25,7 @@ type ServiceContext struct {
 	Accounts  userstore.AccountStore
 	Friends   *friendstore.Store
 	Teams          *teamstore.Store
+	TeamChat       *teamchat.Store
 	EntryTemplates *entrytemplatestore.Store
 	DB             *sql.DB
 	AvatarDir string
@@ -51,6 +53,13 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		avatarDir = "data/avatars"
 	}
 	if err := os.MkdirAll(avatarDir, 0o755); err != nil {
+		return nil, err
+	}
+	teamChatDir := c.TeamChat.Dir
+	if teamChatDir == "" {
+		teamChatDir = "data/teamchat"
+	}
+	if err := os.MkdirAll(teamChatDir, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -84,6 +93,7 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		Accounts:  mysqlUsers,
 		Friends:   friendstore.New(sqlDB),
 		Teams:          teamstore.New(sqlDB),
+		TeamChat:       teamchat.New(sqlDB, teamChatDir),
 		EntryTemplates: entrytemplatestore.New(sqlDB),
 	}, nil
 }

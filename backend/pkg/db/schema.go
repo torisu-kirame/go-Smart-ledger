@@ -154,6 +154,109 @@ var schemaTables = []tableSchema{
 		},
 	},
 	{
+		name: "team_ledgers",
+		createSQL: `CREATE TABLE IF NOT EXISTS team_ledgers (
+			team_id BIGINT UNSIGNED NOT NULL,
+			ledger_id VARCHAR(32) NOT NULL,
+			added_by_id BIGINT UNSIGNED NULL,
+			added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (team_id, ledger_id),
+			KEY idx_team_ledgers_ledger (ledger_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "team_id", addSQL: "ADD COLUMN team_id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "ledger_id", addSQL: "ADD COLUMN ledger_id VARCHAR(32) NOT NULL"},
+			{name: "added_by_id", addSQL: "ADD COLUMN added_by_id BIGINT UNSIGNED NULL"},
+			{name: "added_at", addSQL: "ADD COLUMN added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		},
+		indexes: []indexSchema{
+			{name: "idx_team_ledgers_ledger", createSQL: "CREATE INDEX idx_team_ledgers_ledger ON team_ledgers (ledger_id)"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_team_ledgers_team",
+				createSQL:  "ALTER TABLE team_ledgers ADD CONSTRAINT fk_team_ledgers_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+				referenced: "teams",
+			},
+		},
+	},
+	{
+		name: "team_messages",
+		createSQL: `CREATE TABLE IF NOT EXISTS team_messages (
+			id BIGINT UNSIGNED NOT NULL,
+			team_id BIGINT UNSIGNED NOT NULL,
+			sender_id BIGINT UNSIGNED NOT NULL,
+			msg_type VARCHAR(16) NOT NULL DEFAULT 'text',
+			body TEXT NULL,
+			file_name VARCHAR(255) NOT NULL DEFAULT '',
+			file_path VARCHAR(512) NOT NULL DEFAULT '',
+			file_size BIGINT NOT NULL DEFAULT 0,
+			content_type VARCHAR(128) NOT NULL DEFAULT '',
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_team_messages_team (team_id, id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "id", addSQL: "ADD COLUMN id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "team_id", addSQL: "ADD COLUMN team_id BIGINT UNSIGNED NOT NULL"},
+			{name: "sender_id", addSQL: "ADD COLUMN sender_id BIGINT UNSIGNED NOT NULL"},
+			{name: "msg_type", addSQL: "ADD COLUMN msg_type VARCHAR(16) NOT NULL DEFAULT 'text'"},
+			{name: "body", addSQL: "ADD COLUMN body TEXT NULL"},
+			{name: "file_name", addSQL: "ADD COLUMN file_name VARCHAR(255) NOT NULL DEFAULT ''"},
+			{name: "file_path", addSQL: "ADD COLUMN file_path VARCHAR(512) NOT NULL DEFAULT ''"},
+			{name: "file_size", addSQL: "ADD COLUMN file_size BIGINT NOT NULL DEFAULT 0"},
+			{name: "content_type", addSQL: "ADD COLUMN content_type VARCHAR(128) NOT NULL DEFAULT ''"},
+			{name: "created_at", addSQL: "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		},
+		indexes: []indexSchema{
+			{name: "idx_team_messages_team", createSQL: "CREATE INDEX idx_team_messages_team ON team_messages (team_id, id)"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_team_messages_team",
+				createSQL:  "ALTER TABLE team_messages ADD CONSTRAINT fk_team_messages_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+				referenced: "teams",
+			},
+			{
+				name:       "fk_team_messages_sender",
+				createSQL:  "ALTER TABLE team_messages ADD CONSTRAINT fk_team_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
+	{
+		name: "team_read_state",
+		createSQL: `CREATE TABLE IF NOT EXISTS team_read_state (
+			team_id BIGINT UNSIGNED NOT NULL,
+			user_id BIGINT UNSIGNED NOT NULL,
+			last_read_message_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (team_id, user_id),
+			KEY idx_team_read_user (user_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "team_id", addSQL: "ADD COLUMN team_id BIGINT UNSIGNED NOT NULL FIRST"},
+			{name: "user_id", addSQL: "ADD COLUMN user_id BIGINT UNSIGNED NOT NULL"},
+			{name: "last_read_message_id", addSQL: "ADD COLUMN last_read_message_id BIGINT UNSIGNED NOT NULL DEFAULT 0"},
+			{name: "updated_at", addSQL: "ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"},
+		},
+		indexes: []indexSchema{
+			{name: "idx_team_read_user", createSQL: "CREATE INDEX idx_team_read_user ON team_read_state (user_id)"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_team_read_team",
+				createSQL:  "ALTER TABLE team_read_state ADD CONSTRAINT fk_team_read_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+				referenced: "teams",
+			},
+			{
+				name:       "fk_team_read_user",
+				createSQL:  "ALTER TABLE team_read_state ADD CONSTRAINT fk_team_read_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
+	{
 		name: "user_public_keys",
 		createSQL: `CREATE TABLE IF NOT EXISTS user_public_keys (
 			user_id BIGINT UNSIGNED NOT NULL,

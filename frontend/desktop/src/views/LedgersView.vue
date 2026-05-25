@@ -405,7 +405,9 @@ onMounted(async () => {
   } catch {
     templates.value = [DEFAULT_ENTRY_SCHEMA]
   }
-  load()
+  await load()
+  const q = router.currentRoute.value.query?.invite
+  if (q) focusInvite(String(q))
 })
 
 function buildMembers() {

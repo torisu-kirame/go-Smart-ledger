@@ -17,6 +17,7 @@ const routes = [
       { path: 'settings', component: () => import('../views/SettingsView.vue') },
       { path: 'profile', redirect: '/settings' },
       { path: 'teams', component: () => import('../views/TeamsView.vue') },
+      { path: 'teams/:teamId', component: () => import('../views/TeamDetailView.vue') },
       { path: 'invites', redirect: '/ledgers' },
       { path: 'chain', component: () => import('../views/ChainExplorerView.vue') },
     ],

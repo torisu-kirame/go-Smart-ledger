@@ -19,6 +19,9 @@ type Config struct {
 	Avatar struct {
 		Dir string `json:",default=data/avatars"`
 	} `json:"Avatar"`
+	TeamChat struct {
+		Dir string `json:",default=data/teamchat"`
+	} `json:"TeamChat"`
 	Snowflake struct {
 		NodeID int64 `json:",default=1"`
 	} `json:"Snowflake"`

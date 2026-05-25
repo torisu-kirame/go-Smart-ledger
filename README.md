@@ -13,8 +13,8 @@
 | 本质 | **用户集合体**，协作入口，类似 QQ 群 / 企业微信群 | **记账工具**，链上事件溯源与封账锚定的数据容器 |
 | 成员关系 | 团队 `team_members`：好友编组，便于发现「和谁一起干活」 | 账本 `members`：经 **邀请 → 对方同意** 后才有权读写 |
 | 与账本关系 | 目标模型：**一个团队可关联多个账本**（快捷入口、通知聚合） | 每个账本权限 **独立**：在团队里 ≠ 能看账本 |
-| 聊天 | 规划：**团队 Chat 空间**（文字、文件，与记账链分离） | 无聊天；仅记账事件、审批、备份等 |
-| 当前实现 | 创建团队时绑定 **1 个** 多人账本 + 邀请好友入团队（MySQL） | 账本管理页：发送/接受邀请；详情页记账与封账 |
+| 聊天 | **团队 Chat**（文字、文件，MySQL + 本地文件目录） | 无聊天；仅记账事件、审批、备份等 |
+| 当前实现 | 多账本 `team_ledgers` + 团队详情 Chat；创建可多选账本 | 账本管理页：发送/接受邀请；详情页记账与封账 |
 
 ```text
   [团队 A] ──关联──► 账本 1、账本 2 …（规划：多账本）
@@ -293,8 +293,8 @@ go-Smart-ledger/
 | F20 | 用户注册、MySQL 用户体系、个人资料（昵称/头像） | P1 | ✅ 已完成（无 RBAC） |
 | F31 | 好友系统：按用户 ID 搜索、申请/同意、删除 | P1 | ✅ 已完成 |
 | F32 | 团队：成员集合 + 绑定多人账本入口（类 QQ 群，非账本权限） | P1 | ✅ 已完成 |
-| F36 | 团队关联 **多个** 账本（N:M） | P2 | ⬜ 未完成 |
-| F37 | 团队 Chat：消息、文件传输 | P2 | ⬜ 未完成 |
+| F36 | 团队关联 **多个** 账本（N:M） | P2 | ✅ 已完成 |
+| F37 | 团队 Chat：消息、文件传输 | P2 | ✅ 已完成 |
 | F38 | 复式记账与会计科目表 | P2 | ⬜ 未完成 |
 | F39 | 会计期间与月结 / 期间锁定 | P2 | ⬜ 未完成 |
 | F40 | 三大财务报表（表内汇总） | P2 | ⬜ 未完成 |
@@ -331,7 +331,9 @@ go-Smart-ledger/
 - [x] 私人账本、多人账本（创建者 + 邀请加入）；账本 ID 雪花生成，主地址与成员地址由 HD 钱包（BIP44）派生
 - [x] 账本记账字段 Schema：默认模板（记账人/收账人/金额/日期/备注），创建时可选自 built-in 或自定义列；Excel 导入按 Schema 生成模板
 - [x] 记账模板管理页：内置 + 用户自定义模板 CRUD（`/entry-templates`）
-- [x] 团队：成员集合（类群聊）；创建时绑定 1 个多人账本入口并邀请好友入团队（**不替代**账本成员邀请）
+- [x] **F36 团队多账本**：`team_ledgers` N:M；创建可多选账本；详情页关联/移除（创建者）
+- [x] **F37 团队 Chat**：`/teams/:id/messages` 文字消息；`/messages/file` 上传附件（≤15MB）；成员轮询拉取
+- [x] 团队：成员集合（类群聊）；邀请好友入团队（**不替代**账本成员邀请）
 - [x] 账本邀请：在 **账本管理** 发送邀请、接受邀请；仅成员可访问账本 API
 - [x] 记账、事件流水、完整性校验、封账锚定（写入 MiniLedger）
 - [x] Excel 导入全流程（模板 → 预览 → 批量入账 → 可选自动封账）
@@ -366,14 +368,14 @@ go-Smart-ledger/
 - [x] `frontend/desktop`：Vue 3 + Pinia + Vue Router
 - [x] 页面：登录、概览、账本管理（含邀请）、账本详情、Excel 导入、备份/恢复、**链浏览器**（`/chain`）
 - [x] 短期 access token 仅存内存；refresh 走 Cookie
-- [x] 用户端登录/注册页；好友页（ID 搜索、发送申请、同意/拒绝、删除）；团队页（选多人账本 + 勾选好友）
+- [x] 用户端登录/注册页；好友页；团队列表与 **团队详情**（Chat + 多账本关联）
 - [x] 账本列表展示 `ledgerAddress`；创建账本无需手填链上地址
 - [x] Docker 服务 `web`：Nginx 托管 `dist`，`/api` 反代至 `gateway-api`
 
 ### 工程与部署
 
 - [x] 根目录 `Makefile`、`docker-compose.yml`（含 `web`；用户库为外部 MySQL）
-- [x] Auth + MySQL：`users`（雪花 ID）/ `friendships` / `friend_requests` / `teams` / `team_members`；脚本 `backend/infra/sql/001_schema.sql`
+- [x] Auth + MySQL：`users` / `friendships` / `friend_requests` / `teams` / `team_members` / `team_ledgers` / `team_messages`；脚本 `backend/infra/sql/001_schema.sql`
 - [x] `ledger-api` 配置 `Snowflake.NodeID`（与 auth 区分）及 `HDWallet.Mnemonic`（生产须换密钥管理）
 - [x] `scripts/build-linux.ps1`、`scripts/docker-up.ps1`
 - [x] 端口 2xxxx 统一规范
@@ -390,7 +392,6 @@ go-Smart-ledger/
 
 ### 中低优先级
 
-- **F36 / F37**：团队多账本绑定、团队 Chat（消息与文件）
 - **F38–F48**：复式记账、期间结账、报表、对账、预算、附件、账龄等（见 [金融与会计能力展望](#金融与会计能力展望)）
 - 真 P2P 节点直连同步（当前为链上邀请 + HTTP 增量同步）
 - 移动端、CI
@@ -499,6 +500,7 @@ docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile d
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-24 | **F36/F37**：团队多账本关联（`team_ledgers`）、团队详情页 Chat（文字+文件，轮询）；创建团队可多选账本。 |
 | 2026-05-24 | 多人账本支持仅创建者建账 + **邀请加入**；账本管理页发送/接受邀请、待处理列表；修复邀请相关 HTTP 错误码。 |
 | 2026-05-24 | 账本邀请并入**账本管理**；README 补充团队 vs 多人账本概念、F36–F48 财务展望与团队 Chat 规划。 |
 | 2026-05-24 | 设置页主题区增加**界面语言**（中/英）；链浏览器中文为 Smart Ledger 适配版，英文为 MiniLedger 官方 Dashboard。 |

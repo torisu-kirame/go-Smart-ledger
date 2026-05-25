@@ -62,7 +62,14 @@ func Migrate(db *sql.DB, dbName string) error {
 			}
 		}
 	}
-	return nil
+	return seedTeamLedgers(db)
+}
+
+func seedTeamLedgers(db *sql.DB) error {
+	_, err := db.Exec(`
+		INSERT IGNORE INTO team_ledgers (team_id, ledger_id, added_by_id)
+		SELECT id, ledger_id, creator_id FROM teams WHERE ledger_id IS NOT NULL AND ledger_id != ''`)
+	return err
 }
 
 func splitDSN(dsn string) (dbName, adminDSN string, err error) {

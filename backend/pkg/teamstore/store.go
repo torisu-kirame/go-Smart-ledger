@@ -16,12 +16,14 @@ var (
 )
 
 type Team struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	LedgerID  string    `json:"ledgerId"`
-	CreatorID string    `json:"creatorId"`
-	CreatedAt time.Time `json:"createdAt"`
-	Members   []Member  `json:"members"`
+	ID        string       `json:"id"`
+	Name      string       `json:"name"`
+	LedgerID  string       `json:"ledgerId"` // 首个关联账本（兼容）
+	LedgerIDs []string     `json:"ledgerIds"`
+	Ledgers   []TeamLedger `json:"ledgers,omitempty"`
+	CreatorID string       `json:"creatorId"`
+	CreatedAt time.Time    `json:"createdAt"`
+	Members   []Member     `json:"members"`
 }
 
 type Member struct {
@@ -38,11 +40,29 @@ func New(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-// CreateWithID persists team; memberUserIDs must be friends of creatorID (validated by caller).
-func (s *Store) CreateWithID(teamID, name, ledgerID, creatorID string, memberUserIDs []string) (*Team, error) {
-	if name == "" || ledgerID == "" || creatorID == "" {
+// IsMember reports whether userID belongs to the team (creator or team_members).
+func (s *Store) IsMember(teamID, userID string) (bool, error) {
+	team, err := s.GetByID(teamID)
+	if err != nil {
+		return false, err
+	}
+	if team.CreatorID == userID {
+		return true, nil
+	}
+	for _, m := range team.Members {
+		if m.UserID == userID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// CreateWithID persists team; ledgerIDs must be non-empty; memberUserIDs validated by caller.
+func (s *Store) CreateWithID(teamID, name, creatorID string, ledgerIDs, memberUserIDs []string) (*Team, error) {
+	if name == "" || creatorID == "" || len(ledgerIDs) < 1 {
 		return nil, ErrInvalidTeam
 	}
+	primary := ledgerIDs[0]
 	if len(memberUserIDs) < 1 {
 		return nil, ErrNeedFriend
 	}
@@ -73,8 +93,11 @@ func (s *Store) CreateWithID(teamID, name, ledgerID, creatorID string, memberUse
 
 	if _, err := tx.Exec(
 		`INSERT INTO teams (id, name, ledger_id, creator_id) VALUES (?, ?, ?, ?)`,
-		tid, name, ledgerID, cid,
+		tid, name, primary, cid,
 	); err != nil {
+		return nil, err
+	}
+	if err := s.insertLedgers(tx, tid, creatorID, ledgerIDs); err != nil {
 		return nil, err
 	}
 	for _, mid := range mids {
@@ -113,6 +136,7 @@ func (s *Store) ListByUser(userID string) ([]Team, error) {
 		t.ID = strconv.FormatUint(id, 10)
 		t.CreatorID = strconv.FormatUint(creator, 10)
 		t.Members, _ = s.listMembers(t.ID)
+		s.attachLedgers(&t)
 		out = append(out, t)
 	}
 	return out, rows.Err()
@@ -137,6 +161,7 @@ func (s *Store) GetByID(teamID string) (*Team, error) {
 	t.ID = strconv.FormatUint(id, 10)
 	t.CreatorID = strconv.FormatUint(creator, 10)
 	t.Members, _ = s.listMembers(t.ID)
+	s.attachLedgers(&t)
 	return &t, nil
 }
 

@@ -52,6 +52,21 @@ async function request(path, init = {}, retry = true) {
   return body
 }
 
+/** 带 JWT 拉取团队聊天文件，返回 blob URL（用毕请 revokeObjectURL）。 */
+export async function fetchTeamChatFileBlob(teamId, messageId) {
+  const token = getToken()
+  const path = `/api/v1/teams/${encodeURIComponent(teamId)}/chat/files/${encodeURIComponent(messageId)}`
+  const res = await fetch(path, {
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    throw new ApiError(res.statusText || 'download failed', res.status)
+  }
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
+}
+
 export const api = {
   captcha: () => request('/auth/captcha'),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
@@ -90,8 +105,39 @@ export const api = {
   cancelFriendRequest: (toUserId) =>
     request(`/friends/requests/${encodeURIComponent(toUserId)}`, { method: 'DELETE' }),
   listTeams: () => request('/teams'),
+  markTeamRead: (teamId) =>
+    request(`/teams/${encodeURIComponent(teamId)}/read`, { method: 'POST', body: '{}' }),
+  markAllTeamsRead: () => request('/teams/read-all', { method: 'POST', body: '{}' }),
   createTeam: (body) => request('/teams', { method: 'POST', body: JSON.stringify(body) }),
   getTeam: (id) => request(`/teams/${encodeURIComponent(id)}`),
+  addTeamLedger: (teamId, ledgerId) =>
+    request(`/teams/${encodeURIComponent(teamId)}/ledgers`, {
+      method: 'POST',
+      body: JSON.stringify({ ledgerId }),
+    }),
+  removeTeamLedger: (teamId, ledgerId) =>
+    request(`/teams/${encodeURIComponent(teamId)}/ledgers/${encodeURIComponent(ledgerId)}`, {
+      method: 'DELETE',
+    }),
+  listTeamMessages: (teamId, sinceId = 0, limit = 50) => {
+    const q = new URLSearchParams()
+    if (sinceId) q.set('sinceId', String(sinceId))
+    if (limit) q.set('limit', String(limit))
+    const qs = q.toString()
+    return request(`/teams/${encodeURIComponent(teamId)}/messages${qs ? `?${qs}` : ''}`)
+  },
+  sendTeamMessage: (teamId, body) =>
+    request(`/teams/${encodeURIComponent(teamId)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }),
+  uploadTeamChatFile: (teamId, file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request(`/teams/${encodeURIComponent(teamId)}/messages/file`, { method: 'POST', body: fd })
+  },
+  teamChatFilePath: (teamId, messageId) =>
+    `/api/v1/teams/${encodeURIComponent(teamId)}/chat/files/${encodeURIComponent(messageId)}`,
   refresh: () => request('/auth/refresh', { method: 'POST', body: '{}' }),
   logout: () => request('/auth/logout', { method: 'POST', body: '{}' }),
   health: () => request('/health'),
