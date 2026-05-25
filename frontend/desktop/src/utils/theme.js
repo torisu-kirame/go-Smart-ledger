@@ -1,6 +1,15 @@
 const THEME_KEY = 'smart-ledger-theme'
 const ACCENT_KEY = 'smart-ledger-accent'
 
+/** 界面主题（非系统昼夜跟随） */
+export const THEME_PRESETS = [
+  { id: 'classic-light', i18nKey: 'classicLight' },
+  { id: 'classic-dark', i18nKey: 'classicDark' },
+  { id: 'deep-dark', i18nKey: 'deepDark' },
+]
+
+const VALID_THEMES = new Set(THEME_PRESETS.map((p) => p.id))
+
 export const ACCENT_PRESETS = [
   { id: 'blue', name: '天蓝', swatch: '#4f8cff' },
   { id: 'teal', name: '青绿', swatch: '#2dd4bf' },
@@ -11,16 +20,20 @@ export const ACCENT_PRESETS = [
 
 const VALID_ACCENTS = new Set(ACCENT_PRESETS.map((p) => p.id))
 
-function preferredTheme() {
-  if (typeof window === 'undefined') return 'dark'
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+function normalizeTheme(saved) {
+  if (saved === 'light') return 'classic-light'
+  if (saved === 'dark') return 'classic-dark'
+  if (VALID_THEMES.has(saved)) return saved
+  return 'classic-dark'
+}
+
+export function isLightTheme(themeId) {
+  return normalizeTheme(themeId) === 'classic-light'
 }
 
 export function getTheme() {
-  if (typeof window === 'undefined') return 'dark'
-  const saved = window.localStorage.getItem(THEME_KEY)
-  if (saved === 'light' || saved === 'dark') return saved
-  return preferredTheme()
+  if (typeof window === 'undefined') return 'classic-dark'
+  return normalizeTheme(window.localStorage.getItem(THEME_KEY))
 }
 
 export function getAccent() {
@@ -31,7 +44,7 @@ export function getAccent() {
 
 export function applyTheme(theme) {
   if (typeof document === 'undefined') return
-  const t = theme === 'light' ? 'light' : 'dark'
+  const t = normalizeTheme(theme)
   document.documentElement.setAttribute('data-theme', t)
 }
 
@@ -50,7 +63,7 @@ export function initTheme() {
 }
 
 export function setTheme(theme) {
-  const t = theme === 'light' ? 'light' : 'dark'
+  const t = normalizeTheme(theme)
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(THEME_KEY, t)
   }
@@ -67,6 +80,10 @@ export function setAccent(accent) {
   return id
 }
 
-export function toggleTheme(currentTheme) {
-  return setTheme(currentTheme === 'light' ? 'dark' : 'light')
+/** 登录页快捷切换：经典白 → 经典黑 → 深黑 */
+export function cycleTheme(currentTheme) {
+  const cur = normalizeTheme(currentTheme)
+  const idx = THEME_PRESETS.findIndex((p) => p.id === cur)
+  const next = THEME_PRESETS[(idx + 1) % THEME_PRESETS.length]
+  return setTheme(next.id)
 }

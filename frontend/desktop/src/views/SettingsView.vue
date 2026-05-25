@@ -1,181 +1,69 @@
 <template>
   <div class="page settings-page">
-    <h2>{{ t('settings.title') }}</h2>
+    <header class="page-header settings-header">
+      <h2>{{ t('settings.title') }}</h2>
+      <p class="settings-subtitle">{{ t('settings.subtitle') }}</p>
+    </header>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
-    <section class="settings-section panel">
-      <h3>{{ t('settings.theme.title') }}</h3>
+    <div class="settings-layout">
+      <SettingsModuleNav :active="activeSection" @select="selectSection" />
 
-      <div class="form-row">
-        <label>{{ t('settings.theme.language') }}</label>
-        <AppSelect
-          v-model="currentLocale"
-          :options="localeOptions"
-          @change="onLocaleChange"
+      <section class="settings-panel panel" :aria-labelledby="panelTitleId">
+        <header class="module-header">
+          <h3 :id="panelTitleId">{{ moduleTitle }}</h3>
+          <p class="module-desc">{{ moduleDesc }}</p>
+        </header>
+
+        <SettingsAppearanceModule v-if="activeSection === 'appearance'" />
+        <SettingsLanguageModule v-else-if="activeSection === 'language'" />
+        <SettingsAiModule v-else-if="activeSection === 'ai'" />
+        <SettingsAccountModule
+          v-else-if="activeSection === 'account'"
+          :profile="profile"
+          :nickname="nickname"
+          :loading="loading"
+          :saving="saving"
+          :uploading="uploading"
+          :avatar-bust="avatarBust"
+          @update:nickname="nickname = $event"
+          @save-nickname="saveNickname"
+          @upload-avatar="onPickAvatar"
         />
-      </div>
-
-      <div class="form-row">
-        <label>{{ t('settings.theme.mode') }}</label>
-        <div class="segmented">
-          <button
-            type="button"
-            class="seg-btn"
-            :class="{ active: themeMode === 'light' }"
-            @click="setMode('light')"
-          >
-            {{ t('settings.theme.light') }}
-          </button>
-          <button
-            type="button"
-            class="seg-btn"
-            :class="{ active: themeMode === 'dark' }"
-            @click="setMode('dark')"
-          >
-            {{ t('settings.theme.dark') }}
-          </button>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <label>{{ t('settings.theme.accent') }}</label>
-        <div class="accent-grid">
-          <button
-            v-for="p in ACCENT_PRESETS"
-            :key="p.id"
-            type="button"
-            class="accent-chip"
-            :class="{ active: accentId === p.id }"
-            :title="accentName(p)"
-            @click="setAccentColor(p.id)"
-          >
-            <span class="swatch" :style="{ background: p.swatch }" />
-            <span>{{ accentName(p) }}</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section id="ai" class="settings-section panel">
-      <h3>{{ t('settings.ai.title') }}</h3>
-      <label class="inline-check">
-        <input v-model="ai.enabled" type="checkbox" @change="persistAi" />
-        {{ t('settings.ai.enabled') }}
-      </label>
-      <div class="form-row">
-        <label>{{ t('settings.ai.provider') }}</label>
-        <AppSelect
-          v-model="ai.provider"
-          :options="aiProviderOptions"
-          @change="persistAi"
+        <SettingsSecurityModule
+          v-else-if="activeSection === 'security'"
+          :delete-form="deleteForm"
+          :deleting="deleting"
+          @update:delete-form="deleteForm = $event"
+          @delete-account="onDeleteAccount"
         />
-      </div>
-      <div class="form-row">
-        <label>{{ t('settings.ai.baseUrl') }}</label>
-        <input v-model="ai.baseUrl" type="url" @change="persistAi" />
-      </div>
-      <div class="form-row">
-        <label>{{ t('settings.ai.chatModel') }}</label>
-        <input v-model="ai.chatModel" @change="persistAi" />
-      </div>
-      <div class="form-row">
-        <label>{{ t('settings.ai.embedModel') }}</label>
-        <input v-model="ai.embedModel" @change="persistAi" />
-      </div>
-      <div class="form-row">
-        <label>{{ t('settings.ai.apiKey') }}</label>
-        <input v-model="ai.apiKey" type="password" autocomplete="off" @change="persistAi" />
-      </div>
-      <div class="form-row">
-        <label>{{ t('settings.ai.gateway') }}</label>
-        <input v-model="ai.openclawGateway" type="url" @change="persistAi" />
-      </div>
-      <div class="actions-row">
-        <button type="button" class="btn-ghost" @click="copyOpenClawConfig">
-          {{ t('settings.ai.copyConfig') }}
-        </button>
-      </div>
-      <p v-if="aiCopied" class="ok-line">{{ t('settings.ai.copied') }}</p>
-    </section>
-
-    <section id="personal" class="settings-section panel">
-      <h3>{{ t('settings.personal.title') }}</h3>
-
-      <div v-if="loading" class="muted">{{ t('settings.personal.loading') }}</div>
-
-      <template v-else-if="profile">
-        <div class="avatar-block">
-          <div class="avatar-wrap">
-            <img :src="avatarSrc" :alt="profile.nickname" @error="onAvatarError" />
-          </div>
-          <FileUploadZone
-            compact
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            :title="t('settings.personal.avatarTitle')"
-            :disabled="uploading"
-            @file="onPickAvatar"
-          />
-        </div>
-
-        <dl class="info-list">
-          <div><dt>{{ t('settings.personal.userId') }}</dt><dd class="mono">{{ profile.id }}</dd></div>
-          <div><dt>{{ t('settings.personal.username') }}</dt><dd>{{ profile.username }}</dd></div>
-          <div><dt>{{ t('settings.personal.createdAt') }}</dt><dd>{{ formatTime(profile.createdAt) }}</dd></div>
-        </dl>
-
-        <form class="nickname-form" @submit.prevent="saveNickname">
-          <div class="form-row">
-            <label>{{ t('settings.personal.nickname') }}</label>
-            <input v-model="nickname" maxlength="32" :placeholder="t('settings.personal.nicknamePh')" />
-          </div>
-          <button class="btn-primary" type="submit" :disabled="saving">
-            {{ saving ? t('settings.personal.saving') : t('settings.personal.saveNickname') }}
-          </button>
-        </form>
-
-        <section class="danger-zone">
-          <h4>{{ t('settings.personal.deleteTitle') }}</h4>
-          <div class="form-row">
-            <label>{{ t('settings.personal.username') }}</label>
-            <input v-model="deleteForm.username" autocomplete="username" />
-          </div>
-          <div class="form-row">
-            <label>{{ t('settings.personal.password') }}</label>
-            <input v-model="deleteForm.password" type="password" autocomplete="current-password" />
-          </div>
-          <DeleteButton
-            :disabled="deleting"
-            :label="deleting ? t('settings.personal.deleting') : t('settings.personal.deleteBtn')"
-            @click="onDeleteAccount"
-          />
-        </section>
-      </template>
-    </section>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AppSelect from '../components/AppSelect.vue'
-import DeleteButton from '../components/DeleteButton.vue'
-import FileUploadZone from '../components/FileUploadZone.vue'
+import SettingsAccountModule from '../components/settings/SettingsAccountModule.vue'
+import SettingsAiModule from '../components/settings/SettingsAiModule.vue'
+import SettingsAppearanceModule from '../components/settings/SettingsAppearanceModule.vue'
+import SettingsLanguageModule from '../components/settings/SettingsLanguageModule.vue'
+import SettingsModuleNav from '../components/settings/SettingsModuleNav.vue'
+import SettingsSecurityModule from '../components/settings/SettingsSecurityModule.vue'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
-import { ACCENT_PRESETS, getAccent, getTheme, setAccent, setTheme } from '../utils/theme'
-import { exportOpenClawSnippet, loadAiConfig, saveAiConfig } from '../utils/aiConfig'
+import { normalizeSettingsHash } from '../utils/settingsSections'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const { locale, t, setLocale, localeOptions } = useI18n()
+const { t } = useI18n()
 
-const currentLocale = ref(locale.value)
-const themeMode = ref(getTheme())
-const accentId = ref(getAccent())
+const activeSection = ref(normalizeSettingsHash(route.hash))
 const profile = ref(null)
 const nickname = ref('')
 const loading = ref(true)
@@ -186,75 +74,18 @@ const deleteForm = ref({ username: '', password: '' })
 const error = ref('')
 const success = ref('')
 const avatarBust = ref(0)
-const avatarFailed = ref(false)
-const ai = ref(loadAiConfig())
-const aiCopied = ref(false)
-const aiProviderOptions = computed(() => [
-  { value: 'ollama', label: 'Ollama' },
-  { value: 'openai', label: 'OpenAI 兼容' },
-  { value: 'lmstudio', label: 'LM Studio' },
-])
 
-const ACCENT_I18N = {
-  blue: { zh: '天蓝', en: 'Blue' },
-  teal: { zh: '青绿', en: 'Teal' },
-  violet: { zh: '紫罗兰', en: 'Violet' },
-  amber: { zh: '琥珀', en: 'Amber' },
-  rose: { zh: '玫红', en: 'Rose' },
+const panelTitleId = computed(() => `settings-panel-${activeSection.value}`)
+const moduleTitle = computed(() => t(`settings.modules.${activeSection.value}.title`))
+const moduleDesc = computed(() => t(`settings.modules.${activeSection.value}.desc`))
+
+function selectSection(id) {
+  activeSection.value = id
+  router.replace({ path: '/settings', hash: `#${id}` })
 }
 
-function accentName(p) {
-  return ACCENT_I18N[p.id]?.[locale.value] ?? p.name
-}
-
-const avatarSrc = computed(() => {
-  if (!profile.value || avatarFailed.value) return defaultAvatar(profile.value?.nickname || '?')
-  const url = profile.value.avatarUrl || `/api/v1/users/${profile.value.id}/avatar`
-  return `${url}?t=${avatarBust.value}`
-})
-
-function defaultAvatar(text) {
-  const ch = (text || '?').charAt(0).toUpperCase()
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect fill="#1a2230" width="120" height="120"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#3d8bfd" font-size="48" font-family="sans-serif">${ch}</text></svg>`
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`
-}
-
-function onAvatarError() {
-  avatarFailed.value = true
-}
-
-function formatTime(time) {
-  if (!time) return '-'
-  return new Date(time).toLocaleString(locale.value === 'en' ? 'en-US' : 'zh-CN')
-}
-
-function setMode(mode) {
-  themeMode.value = setTheme(mode)
-}
-
-function setAccentColor(id) {
-  accentId.value = setAccent(id)
-}
-
-function onLocaleChange(val) {
-  setLocale(val)
-  currentLocale.value = val
-}
-
-function persistAi() {
-  saveAiConfig(ai.value)
-  aiCopied.value = false
-}
-
-async function copyOpenClawConfig() {
-  persistAi()
-  const text = exportOpenClawSnippet(ai.value)
-  try {
-    await navigator.clipboard.writeText(text)
-    aiCopied.value = true
-  } catch {
-    error.value = t('settings.ai.copyFail')
-  }
+function syncHashFromRoute() {
+  activeSection.value = normalizeSettingsHash(route.hash)
 }
 
 async function load() {
@@ -264,7 +95,6 @@ async function load() {
     profile.value = await api.getProfile()
     nickname.value = profile.value.nickname || profile.value.username
     deleteForm.value.username = profile.value.username
-    avatarFailed.value = false
     avatarBust.value = Date.now()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : t('settings.loadFail')
@@ -300,7 +130,6 @@ async function onPickAvatar(file) {
   try {
     profile.value = await api.uploadAvatar(file)
     auth.user = { ...auth.user, avatarUrl: profile.value.avatarUrl, nickname: profile.value.nickname }
-    avatarFailed.value = false
     avatarBust.value = Date.now()
     success.value = t('settings.avatarOk')
   } catch (e) {
@@ -327,177 +156,61 @@ async function onDeleteAccount() {
   }
 }
 
-function scrollToHash() {
-  if (route.hash !== '#personal') return
-  nextTick(() => {
-    document.getElementById('personal')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  })
-}
-
-watch(locale, (val) => {
-  currentLocale.value = val
-})
-
 onMounted(() => {
   load()
-  scrollToHash()
+  syncHashFromRoute()
 })
 
-watch(() => route.hash, scrollToHash)
+watch(() => route.hash, syncHashFromRoute)
 </script>
 
 <style scoped>
 .settings-page {
-  max-width: 36rem;
+  max-width: 52rem;
 }
 
-.settings-section {
-  margin-top: 1rem;
+.settings-header {
+  margin-bottom: 1rem;
 }
 
-.settings-section h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1.05rem;
-}
-
-.segmented {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--bg);
-}
-
-.seg-btn {
-  padding: 0.45rem 1rem;
-  border: none;
-  background: transparent;
+.settings-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
+  font-weight: 400;
 }
 
-.seg-btn:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.seg-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.accent-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.accent-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.accent-chip.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.avatar-block {
+.settings-layout {
   display: flex;
   gap: 1.25rem;
   align-items: flex-start;
-  margin: 1rem 0 1.25rem;
-  flex-wrap: wrap;
 }
 
-.avatar-wrap {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid var(--border);
-  background: var(--bg);
-  flex-shrink: 0;
-}
-
-.avatar-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.ok-line {
-  color: var(--success);
-  font-size: 0.875rem;
-  margin: 0.5rem 0 0;
-}
-
-.info-list {
-  margin: 0 0 1.25rem;
-}
-
-.info-list > div {
-  display: flex;
-  gap: 1rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.9rem;
-}
-
-.info-list dt {
-  width: 5rem;
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.info-list dd {
-  margin: 0;
+.settings-panel {
   flex: 1;
+  min-width: 0;
 }
 
-.mono {
-  font-family: ui-monospace, monospace;
-  color: var(--accent);
-  word-break: break-all;
+.module-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
-.nickname-form {
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
+.module-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
 }
 
-.danger-zone {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+.module-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
-.danger-zone h4 {
-  color: var(--danger);
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
-}
-
-.danger-zone .btn-delete {
-  margin-top: 0.5rem;
+@media (max-width: 640px) {
+  .settings-layout {
+    flex-direction: column;
+  }
 }
 </style>

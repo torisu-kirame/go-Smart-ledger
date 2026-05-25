@@ -24,7 +24,7 @@
       </nav>
       <div class="foot">
         <button class="settings-btn btn-ghost" type="button" @click="goSettings()">{{ t('layout.settings') }}</button>
-        <a class="user-link" href="/settings#personal" @click.prevent="goSettings('#personal')">
+        <a class="user-link" href="/settings#account" @click.prevent="goSettings('#account')">
           <img v-if="auth.user?.id" class="foot-avatar" :src="footAvatar" alt="" />
           <span>{{ auth.user?.nickname || auth.user?.username }}</span>
         </a>

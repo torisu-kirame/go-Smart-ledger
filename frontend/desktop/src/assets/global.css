@@ -1,4 +1,6 @@
-:root {
+:root,
+:root[data-theme='classic-dark'],
+:root[data-theme='dark'] {
   --field-max: 22rem;
   --field-sm: 16rem;
   --page-max: 1080px;
@@ -17,10 +19,12 @@
   --danger: #f06f7b;
   --radius: 12px;
   --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.24);
+  --page-gradient: radial-gradient(circle at top right, rgba(79, 140, 255, 0.08), transparent 40%);
   color-scheme: dark;
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
+:root[data-theme='classic-light'],
 :root[data-theme='light'] {
   --bg: #f3f6fc;
   --bg-elevated: #ffffff;
@@ -36,7 +40,27 @@
   --warning: #d99b2b;
   --danger: #d95366;
   --shadow-lg: 0 12px 30px rgba(21, 39, 76, 0.1);
+  --page-gradient: radial-gradient(circle at top right, rgba(61, 126, 255, 0.06), transparent 42%);
   color-scheme: light;
+}
+
+:root[data-theme='deep-dark'] {
+  --bg: #050508;
+  --bg-elevated: #0a0a0e;
+  --bg-card: #101014;
+  --hover: rgba(255, 255, 255, 0.04);
+  --border: #1c1c22;
+  --text: #ececf1;
+  --text-muted: #8b8b96;
+  --accent: #5b8def;
+  --accent-dim: #3d6fd6;
+  --accent-soft: rgba(91, 141, 239, 0.16);
+  --success: #2ecf9b;
+  --warning: #e5a83a;
+  --danger: #ef6b7a;
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --page-gradient: none;
+  color-scheme: dark;
 }
 
 :root[data-accent='teal'] {
@@ -45,6 +69,7 @@
   --accent-soft: rgba(45, 212, 191, 0.18);
 }
 
+:root[data-theme='classic-light'][data-accent='teal'],
 :root[data-theme='light'][data-accent='teal'] {
   --accent: #0d9488;
   --accent-dim: #0f766e;
@@ -57,6 +82,7 @@
   --accent-soft: rgba(167, 139, 250, 0.2);
 }
 
+:root[data-theme='classic-light'][data-accent='violet'],
 :root[data-theme='light'][data-accent='violet'] {
   --accent: #7c3aed;
   --accent-dim: #6d28d9;
@@ -69,6 +95,7 @@
   --accent-soft: rgba(245, 158, 11, 0.2);
 }
 
+:root[data-theme='classic-light'][data-accent='amber'],
 :root[data-theme='light'][data-accent='amber'] {
   --accent: #d97706;
   --accent-dim: #b45309;
@@ -81,6 +108,7 @@
   --accent-soft: rgba(244, 114, 182, 0.2);
 }
 
+:root[data-theme='classic-light'][data-accent='rose'],
 :root[data-theme='light'][data-accent='rose'] {
   --accent: #db2777;
   --accent-dim: #be185d;
@@ -99,7 +127,7 @@ html.app-shell-active #app {
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top right, rgba(79, 140, 255, 0.08), transparent 40%), var(--bg);
+  background: var(--page-gradient), var(--bg);
   color: var(--text);
   transition: background-color .2s ease, color .2s ease;
 }
@@ -137,6 +165,7 @@ select {
   background-size: 12px 8px;
 }
 
+:root[data-theme='classic-light'] select,
 :root[data-theme='light'] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2360708f' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
 }

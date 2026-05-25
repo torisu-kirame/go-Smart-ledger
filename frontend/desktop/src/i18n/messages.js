@@ -37,6 +37,43 @@ export const messages = {
     },
     settings: {
       title: '设置',
+      subtitle: '按功能分类管理外观、语言、AI 与账户相关选项。',
+      nav: {
+        label: '设置分类',
+        appearance: '外观',
+        language: '语言',
+        ai: 'AI 助手',
+        account: '账户',
+        security: '安全',
+      },
+      modules: {
+        appearance: {
+          title: '外观',
+          desc: '界面主题与强调色，立即生效。',
+        },
+        language: {
+          title: '语言',
+          desc: '切换界面显示语言。',
+        },
+        ai: {
+          title: 'AI 助手',
+          desc: '配置本地 OpenClaw 与模型接入。',
+        },
+        account: {
+          title: '账户',
+          desc: '头像、昵称与账号基本信息。',
+        },
+        security: {
+          title: '安全',
+          desc: '永久注销账号，操作不可撤销。',
+        },
+      },
+      language: {
+        hint: '更改后立即应用于整个控制台界面。',
+      },
+      security: {
+        warn: '注销后所有账本与团队数据将无法恢复，请确认已备份重要信息。',
+      },
       ai: {
         title: '离线 AI（OpenClaw）',
         enabled: '启用本地 AI 助手集成',
@@ -52,9 +89,10 @@ export const messages = {
       },
       theme: {
         title: '主题设置',
-        mode: '昼夜模式',
-        light: '浅色',
-        dark: '深色',
+        appearance: '主题',
+        classicLight: '经典白',
+        classicDark: '经典黑',
+        deepDark: '深黑',
         accent: '主题色',
         language: '界面语言',
         langZh: '简体中文',
@@ -160,6 +198,43 @@ export const messages = {
     },
     settings: {
       title: 'Settings',
+      subtitle: 'Manage appearance, language, AI, and account options by category.',
+      nav: {
+        label: 'Settings sections',
+        appearance: 'Appearance',
+        language: 'Language',
+        ai: 'AI Assistant',
+        account: 'Account',
+        security: 'Security',
+      },
+      modules: {
+        appearance: {
+          title: 'Appearance',
+          desc: 'Theme and accent color; applied immediately.',
+        },
+        language: {
+          title: 'Language',
+          desc: 'Choose the interface display language.',
+        },
+        ai: {
+          title: 'AI Assistant',
+          desc: 'Configure local OpenClaw and model endpoints.',
+        },
+        account: {
+          title: 'Account',
+          desc: 'Avatar, nickname, and profile details.',
+        },
+        security: {
+          title: 'Security',
+          desc: 'Permanently delete your account; cannot be undone.',
+        },
+      },
+      language: {
+        hint: 'Changes apply across the console immediately.',
+      },
+      security: {
+        warn: 'Deletion is permanent. Back up important ledgers and team data first.',
+      },
       ai: {
         title: 'Offline AI (OpenClaw)',
         enabled: 'Enable local AI assistant integration',
@@ -175,9 +250,10 @@ export const messages = {
       },
       theme: {
         title: 'Appearance',
-        mode: 'Color mode',
-        light: 'Light',
-        dark: 'Dark',
+        appearance: 'Theme',
+        classicLight: 'Classic White',
+        classicDark: 'Classic Black',
+        deepDark: 'Deep Black',
         accent: 'Accent',
         language: 'Language',
         langZh: '简体中文',

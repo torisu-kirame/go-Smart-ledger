@@ -36,7 +36,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
-import { getTheme, toggleTheme } from '../utils/theme'
+import { cycleTheme, getTheme } from '../utils/theme'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -49,7 +49,16 @@ const captchaId = ref('')
 const captchaImg = ref('')
 const form = reactive({ username: '', password: '', confirm: '', captchaCode: '' })
 
-const themeLabel = computed(() => (theme.value === 'light' ? '深色' : '浅色'))
+const THEME_NAMES = {
+  'classic-light': '经典白',
+  'classic-dark': '经典黑',
+  'deep-dark': '深黑',
+}
+
+const themeLabel = computed(() => {
+  const name = THEME_NAMES[theme.value] || '经典黑'
+  return `主题 · ${name}`
+})
 
 async function loadCaptcha() {
   const c = await api.captcha()
@@ -70,7 +79,7 @@ onMounted(async () => {
 })
 
 function onToggleTheme() {
-  theme.value = toggleTheme(theme.value)
+  theme.value = cycleTheme(theme.value)
 }
 
 async function submit() {
