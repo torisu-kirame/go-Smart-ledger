@@ -75,6 +75,20 @@ export const api = {
   addFriend: (friendUserId) =>
     request('/friends', { method: 'POST', body: JSON.stringify({ friendUserId }) }),
   removeFriend: (friendId) => request(`/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' }),
+  listIncomingFriendRequests: () => request('/friends/requests/incoming'),
+  listOutgoingFriendRequests: () => request('/friends/requests/outgoing'),
+  acceptFriendRequest: (fromUserId) =>
+    request(`/friends/requests/${encodeURIComponent(fromUserId)}/accept`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  rejectFriendRequest: (fromUserId) =>
+    request(`/friends/requests/${encodeURIComponent(fromUserId)}/reject`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  cancelFriendRequest: (toUserId) =>
+    request(`/friends/requests/${encodeURIComponent(toUserId)}`, { method: 'DELETE' }),
   listTeams: () => request('/teams'),
   createTeam: (body) => request('/teams', { method: 'POST', body: JSON.stringify(body) }),
   getTeam: (id) => request(`/teams/${encodeURIComponent(id)}`),
@@ -136,6 +150,7 @@ export const api = {
       body: JSON.stringify({ inviteeId, role }),
     }),
   listMyInvites: () => request('/ledgers/invites/mine'),
+  listLedgerInvites: (id) => request(`/ledgers/${encodeURIComponent(id)}/invites`),
   acceptInvite: (id) =>
     request(`/ledgers/${id}/invites/accept`, { method: 'POST', body: '{}' }),
   syncLedger: (id, sinceSeq = 0) =>

@@ -32,6 +32,11 @@ func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	}, rest.WithPrefix("/api/v1/users"))
 
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodGet, Path: "/requests/incoming", Handler: listIncomingFriendRequestsHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/requests/outgoing", Handler: listOutgoingFriendRequestsHandler(serverCtx)},
+		{Method: http.MethodPost, Path: "/requests/:fromUserId/accept", Handler: acceptFriendRequestHandler(serverCtx)},
+		{Method: http.MethodPost, Path: "/requests/:fromUserId/reject", Handler: rejectFriendRequestHandler(serverCtx)},
+		{Method: http.MethodDelete, Path: "/requests/:toUserId", Handler: cancelFriendRequestHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/", Handler: listFriendsHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/", Handler: addFriendHandler(serverCtx)},
 		{Method: http.MethodDelete, Path: "/:friendId", Handler: deleteFriendHandler(serverCtx)},
@@ -160,25 +165,142 @@ func addFriendHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "friendUserId required"))
 			return
 		}
-		if err := svcCtx.Friends.Add(uid, req.FriendUserId); err != nil {
-			switch err {
-			case friendstore.ErrCannotAddSelf:
-				httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "cannot add yourself"))
-			case friendstore.ErrAlreadyFriends:
-				httpx.ErrorCtx(r.Context(), w, xerrors.New(409, "already friends"))
-			case friendstore.ErrFriendNotExists:
-				httpx.ErrorCtx(r.Context(), w, xerrors.New(404, "user not found"))
-			default:
-				httpx.ErrorCtx(r.Context(), w, err)
-			}
+		if err := svcCtx.Friends.SendRequest(uid, req.FriendUserId); err != nil {
+			writeFriendRequestError(r, w, err)
 			return
 		}
-		user, _ := svcCtx.Users.FindByID(req.FriendUserId)
-		resp := types.UserInfo{Id: req.FriendUserId}
-		if user != nil {
-			resp.Username = user.Username
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{
+			"status":     friendstore.StatusPending,
+			"toUserId":   req.FriendUserId,
+			"fromUserId": uid,
+		})
+	}
+}
+
+func listIncomingFriendRequestsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
 		}
-		httpx.OkJsonCtx(r.Context(), w, resp)
+		list, err := svcCtx.Friends.ListIncomingRequests(uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		if list == nil {
+			list = []friendstore.FriendRequest{}
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"requests": list})
+	}
+}
+
+func listOutgoingFriendRequestsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		list, err := svcCtx.Friends.ListOutgoingRequests(uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		if list == nil {
+			list = []friendstore.FriendRequest{}
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"requests": list})
+	}
+}
+
+func acceptFriendRequestHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		fromID := pathvar.Vars(r)["fromUserId"]
+		if fromID == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "fromUserId required"))
+			return
+		}
+		if err := svcCtx.Friends.AcceptRequest(uid, fromID); err != nil {
+			if err == friendstore.ErrRequestNotFound {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(404, "friend request not found"))
+				return
+			}
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func rejectFriendRequestHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		fromID := pathvar.Vars(r)["fromUserId"]
+		if fromID == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "fromUserId required"))
+			return
+		}
+		if err := svcCtx.Friends.RejectRequest(uid, fromID); err != nil {
+			if err == friendstore.ErrRequestNotFound {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(404, "friend request not found"))
+				return
+			}
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func cancelFriendRequestHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		toID := pathvar.Vars(r)["toUserId"]
+		if toID == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "toUserId required"))
+			return
+		}
+		if err := svcCtx.Friends.CancelRequest(uid, toID); err != nil {
+			if err == friendstore.ErrRequestNotFound {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(404, "friend request not found"))
+				return
+			}
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func writeFriendRequestError(r *http.Request, w http.ResponseWriter, err error) {
+	switch err {
+	case friendstore.ErrCannotAddSelf:
+		httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "cannot add yourself"))
+	case friendstore.ErrAlreadyFriends:
+		httpx.ErrorCtx(r.Context(), w, xerrors.New(409, "already friends"))
+	case friendstore.ErrFriendNotExists:
+		httpx.ErrorCtx(r.Context(), w, xerrors.New(404, "user not found"))
+	case friendstore.ErrRequestPending:
+		httpx.ErrorCtx(r.Context(), w, xerrors.New(409, "friend request already sent"))
+	case friendstore.ErrIncomingPending:
+		httpx.ErrorCtx(r.Context(), w, xerrors.New(409, "incoming friend request pending, accept it instead"))
+	default:
+		httpx.ErrorCtx(r.Context(), w, err)
 	}
 }
 

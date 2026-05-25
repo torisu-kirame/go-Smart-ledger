@@ -75,49 +75,7 @@ func (s *Store) AreFriends(userID, friendID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	var n int
-	err = s.db.QueryRow(
-		`SELECT COUNT(*) FROM friendships WHERE user_id = ? AND friend_id = ?`,
-		uid, fid,
-	).Scan(&n)
-	return n > 0, err
-}
-
-func (s *Store) Add(userID, friendID string) error {
-	uid, err := parseID(userID)
-	if err != nil {
-		return err
-	}
-	fid, err := parseID(friendID)
-	if err != nil {
-		return ErrFriendNotExists
-	}
-	if uid == fid {
-		return ErrCannotAddSelf
-	}
-	var dummy int
-	err = s.db.QueryRow(`SELECT 1 FROM users WHERE id = ? LIMIT 1`, fid).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return ErrFriendNotExists
-	}
-	if err != nil {
-		return err
-	}
-	var n int
-	if err := s.db.QueryRow(
-		`SELECT COUNT(*) FROM friendships WHERE user_id = ? AND friend_id = ?`,
-		uid, fid,
-	).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return ErrAlreadyFriends
-	}
-	_, err = s.db.Exec(
-		`INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)`,
-		uid, fid,
-	)
-	return err
+	return s.areFriendsEither(uid, fid)
 }
 
 func (s *Store) Remove(userID, friendID string) error {
@@ -130,8 +88,8 @@ func (s *Store) Remove(userID, friendID string) error {
 		return ErrFriendNotFound
 	}
 	res, err := s.db.Exec(
-		`DELETE FROM friendships WHERE user_id = ? AND friend_id = ?`,
-		uid, fid,
+		`DELETE FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)`,
+		uid, fid, fid, uid,
 	)
 	if err != nil {
 		return err

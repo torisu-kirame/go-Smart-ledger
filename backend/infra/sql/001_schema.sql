@@ -30,6 +30,19 @@ CREATE TABLE IF NOT EXISTS `friendships` (
   CONSTRAINT `fk_friendships_friend` FOREIGN KEY (`friend_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `friend_requests` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `from_user_id` BIGINT UNSIGNED NOT NULL,
+  `to_user_id` BIGINT UNSIGNED NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_request_pair` (`from_user_id`, `to_user_id`),
+  KEY `idx_to_status` (`to_user_id`, `status`),
+  CONSTRAINT `fk_friend_requests_from` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_friend_requests_to` FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `teams` (
   `id` BIGINT UNSIGNED NOT NULL,
   `name` VARCHAR(128) NOT NULL,

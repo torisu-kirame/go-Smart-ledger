@@ -57,7 +57,6 @@ const navItems = computed(() => [
   { to: '/backup', label: t('layout.nav.backup'), exact: true },
   { to: '/friends', label: t('layout.nav.friends'), exact: true },
   { to: '/teams', label: t('layout.nav.teams'), exact: true },
-  { to: '/invites', label: t('layout.nav.invites'), exact: true },
   { to: '/chain', label: t('layout.nav.chain'), exact: true },
 ])
 

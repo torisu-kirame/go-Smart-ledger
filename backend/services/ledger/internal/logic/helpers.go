@@ -24,11 +24,17 @@ func ToCodeErr(err error) error {
 		errors.Is(err, domain.ErrPrivateOne),
 		errors.Is(err, domain.ErrInvalidMember),
 		errors.Is(err, domain.ErrUnauthorized),
+		errors.Is(err, domain.ErrCannotInviteSelf),
 		errors.Is(err, domain.ErrEntryValidation),
 		errors.Is(err, domain.ErrInvalidSchema),
 		errors.Is(err, ledgersvc.ErrImportHasErrors),
 		errors.Is(err, ledgersvc.ErrRestoreConflict):
 		return xerrors.New(400, err.Error())
+	case errors.Is(err, domain.ErrAlreadyMember),
+		errors.Is(err, domain.ErrInviteAlreadyPending):
+		return xerrors.New(409, err.Error())
+	case errors.Is(err, domain.ErrInviteNotFound):
+		return xerrors.New(404, err.Error())
 	default:
 		return xerrors.New(500, err.Error())
 	}

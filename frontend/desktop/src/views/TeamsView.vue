@@ -3,6 +3,7 @@
     <header class="page-header">
       <div>
         <h2>团队</h2>
+        <p class="section-hint">团队是用户协作入口（类似 QQ 群成员集合），便于组织好友；查看账本数据仍须各自接受账本邀请。未来将支持关联多个账本与团队内聊天。</p>
       </div>
       <button class="btn-primary" @click="openCreate">创建团队</button>
     </header>
@@ -114,6 +115,12 @@ onMounted(load)
 </script>
 
 <style scoped>
+.section-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0.35rem 0 0;
+  max-width: 42rem;
+}
 .muted { color: var(--text-muted); font-size: 0.875rem; }
 .team-card {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);

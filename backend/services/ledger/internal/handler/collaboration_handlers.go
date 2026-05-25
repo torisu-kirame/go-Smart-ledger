@@ -169,6 +169,10 @@ func inviteMemberHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := pathvar.Vars(r)["id"]
 		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
 		var body inviteBody
 		if err := httpx.Parse(r, &body); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

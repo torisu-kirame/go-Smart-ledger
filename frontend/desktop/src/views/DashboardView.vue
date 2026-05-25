@@ -82,7 +82,6 @@ const quickLinks = computed(() => [
   { to: '/backup', label: t('layout.nav.backup') },
   { to: '/friends', label: t('layout.nav.friends') },
   { to: '/teams', label: t('layout.nav.teams') },
-  { to: '/invites', label: t('layout.nav.invites') },
   { to: '/chain', label: t('layout.nav.chain') },
   { to: '/settings', label: t('layout.settings') },
 ])

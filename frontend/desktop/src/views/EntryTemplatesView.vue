@@ -20,7 +20,7 @@
           </div>
           <div v-if="!t.builtin" class="actions">
             <button class="btn-ghost" @click="openEdit(t)">编辑</button>
-            <button class="btn-ghost danger" @click="remove(t)">删除</button>
+            <DeleteButton @click="remove(t)" />
           </div>
         </div>
         <div class="fields">
@@ -43,7 +43,7 @@
           <input v-model="f.label" placeholder="显示名" required />
           <AppSelect v-model="f.type" sm :options="FIELD_TYPE_OPTIONS" />
           <label class="check"><input type="checkbox" v-model="f.required" /> 必填</label>
-          <button type="button" class="btn-ghost" @click="form.fields.splice(i, 1)">删</button>
+          <DeleteButton icon-only sm title="删除字段" @click="form.fields.splice(i, 1)" />
         </div>
         <button type="button" class="btn-ghost" @click="addField">+ 字段</button>
         <div class="foot-actions">
@@ -59,6 +59,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/http'
 import AppSelect from '../components/AppSelect.vue'
+import DeleteButton from '../components/DeleteButton.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 
 const templates = ref([])
@@ -160,7 +161,6 @@ onMounted(load)
 .tpl-head { display: flex; justify-content: space-between; gap: 1rem; }
 .tpl-head h3 { margin: 0 0 0.35rem; font-size: 1rem; }
 .actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
-.danger { color: var(--danger); }
 .fields { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
 .field-chip {
   font-size: 0.75rem; background: rgba(61,139,253,.1); border: 1px solid var(--border);

@@ -64,6 +64,42 @@ var schemaTables = []tableSchema{
 		},
 	},
 	{
+		name: "friend_requests",
+		createSQL: `CREATE TABLE IF NOT EXISTS friend_requests (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			from_user_id BIGINT UNSIGNED NOT NULL,
+			to_user_id BIGINT UNSIGNED NOT NULL,
+			status VARCHAR(16) NOT NULL DEFAULT 'pending',
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uk_request_pair (from_user_id, to_user_id),
+			KEY idx_to_status (to_user_id, status)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+		columns: []columnSchema{
+			{name: "id", addSQL: "ADD COLUMN id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT FIRST"},
+			{name: "from_user_id", addSQL: "ADD COLUMN from_user_id BIGINT UNSIGNED NOT NULL"},
+			{name: "to_user_id", addSQL: "ADD COLUMN to_user_id BIGINT UNSIGNED NOT NULL"},
+			{name: "status", addSQL: "ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending'"},
+			{name: "created_at", addSQL: "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+		},
+		indexes: []indexSchema{
+			{name: "uk_request_pair", createSQL: "CREATE UNIQUE INDEX uk_request_pair ON friend_requests (from_user_id, to_user_id)"},
+			{name: "idx_to_status", createSQL: "CREATE INDEX idx_to_status ON friend_requests (to_user_id, status)"},
+		},
+		foreignKeys: []fkSchema{
+			{
+				name:       "fk_friend_requests_from",
+				createSQL:  "ALTER TABLE friend_requests ADD CONSTRAINT fk_friend_requests_from FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+			{
+				name:       "fk_friend_requests_to",
+				createSQL:  "ALTER TABLE friend_requests ADD CONSTRAINT fk_friend_requests_to FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE",
+				referenced: "users",
+			},
+		},
+	},
+	{
 		name: "teams",
 		createSQL: `CREATE TABLE IF NOT EXISTS teams (
 			id BIGINT UNSIGNED NOT NULL,

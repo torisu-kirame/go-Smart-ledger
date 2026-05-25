@@ -145,9 +145,11 @@
             <label>{{ t('settings.personal.password') }}</label>
             <input v-model="deleteForm.password" type="password" autocomplete="current-password" />
           </div>
-          <button class="btn-danger" type="button" :disabled="deleting" @click="onDeleteAccount">
-            {{ deleting ? t('settings.personal.deleting') : t('settings.personal.deleteBtn') }}
-          </button>
+          <DeleteButton
+            :disabled="deleting"
+            :label="deleting ? t('settings.personal.deleting') : t('settings.personal.deleteBtn')"
+            @click="onDeleteAccount"
+          />
         </section>
       </template>
     </section>
@@ -158,6 +160,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppSelect from '../components/AppSelect.vue'
+import DeleteButton from '../components/DeleteButton.vue'
 import FileUploadZone from '../components/FileUploadZone.vue'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
@@ -494,18 +497,7 @@ watch(() => route.hash, scrollToHash)
   font-size: 0.95rem;
 }
 
-.btn-danger {
+.danger-zone .btn-delete {
   margin-top: 0.5rem;
-  padding: 0.55rem 1rem;
-  background: transparent;
-  border: 1px solid var(--danger);
-  color: var(--danger);
-  font-weight: 600;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 </style>

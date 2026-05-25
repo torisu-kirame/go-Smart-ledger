@@ -179,6 +179,72 @@ button {
 .btn-ghost:hover { background: var(--hover); }
 .btn-primary:disabled, .btn-ghost:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* 删除操作：红色 + 垃圾桶图标（见 DeleteButton.vue） */
+.btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-delete__icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+
+.btn-delete--sm {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.btn-delete--sm .btn-delete__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.btn-delete--icon-only {
+  padding: 0.4rem;
+  min-width: 2rem;
+  min-height: 2rem;
+}
+
+.btn-delete--icon-only.btn-delete--sm {
+  padding: 0.3rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+}
+
+.btn-delete--icon-only .btn-delete__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.btn-delete--icon-only.btn-delete--sm .btn-delete__icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem; }
 .form-row { margin-bottom: 0.9rem; max-width: var(--field-max); }
 

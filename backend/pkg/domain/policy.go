@@ -9,8 +9,10 @@ var (
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrLedgerNotFound     = errors.New("ledger not found")
 	ErrPendingNotFound    = errors.New("pending entry not found")
-	ErrInviteNotFound     = errors.New("invite not found")
-	ErrAlreadyMember      = errors.New("user is already a member")
+	ErrInviteNotFound        = errors.New("invite not found")
+	ErrInviteAlreadyPending  = errors.New("invite already pending")
+	ErrCannotInviteSelf      = errors.New("cannot invite yourself")
+	ErrAlreadyMember         = errors.New("user is already a member")
 	ErrInvalidApproval    = errors.New("invalid approval")
 	ErrCannotApproveOwn   = errors.New("proposer cannot approve own entry")
 )
@@ -30,8 +32,8 @@ func ValidateCreate(t LedgerType, members []Member) error {
 			return ErrPrivateOne
 		}
 	case LedgerMulti:
-		if len(members) < 2 {
-			return ErrMultiNeedsTwo
+		if len(members) < 1 {
+			return ErrInvalidMember
 		}
 	default:
 		return ErrInvalidMember

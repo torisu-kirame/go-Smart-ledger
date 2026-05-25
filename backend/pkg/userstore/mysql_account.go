@@ -26,6 +26,9 @@ func (s *MySQLStore) DeleteAccount(id, username, password string) error {
 	if _, err := tx.Exec(`DELETE FROM friendships WHERE user_id = ? OR friend_id = ?`, uid, uid); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`DELETE FROM friend_requests WHERE from_user_id = ? OR to_user_id = ?`, uid, uid); err != nil {
+		return err
+	}
 	res, err := tx.Exec(`DELETE FROM users WHERE id = ?`, uid)
 	if err != nil {
 		return err

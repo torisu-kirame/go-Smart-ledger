@@ -200,8 +200,14 @@ func (s *Service) InviteMember(ctx context.Context, ledgerID, inviterID, invitee
 	if inviteeID == "" {
 		return nil, domain.ErrInvalidMember
 	}
+	if inviterID == inviteeID {
+		return nil, domain.ErrCannotInviteSelf
+	}
 	if domain.IsMember(meta, inviteeID) {
 		return nil, domain.ErrAlreadyMember
+	}
+	if existing, err := s.loadInvite(ctx, ledgerID, inviteeID); err == nil && existing.Status == domain.InviteStatusPending {
+		return nil, domain.ErrInviteAlreadyPending
 	}
 	inv := &domain.MemberInvite{
 		LedgerID:  ledgerID,

@@ -53,15 +53,6 @@
       </div>
     </div>
 
-    <div v-if="ledger.type === 'multi'" class="panel">
-      <h3>邀请成员</h3>
-      <div class="form-row">
-        <label>好友用户 ID</label>
-        <input v-model="inviteUserId" placeholder="被邀请人雪花 ID" />
-      </div>
-      <button class="btn-ghost" :disabled="busy || !inviteUserId" @click="sendInvite">发送邀请</button>
-    </div>
-
     <div v-if="ledger.approvalPolicy?.enabled" class="panel">
       <h3>待审批记账</h3>
       <div v-if="!pending.length" class="muted">暂无待审批</div>
@@ -128,7 +119,6 @@ const pending = ref([])
 const error = ref('')
 const msg = ref('')
 const busy = ref(false)
-const inviteUserId = ref('')
 const e2ePassphrase = ref('')
 const groupKey = ref('')
 const entryData = reactive({})
@@ -261,19 +251,6 @@ async function reject(pendingId) {
     await load()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '操作失败'
-  } finally {
-    busy.value = false
-  }
-}
-
-async function sendInvite() {
-  busy.value = true
-  try {
-    await api.inviteMember(id, inviteUserId.value.trim())
-    msg.value = '邀请已发送'
-    inviteUserId.value = ''
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '邀请失败'
   } finally {
     busy.value = false
   }

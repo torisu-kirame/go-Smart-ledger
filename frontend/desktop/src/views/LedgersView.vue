@@ -11,6 +11,50 @@
     </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
+
+    <section v-if="incomingInvites.length" class="panel panel-highlight">
+      <h3>收到的账本邀请</h3>
+      <p class="section-hint">仅被邀请并接受后，您才有权查看对应账本数据。</p>
+      <div v-for="inv in incomingInvites" :key="inv.ledgerId + inv.inviterId" class="invite-row">
+        <div>
+          <strong>{{ inviteLedgerName(inv.ledgerId) }}</strong>
+          <span class="mono">ID {{ inv.ledgerId }}</span>
+          <span v-if="inv.inviterId" class="inviter">邀请人 {{ inv.inviterId }}</span>
+        </div>
+        <button class="btn-primary" :disabled="inviteBusy" @click="acceptInvite(inv.ledgerId)">接受加入</button>
+      </div>
+    </section>
+
+    <section ref="inviteSectionRef" class="panel">
+      <h3>邀请成员加入账本</h3>
+      <p class="section-hint">向多人账本发送邀请；对方在「收到的账本邀请」中同意后成为成员。团队本身不自动授予账本权限。</p>
+      <div v-if="!multiLedgers.length" class="muted">暂无多人账本，请先创建或接受邀请加入。</div>
+      <template v-else>
+        <div class="form-row">
+          <label>选择账本</label>
+          <AppSelect v-model="inviteLedgerId" :options="multiLedgerOptions" />
+        </div>
+        <div class="form-row member-add-block">
+          <label>被邀请人</label>
+          <MemberAddPanel
+            v-model="inviteUserId"
+            :multiple="false"
+            :exclude-ids="inviteExcludeIds"
+          />
+        </div>
+        <button class="btn-primary" :disabled="inviteBusy || !inviteUserId || !inviteLedgerId" @click="sendInvite">
+          发送邀请
+        </button>
+        <div v-if="outgoingInvites.length" class="outgoing-list">
+          <h4>待对方处理的邀请</h4>
+          <div v-for="inv in outgoingInvites" :key="inv.inviteeId" class="invite-row compact">
+            <span>用户 <span class="mono">{{ inv.inviteeId }}</span></span>
+            <span class="muted">{{ formatInviteTime(inv.createdAt) }}</span>
+          </div>
+        </div>
+      </template>
+    </section>
+
     <div class="panel">
       <div v-if="!list.length" class="muted empty">暂无账本，点击右上角创建</div>
       <div v-else class="table-wrap">
@@ -23,7 +67,17 @@
               <td class="mono" :title="l.ledgerAddress">{{ shortAddr(l.ledgerAddress) }}</td>
               <td class="mono">{{ l.latestSeq }}</td>
               <td><span :class="['badge', l.anchorStatus === 'synced' ? 'badge-ok' : 'badge-pending']">{{ l.anchorStatus }}</span></td>
-              <td><router-link :to="`/ledgers/${l.id}`">详情</router-link></td>
+              <td class="row-actions">
+                <router-link :to="`/ledgers/${l.id}`">详情</router-link>
+                <button
+                  v-if="l.type === 'multi'"
+                  type="button"
+                  class="btn-link"
+                  @click="focusInvite(l.id)"
+                >
+                  邀请
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -51,7 +105,7 @@
             <input v-model="f.label" placeholder="显示名" />
             <AppSelect v-model="f.type" sm class="member-select" :options="FIELD_TYPE_OPTIONS" />
             <label class="check"><input type="checkbox" v-model="f.required" /> 必填</label>
-            <button type="button" class="btn-ghost" @click="form.customFields.splice(i, 1)">删</button>
+            <DeleteButton icon-only sm title="删除字段" @click="form.customFields.splice(i, 1)" />
           </div>
           <button type="button" class="btn-ghost" @click="addCustomField">+ 字段</button>
         </div>
@@ -65,16 +119,15 @@
           <label>加密口令（仅本机解密，勿丢失）</label>
           <input v-model="form.e2ePassphrase" type="password" placeholder="创建后用于加解密记账数据" />
         </div>
-        <template v-if="form.type === 'multi'">
-          <div class="form-row">
-            <label>其他成员</label>
-          </div>
-          <div v-for="(m, i) in form.otherMembers" :key="i" class="form-row member">
-            <input v-model="m.id" placeholder="成员用户 ID" required />
-            <button v-if="form.otherMembers.length > 1" type="button" class="btn-ghost" @click="form.otherMembers.splice(i, 1)">删</button>
-          </div>
-          <button type="button" class="btn-ghost" @click="form.otherMembers.push({ id: '' })">+ 成员</button>
-        </template>
+        <div v-if="form.type === 'multi'" class="form-row member-add-block">
+          <label>邀请首批成员（可选）</label>
+          <p class="field-hint">创建后向对方发送加入申请，对方同意后才成为成员。</p>
+          <MemberAddPanel
+            v-model="form.otherMemberIds"
+            :multiple="true"
+            :exclude-ids="auth.user?.id ? [auth.user.id] : []"
+          />
+        </div>
         <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
           <button type="button" class="btn-ghost" @click="show = false">取消</button>
           <button class="btn-primary" :disabled="saving">{{ saving ? '创建中…' : '创建' }}</button>
@@ -85,16 +138,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import AppSelect from '../components/AppSelect.vue'
+import DeleteButton from '../components/DeleteButton.vue'
+import MemberAddPanel from '../components/MemberAddPanel.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 import { buildEncryptionForCreate, saveLocalGroupKey } from '../utils/e2eCrypto'
 import { syncLedgerToLocal } from '../localdb/db'
 
+const router = useRouter()
 const auth = useAuthStore()
 const list = ref([])
+const incomingInvites = ref([])
+const outgoingInvites = ref([])
+const inviteLedgerId = ref('')
+const inviteUserId = ref('')
+const inviteBusy = ref(false)
+const inviteSectionRef = ref(null)
 const syncingAll = ref(false)
 const error = ref('')
 const success = ref('')
@@ -106,14 +169,14 @@ const form = reactive({
   name: '',
   templateId: 'default',
   customFields: [{ key: '', label: '', type: 'text', required: true }],
-  otherMembers: [{ id: '' }],
+  otherMemberIds: [],
   enableE2E: false,
   e2ePassphrase: '',
 })
 
 const ledgerTypeOptions = [
   { value: 'private', label: '私人（1人）' },
-  { value: 'multi', label: '多人（≥2人）' },
+  { value: 'multi', label: '多人（邀请加入）' },
 ]
 
 const templateOptions = computed(() => [
@@ -123,6 +186,20 @@ const templateOptions = computed(() => [
   })),
   { value: 'custom', label: '临时自定义（不保存）' },
 ])
+
+const multiLedgers = computed(() => list.value.filter((l) => l.type === 'multi'))
+const multiLedgerOptions = computed(() =>
+  multiLedgers.value.map((l) => ({
+    value: l.id,
+    label: `${l.name}（${shortAddr(l.ledgerAddress)}）`,
+  }))
+)
+const inviteExcludeIds = computed(() => {
+  const ledger = list.value.find((l) => l.id === inviteLedgerId.value)
+  const ids = (ledger?.members || []).map((m) => m.id)
+  if (auth.user?.id) ids.push(auth.user.id)
+  return ids
+})
 
 const selectedTemplateFields = computed(() => {
   if (form.templateId === 'custom') return ''
@@ -148,7 +225,7 @@ function resetForm() {
   form.name = ''
   form.templateId = 'default'
   form.customFields = [{ key: '', label: '', type: 'text', required: true }]
-  form.otherMembers = [{ id: '' }]
+  form.otherMemberIds = []
   form.enableE2E = false
   form.e2ePassphrase = ''
 }
@@ -181,14 +258,126 @@ function openCreate() {
 }
 
 watch(() => form.type, () => {
-  if (form.type === 'multi' && !form.otherMembers.length) {
-    form.otherMembers = [{ id: '' }]
+  if (form.type === 'multi' && !form.otherMemberIds.length) {
+    form.otherMemberIds = []
   }
 })
+
+function inviteLedgerName(ledgerId) {
+  const l = list.value.find((x) => x.id === ledgerId)
+  return l?.name || '账本'
+}
+
+function formatInviteTime(t) {
+  if (!t) return ''
+  return new Date(t).toLocaleString()
+}
+
+async function loadOutgoingInvites() {
+  if (!inviteLedgerId.value) {
+    outgoingInvites.value = []
+    return
+  }
+  try {
+    const res = await api.listLedgerInvites(inviteLedgerId.value)
+    outgoingInvites.value = res.invites || []
+  } catch {
+    outgoingInvites.value = []
+  }
+}
+
+async function loadInvites() {
+  try {
+    const res = await api.listMyInvites()
+    incomingInvites.value = res.invites || []
+  } catch {
+    incomingInvites.value = []
+  }
+}
 
 async function load() {
   const data = await api.listLedgers()
   list.value = Array.isArray(data) ? data : []
+  if (!inviteLedgerId.value && multiLedgers.value.length) {
+    inviteLedgerId.value = multiLedgers.value[0].id
+  } else if (inviteLedgerId.value && !multiLedgers.value.some((l) => l.id === inviteLedgerId.value)) {
+    inviteLedgerId.value = multiLedgers.value[0]?.id || ''
+  }
+  await Promise.all([loadInvites(), loadOutgoingInvites()])
+}
+
+watch(inviteLedgerId, () => {
+  loadOutgoingInvites()
+})
+
+async function acceptInvite(ledgerId) {
+  inviteBusy.value = true
+  error.value = ''
+  try {
+    await api.acceptInvite(ledgerId)
+    success.value = '已加入账本'
+    await load()
+    router.push(`/ledgers/${ledgerId}`)
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '接受失败'
+  } finally {
+    inviteBusy.value = false
+  }
+}
+
+async function sendInvite() {
+  const targetId = typeof inviteUserId.value === 'string' ? inviteUserId.value.trim() : ''
+  if (!inviteLedgerId.value || !targetId) {
+    error.value = '请选择账本并填写被邀请人'
+    return
+  }
+  inviteBusy.value = true
+  error.value = ''
+  try {
+    await api.inviteMember(inviteLedgerId.value, targetId)
+    success.value = '邀请已发送，等待对方在「收到的账本邀请」中同意'
+    inviteUserId.value = ''
+    await loadOutgoingInvites()
+  } catch (e) {
+    error.value = inviteErrorMessage(e, '邀请失败')
+  } finally {
+    inviteBusy.value = false
+  }
+}
+
+function inviteErrorMessage(e, fallback) {
+  if (!(e instanceof ApiError)) return fallback
+  const m = e.message || ''
+  if (m.includes('already a member')) return '对方已是账本成员'
+  if (m.includes('invite already pending')) return '已向该用户发送过邀请'
+  if (m.includes('cannot invite yourself')) return '不能邀请自己'
+  return m || fallback
+}
+
+function focusInvite(ledgerId) {
+  inviteLedgerId.value = ledgerId
+  loadOutgoingInvites()
+  nextTick(() => {
+    inviteSectionRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+async function sendInvitesToUsers(ledgerId, userIds) {
+  const ids = [...new Set(userIds.map((id) => String(id).trim()).filter(Boolean))]
+  let sent = 0
+  for (const uid of ids) {
+    try {
+      await api.inviteMember(ledgerId, uid)
+      sent++
+    } catch (e) {
+      if (e instanceof ApiError && e.message?.includes('invite already pending')) {
+        sent++
+        continue
+      }
+      throw e
+    }
+  }
+  return sent
 }
 
 async function syncAllLocal() {
@@ -225,11 +414,11 @@ function buildMembers() {
   if (form.type === 'private') {
     return [{ id: uid, address: '' }]
   }
-  const others = form.otherMembers.map((m) => m.id.trim()).filter(Boolean)
-  if (others.length < 1) {
-    throw new ApiError('多人账本至少需要 1 名其他成员', 400)
-  }
-  return [{ id: uid, address: '' }, ...others.map((id) => ({ id, address: '' }))]
+  return [{ id: uid, address: '' }]
+}
+
+function pendingInviteUserIds() {
+  return (form.otherMemberIds || []).map((id) => String(id).trim()).filter(Boolean)
 }
 
 async function create() {
@@ -238,10 +427,15 @@ async function create() {
   success.value = ''
   try {
     const members = buildMembers()
+    const inviteTargets = form.type === 'multi' ? pendingInviteUserIds() : []
     let encryption = { enabled: false }
     let groupKey = ''
     if (form.type === 'multi' && form.enableE2E && form.e2ePassphrase) {
-      const enc = await buildEncryptionForCreate(members, auth.user.id, form.e2ePassphrase, 'new')
+      const encMembers = [
+        ...members,
+        ...inviteTargets.map((id) => ({ id, address: '' })),
+      ]
+      const enc = await buildEncryptionForCreate(encMembers, auth.user.id, form.e2ePassphrase, 'new')
       encryption = { enabled: true, algo: 'aes-gcm-v1', wrappedKeys: enc.wrappedKeys }
       groupKey = enc._groupKey
     }
@@ -257,9 +451,15 @@ async function create() {
     if (groupKey && created.id) {
       saveLocalGroupKey(created.id, groupKey)
     }
+    let inviteNote = ''
+    if (form.type === 'multi' && inviteTargets.length) {
+      const sent = await sendInvitesToUsers(created.id, inviteTargets)
+      inviteNote = sent ? `，已向 ${sent} 人发送加入邀请` : ''
+    }
     show.value = false
     await load()
-    success.value = `已创建账本「${created.name}」（ID: ${created.id}）`
+    inviteLedgerId.value = created.id
+    success.value = `已创建账本「${created.name}」（ID: ${created.id}）${inviteNote}`
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '创建失败'
   } finally {
@@ -269,6 +469,10 @@ async function create() {
 </script>
 
 <style scoped>
+.member-add-block {
+  display: grid;
+  gap: 0.5rem;
+}
 .member {
   max-width: none;
   display: grid;
@@ -289,4 +493,34 @@ async function create() {
 .muted { color: var(--text-muted); }
 .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.panel-highlight { border-color: var(--accent, #3b82f6); }
+.section-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.75rem; }
+.invite-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.invite-row .mono { font-size: 0.8125rem; color: var(--text-muted); margin-left: 0.5rem; }
+.invite-row .inviter { display: block; font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.2rem; }
+.invite-row.compact { padding: 0.4rem 0; }
+.outgoing-list { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); }
+.outgoing-list h4 { margin: 0 0 0.5rem; font-size: 0.875rem; font-weight: 600; }
+.field-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.5rem; }
+.member-add-block { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
+.form-row { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; max-width: 28rem; }
+.form-row label { font-size: 0.8125rem; color: var(--text-muted); }
+.row-actions { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
 </style>
