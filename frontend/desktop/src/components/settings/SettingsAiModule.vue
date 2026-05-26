@@ -39,6 +39,14 @@
     </div>
     <p v-if="aiCopied" class="ok-line">{{ t('settings.ai.copied') }}</p>
     <p v-if="copyError" class="err-line">{{ copyError }}</p>
+
+    <div class="docker-hint panel">
+      <p class="hint-title">{{ t('settings.ai.dockerTitle') }}</p>
+      <p class="hint-text">{{ t('settings.ai.dockerHint') }}</p>
+      <button type="button" class="btn-ghost btn-sm" @click="applyDockerDefaults">
+        {{ t('settings.ai.dockerApply') }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -76,6 +84,21 @@ async function copyOpenClawConfig() {
     copyError.value = t('settings.ai.copyFail')
   }
 }
+
+function applyDockerDefaults() {
+  ai.value = {
+    ...ai.value,
+    provider: 'ollama',
+    baseUrl: 'http://127.0.0.1:11434/v1',
+    chatModel: 'llama3.2',
+    embedModel: 'nomic-embed-text',
+    apiKey: 'ollama',
+    openclawGateway: 'http://127.0.0.1:18789',
+  }
+  persistAi()
+  aiCopied.value = false
+  copyError.value = ''
+}
 </script>
 
 <style scoped>
@@ -89,5 +112,31 @@ async function copyOpenClawConfig() {
   color: var(--danger);
   font-size: 0.875rem;
   margin: 0.5rem 0 0;
+}
+
+.docker-hint {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-card));
+  border-style: dashed;
+}
+
+.hint-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hint-text {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.btn-sm {
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.65rem;
 }
 </style>

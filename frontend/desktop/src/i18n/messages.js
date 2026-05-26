@@ -96,6 +96,9 @@ export const messages = {
         copyConfig: '复制 OpenClaw 配置片段',
         copied: '已复制到剪贴板，可粘贴到 openclaw/openclaw.json',
         copyFail: '复制失败',
+        dockerTitle: 'Docker 部署',
+        dockerHint: '若已执行 make openclaw-up 或 setup-openclaw-docker 脚本，点击下方填入宿主机访问地址（Ollama :11434、Gateway :18789）。',
+        dockerApply: '填入 Docker 默认地址',
       },
       theme: {
         title: '主题设置',
@@ -267,6 +270,9 @@ export const messages = {
         copyConfig: 'Copy OpenClaw config snippet',
         copied: 'Copied — paste into openclaw/openclaw.json',
         copyFail: 'Copy failed',
+        dockerTitle: 'Docker deployment',
+        dockerHint: 'After make openclaw-up or setup-openclaw-docker, apply host URLs for Ollama (:11434) and Gateway (:18789).',
+        dockerApply: 'Apply Docker defaults',
       },
       theme: {
         title: 'Appearance',

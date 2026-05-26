@@ -1,17 +1,125 @@
-# Optional local LLM for OpenClaw RAG (offline). OpenClaw Gateway runs on host/WSL.
-#   docker compose -f docker-compose.openclaw.yml up -d
+# Smart Ledger — OpenClaw + Ollama（离线 AI / 账本 RAG）
+#
+#   ./scripts/setup-openclaw-docker.sh     # Linux/macOS
+#   .\scripts\setup-openclaw-docker.ps1  # Windows
+#
+# Gateway UI:  http://127.0.0.1:18789
+# Ollama API:  http://127.0.0.1:11434
+# 控制台 → 设置 → AI：Gateway http://127.0.0.1:18789 ，Ollama http://127.0.0.1:11434/v1
+#
+# 先启动主栈：make up  （gateway :28080）
 
-name: smart-ledger
+name: smart-ledger-openclaw
 
 services:
   ollama:
     image: ollama/ollama:latest
     container_name: smart-ledger-ollama
     ports:
-      - "11434:11434"
+      - "${OLLAMA_HOST_PORT:-11434}:11434"
     volumes:
       - ollama-models:/root/.ollama
+    networks:
+      - openclaw-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  openclaw-gateway:
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    container_name: smart-ledger-openclaw-gateway
+    env_file:
+      - path: .env.openclaw
+        required: false
+    environment:
+      HOME: /home/node
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_DISABLE_BONJOUR: ${OPENCLAW_DISABLE_BONJOUR:-1}
+      TZ: ${OPENCLAW_TZ:-UTC}
+      SMART_LEDGER_GATEWAY: ${SMART_LEDGER_GATEWAY:-http://host.docker.internal:28080}
+    volumes:
+      - ./data/openclaw/config:/home/node/.openclaw
+      - ./integrations/openclaw/workspace-smart-ledger:/home/node/.openclaw/workspace/workspace-smart-ledger:ro
+      - ./data/openclaw/lancedb:/data/openclaw/lancedb
+      - ./data/openclaw/auth-secrets:/home/node/.config/openclaw
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - openclaw-net
+    init: true
+    restart: unless-stopped
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway",
+        "--bind",
+        "${OPENCLAW_GATEWAY_BIND:-lan}",
+        "--port",
+        "18789",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 40s
+
+  openclaw-cli:
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    container_name: smart-ledger-openclaw-cli
+    profiles: ["cli"]
+    network_mode: service:openclaw-gateway
+    env_file:
+      - path: .env.openclaw
+        required: false
+    environment:
+      HOME: /home/node
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      BROWSER: echo
+      TZ: ${OPENCLAW_TZ:-UTC}
+    volumes:
+      - ./data/openclaw/config:/home/node/.openclaw
+      - ./integrations/openclaw/workspace-smart-ledger:/home/node/.openclaw/workspace/workspace-smart-ledger:ro
+      - ./data/openclaw/lancedb:/data/openclaw/lancedb
+      - ./data/openclaw/auth-secrets:/home/node/.config/openclaw
+    stdin_open: true
+    tty: true
+    init: true
+    entrypoint: ["node", "dist/index.js"]
+    depends_on:
+      openclaw-gateway:
+        condition: service_healthy
+
+networks:
+  openclaw-net:
+    driver: bridge
 
 volumes:
   ollama-models:

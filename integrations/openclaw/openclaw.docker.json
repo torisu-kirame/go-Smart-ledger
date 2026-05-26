@@ -1,0 +1,44 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789",
+        "http://localhost:25173",
+        "http://127.0.0.1:25173"
+      ]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "workspace-smart-ledger",
+      "model": {
+        "provider": "openai",
+        "baseUrl": "http://ollama:11434/v1",
+        "id": "llama3.2",
+        "apiKey": "ollama"
+      }
+    }
+  },
+  "plugins": {
+    "slots": {
+      "memory": "memory-lancedb"
+    },
+    "entries": {
+      "memory-lancedb": {
+        "enabled": true,
+        "config": {
+          "embedding": {
+            "baseUrl": "http://ollama:11434/v1",
+            "model": "nomic-embed-text",
+            "apiKey": "ollama"
+          },
+          "dbPath": "/data/openclaw/lancedb"
+        }
+      }
+    }
+  }
+}

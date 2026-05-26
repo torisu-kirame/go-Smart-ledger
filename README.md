@@ -203,14 +203,15 @@ flowchart TB
 
 | 组件 | 路径 / 说明 |
 |------|-------------|
-| 克隆脚本 | `scripts/setup-openclaw.ps1` / `.sh` → 根目录 **`openclaw/`**（已 `.gitignore`，不进入本仓库） |
-| 集成配置 | [`integrations/openclaw/`](integrations/openclaw/) 工作区、`openclaw.example.json` |
-| 控制台 AI 设置 | **设置 → 离线 AI（OpenClaw）**：Ollama 地址、对话/向量模型、复制配置片段 |
+| **Docker 一键部署** | `make openclaw-up` 或 `scripts/setup-openclaw-docker.ps1` / `.sh` |
+| Compose | [`docker-compose.openclaw.yml`](docker-compose.openclaw.yml)：`ollama` + `openclaw-gateway`（`ghcr.io/openclaw/openclaw:latest`） |
+| 集成配置 | [`integrations/openclaw/`](integrations/openclaw/) 工作区、`openclaw.docker.json` → `data/openclaw/config/` |
+| 宿主机安装（可选） | `scripts/setup-openclaw.ps1` / `.sh` → 根目录 **`openclaw/`**（gitignore） |
+| 控制台 AI 设置 | **设置 → AI 助手** →「填入 Docker 默认地址」或手动填 Gateway / Ollama |
 | RAG 导出 API | `GET /api/v1/ledgers/:id/rag-export`（JWT，仅成员） |
 | 文档 | [`docs/openclaw-integration.md`](docs/openclaw-integration.md) |
-| 本地 LLM | `docker compose -f docker-compose.openclaw.yml up -d`（Ollama） |
 
-流程简述：登录控制台 →（可选）设置里配置 Ollama → 用脚本或 Agent 拉取 `rag-export` → OpenClaw `memory-lancedb` 本地向量库 → 对话 Agent 仅基于本机索引回答。
+流程简述：`make up` 启动账本栈 → `make openclaw-up` 启动 AI 栈 → 打开 http://127.0.0.1:18789 粘贴 token → 控制台设置 AI 地址 → 拉取 `rag-export` 索引 → 本地对话。
 
 ---
 
@@ -221,7 +222,8 @@ go-Smart-ledger/
 ├── README.md                 # 本文件：计划 + 进度
 ├── Makefile                  # 全栈构建入口
 ├── docker-compose.yml        # 一键启动后端 + MiniLedger
-├── docker-compose.openclaw.yml  # 可选：本地 Ollama
+├── docker-compose.openclaw.yml  # OpenClaw Gateway + Ollama
+├── .env.openclaw.example       # OpenClaw Docker 环境变量模板
 ├── integrations/openclaw/    # OpenClaw 工作区与示例配置（不含上游源码）
 ├── openclaw/                 # 由 setup-openclaw 克隆（gitignore）
 ├── docs/                     # production-security、evm-anchor、openclaw-integration

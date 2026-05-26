@@ -1,6 +1,7 @@
 # Smart Ledger 全栈构建与启动
 .PHONY: help build build-linux docker-build up down logs clean \
-        frontend-install frontend-dev frontend-build dev-all start
+        frontend-install frontend-dev frontend-build dev-all start \
+        openclaw-up openclaw-down openclaw-logs
 
 help:
 	@echo "Targets:"
@@ -10,6 +11,8 @@ help:
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
 	@echo "  make frontend-build    - 仅构建前端 dist"
 	@echo "  make dev-all           - 本地前端开发（需后端已 up）"
+	@echo "  make openclaw-up       - Docker 启动 OpenClaw + Ollama（见 docs/openclaw-integration.md）"
+	@echo "  make openclaw-down     - 停止 OpenClaw 栈"
 
 build:
 	$(MAKE) -C backend build-local
@@ -53,3 +56,12 @@ dev-all: frontend-install
 
 # 全栈 Docker（后端 + Nginx 前端）
 start: up
+
+openclaw-up:
+	@if [ -f scripts/setup-openclaw-docker.sh ]; then chmod +x scripts/setup-openclaw-docker.sh && ./scripts/setup-openclaw-docker.sh; else echo "Run scripts/setup-openclaw-docker.ps1 on Windows"; exit 1; fi
+
+openclaw-down:
+	docker compose --env-file .env.openclaw -f docker-compose.openclaw.yml down
+
+openclaw-logs:
+	docker compose --env-file .env.openclaw -f docker-compose.openclaw.yml logs -f openclaw-gateway ollama

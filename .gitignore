@@ -23,3 +23,4 @@ frontend/mobile/node_modules/
 # OpenClaw upstream clone (scripts/setup-openclaw.*)
 /openclaw/
 data/openclaw/
+.env.openclaw

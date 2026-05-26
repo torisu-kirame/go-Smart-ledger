@@ -11,9 +11,15 @@
 ## 索引账本（离线）
 
 ```bash
-# 示例：导出并保存（需 ACCESS_TOKEN）
+# 宿主机 / 浏览器侧（Smart Ledger 主栈 make up 后）
+export SMART_LEDGER_API="${SMART_LEDGER_API:-http://127.0.0.1:28080}"
 curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
-  "http://127.0.0.1:28080/api/v1/ledgers/LEDGER_ID/rag-export" \
+  "$SMART_LEDGER_API/api/v1/ledgers/LEDGER_ID/rag-export" \
+  -o /tmp/ledger-rag.json
+
+# OpenClaw 在 Docker 内时（compose 默认 SMART_LEDGER_GATEWAY）
+curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "${SMART_LEDGER_GATEWAY:-http://host.docker.internal:28080}/api/v1/ledgers/LEDGER_ID/rag-export" \
   -o /tmp/ledger-rag.json
 ```
 
