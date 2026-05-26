@@ -30,17 +30,18 @@
       <div v-if="!list.length" class="muted empty">暂无账本，点击右上角创建</div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>名称</th><th>类型</th><th>存储</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
+          <thead><tr><th>名称</th><th>类型</th><th>记账</th><th>存储</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
           <tbody>
             <tr v-for="l in list" :key="l.id">
               <td>{{ l.name }}</td>
               <td><span :class="['badge', l.type === 'multi' ? 'badge-multi' : 'badge-private']">{{ l.type === 'multi' ? '多人' : '私人' }}</span></td>
+              <td><span class="badge badge-mode">{{ bookkeepingModeLabel(resolveBookkeepingMode(l)) }}</span></td>
               <td>{{ storageLocationLabel(l.storageLocation) }}</td>
               <td class="mono" :title="l.ledgerAddress">{{ shortAddr(l.ledgerAddress) }}</td>
               <td class="mono">{{ l.latestSeq }}</td>
               <td><span :class="['badge', l.anchorStatus === 'synced' ? 'badge-ok' : 'badge-pending']">{{ l.anchorStatus }}</span></td>
               <td class="row-actions">
-                <router-link :to="`/ledgers/${l.id}/view`">查看</router-link>
+                <router-link :to="ledgerBookkeepingPath(l)">记账</router-link>
                 <router-link :to="`/ledgers/${l.id}`">详情</router-link>
                 <router-link :to="`/ledgers/${l.id}/settings`">设置</router-link>
               </td>
@@ -62,7 +63,19 @@
         </div>
         <div class="form-row"><label>名称</label><input v-model="form.name" required /></div>
         <div class="form-row">
-          <label>记账模板</label>
+          <label>记账方式</label>
+          <AppSelect v-model="form.bookkeepingMode" :options="bookkeepingModeOptions" />
+          <p class="field-hint">
+            {{
+              form.bookkeepingMode === 'professional'
+                ? '复式记账：科目表、凭证、报表、期间与对账（创建后不可切换）。'
+                : '简单流水：按模板字段记一笔，支持 Excel 导入与多人审批。'
+            }}
+          </p>
+        </div>
+        <template v-if="form.bookkeepingMode === 'simple'">
+        <div class="form-row">
+          <label>流水模板</label>
           <AppSelect v-model="form.templateId" :options="templateOptions" />
         </div>
         <div v-if="form.templateId === 'custom'" class="custom-schema">
@@ -75,6 +88,7 @@
           </div>
           <button type="button" class="btn-ghost" @click="addCustomField">+ 字段</button>
         </div>
+        </template>
         <div v-if="form.type === 'multi'" class="form-row">
           <label class="inline-check">
             <input v-model="form.enableE2E" type="checkbox" />
@@ -117,6 +131,13 @@ import MemberAddPanel from '../components/MemberAddPanel.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 import { buildEncryptionForCreate, saveLocalGroupKey, saveLocalPassphrase } from '../utils/e2eCrypto'
 import { DEFAULT_STORAGE_LOCATION, storageLocationLabel } from '../utils/ledgerStorage'
+import {
+  BOOKKEEPING_PROFESSIONAL,
+  BOOKKEEPING_SIMPLE,
+  bookkeepingModeLabel,
+  ledgerBookkeepingPath,
+  resolveBookkeepingMode,
+} from '../utils/bookkeepingMode'
 
 const router = useRouter()
 const { crumbs } = usePageCrumbs()
@@ -129,9 +150,15 @@ const success = ref('')
 const show = ref(false)
 const saving = ref(false)
 const templates = ref([DEFAULT_ENTRY_SCHEMA])
+const bookkeepingModeOptions = [
+  { value: BOOKKEEPING_SIMPLE, label: '简单流水（模板字段）' },
+  { value: BOOKKEEPING_PROFESSIONAL, label: '专业复式（科目与凭证）' },
+]
+
 const form = reactive({
   type: 'private',
   name: '',
+  bookkeepingMode: BOOKKEEPING_SIMPLE,
   templateId: 'default',
   customFields: [{ key: '', label: '', type: 'text', required: true }],
   otherMemberIds: [],
@@ -174,6 +201,7 @@ function shortAddr(a) {
 function resetForm() {
   form.type = 'private'
   form.name = ''
+  form.bookkeepingMode = BOOKKEEPING_SIMPLE
   form.templateId = 'default'
   form.customFields = [{ key: '', label: '', type: 'text', required: true }]
   form.otherMemberIds = []
@@ -238,10 +266,10 @@ async function acceptInvite(ledgerId) {
   inviteBusy.value = true
   error.value = ''
   try {
-    await api.acceptInvite(ledgerId)
+    const joined = await api.acceptInvite(ledgerId)
     success.value = '已加入账本'
     await load()
-    router.push(`/ledgers/${ledgerId}`)
+    await router.push(ledgerBookkeepingPath(joined || { id: ledgerId }))
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '接受失败'
   } finally {
@@ -308,14 +336,16 @@ async function create() {
       encryption = { enabled: true, algo: 'aes-gcm-v1', wrappedKeys: enc.wrappedKeys }
       groupKey = enc._groupKey
     }
+    const isSimple = form.bookkeepingMode === BOOKKEEPING_SIMPLE
     const created = await api.createLedger({
       type: form.type,
       name: form.name.trim(),
       creatorId: auth.user.id,
       members,
-      entrySchema: buildEntrySchema(),
+      bookkeepingMode: form.bookkeepingMode,
+      entrySchema: isSimple ? buildEntrySchema() : undefined,
       approvalPolicy:
-        form.type === 'multi'
+        isSimple && form.type === 'multi'
           ? {
               enabled: true,
               threshold: Math.max(2, members.length + inviteTargets.length),
@@ -338,6 +368,7 @@ async function create() {
     show.value = false
     await load()
     success.value = `已创建账本「${created.name}」（ID: ${created.id}）${inviteNote}`
+    await router.push(ledgerBookkeepingPath(created))
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '创建失败'
   } finally {
@@ -389,7 +420,12 @@ async function create() {
 }
 .invite-row .mono { font-size: 0.8125rem; color: var(--text-muted); margin-left: 0.5rem; }
 .invite-row .inviter { display: block; font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.2rem; }
-.field-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.5rem; }
+.field-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0.35rem 0 0; }
+.badge-mode {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+}
 .member-add-block { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
 .form-row { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; max-width: 28rem; }
 .form-row label { font-size: 0.8125rem; color: var(--text-muted); }

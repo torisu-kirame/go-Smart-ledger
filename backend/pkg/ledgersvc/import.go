@@ -37,6 +37,9 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, ro
 	if err != nil {
 		return nil, err
 	}
+	if domain.IsProfessionalBookkeeping(meta) {
+		return nil, domain.ErrBookkeepingModeMismatch
+	}
 	schema := domain.ResolveEntrySchema(meta.EntrySchema)
 	imported := 0
 	skipped := 0

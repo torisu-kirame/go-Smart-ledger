@@ -12,6 +12,7 @@
               <span :class="['badge', ledger.type === 'multi' ? 'badge-multi' : 'badge-private']">
                 {{ ledger.type === 'multi' ? '多人' : '私人' }}
               </span>
+              <span class="badge badge-mode">{{ bookkeepingModeLabel(bookkeepingMode) }}</span>
               <span class="ledger-hero__meta-item mono">序号 {{ ledger.latestSeq }}</span>
               <span
                 :class="['badge', ledger.anchorStatus === 'synced' ? 'badge-ok' : 'badge-pending']"
@@ -31,13 +32,15 @@
             详情
           </router-link>
           <router-link
+            v-if="isSimpleLedger"
             :to="`${basePath}/view`"
             class="ledger-tab"
             :class="{ active: activeTab === 'view' }"
           >
-            查看
+            流水
           </router-link>
           <router-link
+            v-if="isProfessionalLedger"
             :to="`${basePath}/accounting`"
             class="ledger-tab"
             :class="{ active: activeTab === 'accounting' }"
@@ -62,18 +65,21 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import { provideLedgerDetail } from '../composables/useLedgerDetail'
 import { useI18n } from '../composables/useI18n'
+import { bookkeepingModeLabel } from '../utils/bookkeepingMode'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
-const ledgerId = route.params.id
-const basePath = computed(() => `/ledgers/${ledgerId}`)
+const ledgerId = computed(() => route.params.id)
+const basePath = computed(() => `/ledgers/${ledgerId.value}`)
 
-const { ledger, loading, load } = provideLedgerDetail(ledgerId)
+const { ledger, loading, bookkeepingMode, isSimpleLedger, isProfessionalLedger } =
+  provideLedgerDetail(ledgerId)
 
 const activeTab = computed(() => {
   const p = route.path
@@ -87,7 +93,7 @@ const crumbs = computed(() => {
   const name = ledger.value?.name || '…'
   const suffixMap = {
     overview: '详情',
-    view: '查看',
+    view: '流水',
     accounting: '财务',
     settings: '设置',
   }
@@ -104,7 +110,18 @@ const headerSubtitle = computed(() => {
   return a.length > 20 ? `${a.slice(0, 10)}…${a.slice(-8)}` : a
 })
 
-onMounted(load)
+watch(
+  () => [ledger.value, route.path],
+  () => {
+    if (!ledger.value) return
+    if (isProfessionalLedger.value && route.path.endsWith('/view')) {
+      router.replace(`${basePath.value}/accounting`)
+    } else if (isSimpleLedger.value && route.path.endsWith('/accounting')) {
+      router.replace(`${basePath.value}/view`)
+    }
+  }
+)
+
 </script>
 
 <style scoped>
@@ -141,6 +158,11 @@ onMounted(load)
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
+}
+.badge-mode {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 .ledger-hero__meta-item {
   font-size: 0.8125rem;

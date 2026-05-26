@@ -19,8 +19,9 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		Name:           m.Name,
 		CreatorId:      m.CreatorID,
 		LedgerAddress:  m.LedgerAddress,
-		Members:        members,
-		EntrySchema:    EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
+		Members:         members,
+		BookkeepingMode: domain.ResolvedBookkeepingMode(m),
+		EntrySchema:     EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
 		ApprovalPolicy: types.ApprovalPolicyReq{Enabled: m.ApprovalPolicy.Enabled, Threshold: m.ApprovalPolicy.Threshold},
 		Encryption: types.EncryptionReq{
 			Enabled:               m.Encryption.Enabled,
@@ -43,6 +44,7 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 
 func CreateOptionsFromReq(req *types.CreateLedgerReq) ledgersvc.CreateOptions {
 	return ledgersvc.CreateOptions{
+		BookkeepingMode: req.BookkeepingMode,
 		ApprovalPolicy: domain.ApprovalPolicy{
 			Enabled:   req.ApprovalPolicy.Enabled,
 			Threshold: req.ApprovalPolicy.Threshold,

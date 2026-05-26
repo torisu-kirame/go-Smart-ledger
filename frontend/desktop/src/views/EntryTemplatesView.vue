@@ -8,6 +8,10 @@
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
+    <p class="section-hint panel-hint">
+      流水模板仅用于<strong>简单流水</strong>账本（创建时选择「简单流水」）。专业复式账本使用科目表与凭证，无需此处模板。
+    </p>
+
     <div class="panel">
       <div v-if="!templates.length" class="muted empty">加载中…</div>
       <div v-for="t in templates" :key="t.templateId" class="tpl-card">
@@ -161,6 +165,12 @@ onMounted(load)
 .tpl-card {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 1rem; margin-bottom: 0.75rem;
+}
+.panel-hint {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 .tpl-head { display: flex; justify-content: space-between; gap: 1rem; }
 .tpl-head h3 { margin: 0 0 0.35rem; font-size: 1rem; }

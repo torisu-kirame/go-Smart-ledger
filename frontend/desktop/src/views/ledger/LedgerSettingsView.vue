@@ -38,7 +38,7 @@
     <section class="detail-card">
       <h3 class="detail-card__title">安全与协作</h3>
 
-      <div v-if="isMulti" class="policy-block">
+      <div v-if="isMulti && isSimpleLedger" class="policy-block">
         <h4 class="policy-block__heading">审批策略</h4>
         <p class="field-hint">
           启用后，记账需经全体成员批准后方可上链（批准人数等于当前成员总数）。
@@ -263,7 +263,7 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const { ledgerId, ledger, error, msg } = useLedgerDetail()
+const { ledgerId, ledger, error, msg, isSimpleLedger, applyLedgerUpdate } = useLedgerDetail()
 
 const nameDraft = ref('')
 const saving = ref(false)
@@ -351,11 +351,11 @@ async function onApprovalToggle(enabled) {
   policySaving.value = true
   error.value = ''
   try {
-    const updated = await api.setLedgerApprovalPolicy(ledgerId, {
+    const updated = await api.setLedgerApprovalPolicy(ledgerId.value, {
       enabled,
       threshold: enabled ? memberCount.value : 1,
     })
-    ledger.value = { ...ledger.value, ...updated }
+    await applyLedgerUpdate(updated)
     msg.value = enabled ? '审批策略已启用' : '审批策略已关闭'
   } catch (e) {
     approvalEnabled.value = !enabled
@@ -370,10 +370,10 @@ async function onPassphraseViewToggle(enabled) {
   error.value = ''
   const prev = !enabled
   try {
-    const updated = await api.setLedgerPassphraseViewPolicy(ledgerId, { enabled })
-    ledger.value = { ...ledger.value, ...updated }
+    const updated = await api.setLedgerPassphraseViewPolicy(ledgerId.value, { enabled })
+    await applyLedgerUpdate(updated)
     msg.value = enabled ? '已允许成员查看加密口令' : '已关闭成员查看加密口令'
-    if (enabled && loadLocalPassphrase(ledgerId)) {
+    if (enabled && loadLocalPassphrase(ledgerId.value)) {
       openPassphraseModal()
       viewStep.value = 'password'
     }
@@ -391,7 +391,7 @@ async function confirmViewPassphrase() {
   try {
     await api.verifyPassword(viewLoginPassword.value)
     const uid = auth.user?.id
-    const local = loadLocalPassphrase(ledgerId)
+    const local = loadLocalPassphrase(ledgerId.value)
     if (local) {
       revealedPassphrase.value = local
       viewStep.value = 'revealed'
@@ -404,7 +404,7 @@ async function confirmViewPassphrase() {
         viewLoginPassword.value,
         uid
       )
-      saveLocalPassphrase(ledgerId, revealedPassphrase.value)
+      saveLocalPassphrase(ledgerId.value, revealedPassphrase.value)
       viewStep.value = 'revealed'
       return
     }
@@ -430,9 +430,9 @@ async function registerAndRevealPassphrase() {
       viewLoginPassword.value,
       uid
     )
-    const updated = await api.registerLedgerPassphraseViewWrap(ledgerId, { wrapped })
-    ledger.value = { ...ledger.value, ...updated }
-    saveLocalPassphrase(ledgerId, registerLedgerPassphrase.value)
+    const updated = await api.registerLedgerPassphraseViewWrap(ledgerId.value, { wrapped })
+    await applyLedgerUpdate(updated)
+    saveLocalPassphrase(ledgerId.value, registerLedgerPassphrase.value)
     revealedPassphrase.value = registerLedgerPassphrase.value
     viewStep.value = 'revealed'
   } catch (e) {
@@ -448,8 +448,8 @@ async function saveName() {
   saving.value = true
   error.value = ''
   try {
-    const updated = await api.updateLedger(ledgerId, { name })
-    ledger.value = { ...ledger.value, ...updated }
+    const updated = await api.updateLedger(ledgerId.value, { name })
+    await applyLedgerUpdate(updated)
     msg.value = '账本名称已更新'
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '保存失败'
@@ -463,8 +463,8 @@ async function onStorageChange(value) {
   storageSaving.value = true
   error.value = ''
   try {
-    const updated = await api.setLedgerStorageLocation(ledgerId, loc)
-    ledger.value = { ...ledger.value, ...updated }
+    const updated = await api.setLedgerStorageLocation(ledgerId.value, loc)
+    await applyLedgerUpdate(updated)
     msg.value = '账本位置已更新'
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '更新失败'
@@ -486,16 +486,16 @@ async function saveEncryption() {
       members,
       auth.user.id,
       e2ePassphrase.value,
-      ledgerId
+      ledgerId.value
     )
-    const updated = await api.enableLedgerEncryption(ledgerId, {
+    const updated = await api.enableLedgerEncryption(ledgerId.value, {
       enabled: true,
       algo: 'aes-gcm-v1',
       wrappedKeys: enc.wrappedKeys,
     })
-    saveLocalGroupKey(ledgerId, enc._groupKey)
-    saveLocalPassphrase(ledgerId, e2ePassphrase.value)
-    ledger.value = { ...ledger.value, ...updated }
+    saveLocalGroupKey(ledgerId.value, enc._groupKey)
+    saveLocalPassphrase(ledgerId.value, e2ePassphrase.value)
+    await applyLedgerUpdate(updated)
     enableE2E.value = false
     e2ePassphrase.value = ''
     msg.value = '端到端加密已启用'
@@ -516,8 +516,8 @@ async function doArchive() {
   error.value = ''
   try {
     await api.verifyPassword(confirmPassword.value)
-    await api.archiveLedger(ledgerId)
-    clearInfoUnlockSession(ledgerId)
+    await api.archiveLedger(ledgerId.value)
+    clearInfoUnlockSession(ledgerId.value)
     await router.push('/ledgers')
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '注销失败'

@@ -43,11 +43,12 @@ type EncryptionReq struct {
 }
 
 type CreateLedgerReq struct {
-	Type           string            `json:"type"`
-	Name           string            `json:"name"`
-	CreatorId      string            `json:"creatorId"`
-	Members        []Member          `json:"members"`
-	EntrySchema    EntrySchemaReq    `json:"entrySchema,optional"`
+	Type            string            `json:"type"`
+	Name            string            `json:"name"`
+	CreatorId       string            `json:"creatorId"`
+	Members         []Member          `json:"members"`
+	BookkeepingMode string            `json:"bookkeepingMode,optional"`
+	EntrySchema     EntrySchemaReq    `json:"entrySchema,optional"`
 	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,optional"`
 	Encryption       EncryptionReq     `json:"encryption,optional"`
 	StorageLocation  string            `json:"storageLocation,optional"`
@@ -104,8 +105,9 @@ type LedgerResp struct {
 	Name           string            `json:"name"`
 	CreatorId      string            `json:"creatorId"`
 	LedgerAddress  string            `json:"ledgerAddress,omitempty"`
-	Members        []Member          `json:"members"`
-	EntrySchema    EntrySchemaResp   `json:"entrySchema"`
+	Members          []Member          `json:"members"`
+	BookkeepingMode  string            `json:"bookkeepingMode,omitempty"`
+	EntrySchema      EntrySchemaResp   `json:"entrySchema"`
 	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,omitempty"`
 	Encryption     EncryptionReq     `json:"encryption,omitempty"`
 	LatestSeq      uint64            `json:"latestSeq"`

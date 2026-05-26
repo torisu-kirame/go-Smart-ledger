@@ -128,8 +128,8 @@ async function unlockE2E() {
     return
   }
   try {
-    groupKey.value = await unwrapGroupKey(wrapped, e2ePassphrase.value, ledgerId, uid)
-    saveLocalGroupKey(ledgerId, groupKey.value)
+    groupKey.value = await unwrapGroupKey(wrapped, e2ePassphrase.value, ledgerId.value, uid)
+    saveLocalGroupKey(ledgerId.value, groupKey.value)
     msg.value = '已解锁'
   } catch {
     error.value = '口令错误或密钥损坏'
@@ -155,10 +155,10 @@ async function addEntry() {
   try {
     const entry = await buildEntryPayload()
     if (ledger.value?.approvalPolicy?.enabled) {
-      const res = await api.proposeEntry(ledgerId, entry)
+      const res = await api.proposeEntry(ledgerId.value, entry)
       msg.value = res.status === 'committed' ? '记账已上链' : '已提交审批'
     } else {
-      await api.appendEntry(ledgerId, entry)
+      await api.appendEntry(ledgerId.value, entry)
       msg.value = '记账成功'
     }
     await load()

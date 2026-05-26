@@ -70,7 +70,7 @@
           </div>
         </section>
 
-        <section v-if="ledger.approvalPolicy?.enabled" class="detail-card">
+        <section v-if="isSimpleLedger && ledger.approvalPolicy?.enabled" class="detail-card">
           <h3 class="detail-card__title">待审批记账</h3>
           <div v-if="!pending.length" class="muted empty-inline">暂无待审批</div>
           <div v-for="p in pending" :key="p.id" class="pending-row">
@@ -126,6 +126,7 @@ const {
   error,
   msg,
   load,
+  isSimpleLedger,
 } = useLedgerDetail()
 
 const busy = ref(false)
@@ -153,8 +154,8 @@ async function unlockE2E() {
     return
   }
   try {
-    groupKey.value = await unwrapGroupKey(wrapped, e2ePassphrase.value, ledgerId, uid)
-    saveLocalGroupKey(ledgerId, groupKey.value)
+    groupKey.value = await unwrapGroupKey(wrapped, e2ePassphrase.value, ledgerId.value, uid)
+    saveLocalGroupKey(ledgerId.value, groupKey.value)
     msg.value = '加密账本已解锁'
   } catch {
     error.value = '口令错误或密钥损坏'
@@ -164,7 +165,7 @@ async function unlockE2E() {
 async function approve(pendingId) {
   busy.value = true
   try {
-    const res = await api.approvePending(ledgerId, pendingId)
+    const res = await api.approvePending(ledgerId.value, pendingId)
     msg.value = res.status === 'committed' ? '已批准并上链' : '已记录批准'
     await load()
   } catch (e) {
@@ -177,7 +178,7 @@ async function approve(pendingId) {
 async function reject(pendingId) {
   busy.value = true
   try {
-    await api.rejectPending(ledgerId, pendingId)
+    await api.rejectPending(ledgerId.value, pendingId)
     msg.value = '已拒绝'
     await load()
   } catch (e) {
@@ -190,7 +191,7 @@ async function reject(pendingId) {
 async function doAnchor() {
   busy.value = true
   try {
-    const r = await api.anchor(ledgerId)
+    const r = await api.anchor(ledgerId.value)
     msg.value = r.externalAnchor?.txHash
       ? `封账成功 · 链外锚定 ${r.externalAnchor.txHash.slice(0, 14)}…`
       : `封账成功 · ${r.status}`
@@ -203,12 +204,12 @@ async function doAnchor() {
 }
 
 async function doVerify() {
-  const r = await api.verify(ledgerId)
+  const r = await api.verify(ledgerId.value)
   msg.value = r.valid ? 'Merkle 校验通过' : '校验未通过'
 }
 
 function goBackup() {
-  router.push({ path: '/backup', query: { ledgerId } })
+  router.push({ path: '/backup', query: { ledgerId: ledgerId.value } })
 }
 
 function formatInviteTime(t) {
@@ -222,7 +223,7 @@ async function loadOutgoingInvites() {
     return
   }
   try {
-    const res = await api.listLedgerInvites(ledgerId)
+    const res = await api.listLedgerInvites(ledgerId.value)
     outgoingInvites.value = res.invites || []
   } catch {
     outgoingInvites.value = []
@@ -247,7 +248,7 @@ async function sendInvite() {
   inviteBusy.value = true
   error.value = ''
   try {
-    await api.inviteMember(ledgerId, targetId)
+    await api.inviteMember(ledgerId.value, targetId)
     msg.value = '邀请已发送'
     inviteUserId.value = ''
     await loadOutgoingInvites()

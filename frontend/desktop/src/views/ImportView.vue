@@ -19,6 +19,10 @@
       />
     </div>
 
+    <div v-if="currentLedger && isProfessionalLedger" class="alert alert-error">
+      所选账本为<strong>专业复式</strong>模式，请使用账本「财务」页录入凭证；Excel 流水导入仅适用于简单流水账本。
+    </div>
+
     <div class="panel">
       <h3>2. 上传并预览</h3>
       <FileUploadZone
@@ -26,7 +30,7 @@
         accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
         title="点击或拖拽上传 Excel"
         hint="支持 .xlsx / .xls"
-        :disabled="!ledgerId"
+        :disabled="!ledgerId || isProfessionalLedger"
         @file="onUploadFile"
       />
     </div>
@@ -77,6 +81,7 @@ import PageHeader from '../components/PageHeader.vue'
 import { usePageCrumbs } from '../composables/usePageCrumbs'
 import FileUploadZone from '../components/FileUploadZone.vue'
 import { cellValue, resolveSchema } from '../utils/entrySchema'
+import { isProfessionalBookkeeping } from '../utils/bookkeepingMode'
 
 const route = useRoute()
 const { crumbs } = usePageCrumbs()
@@ -94,6 +99,7 @@ const msg = ref('')
 const busy = ref(false)
 
 const currentLedger = computed(() => ledgers.value.find((x) => x.id === ledgerId.value))
+const isProfessionalLedger = computed(() => isProfessionalBookkeeping(currentLedger.value))
 const currentSchema = computed(() =>
   preview.value?.entrySchema || resolveSchema(currentLedger.value)
 )

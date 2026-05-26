@@ -27,6 +27,7 @@ func ToCodeErr(err error) error {
 		errors.Is(err, domain.ErrCannotInviteSelf),
 		errors.Is(err, domain.ErrEntryValidation),
 		errors.Is(err, domain.ErrInvalidSchema),
+		errors.Is(err, domain.ErrBookkeepingModeMismatch),
 		errors.Is(err, ledgersvc.ErrImportHasErrors),
 		errors.Is(err, ledgersvc.ErrRestoreConflict):
 		return xerrors.New(400, err.Error())

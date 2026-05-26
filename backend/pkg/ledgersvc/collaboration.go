@@ -13,6 +13,7 @@ import (
 
 // CreateOptions optional policies for new ledgers (F17/F19).
 type CreateOptions struct {
+	BookkeepingMode string
 	ApprovalPolicy  domain.ApprovalPolicy
 	Encryption      domain.LedgerEncryption
 	StorageLocation string
@@ -60,6 +61,9 @@ func (s *Service) ProposeEntry(ctx context.Context, ledgerID, actorID string, en
 	}
 	if err := domain.CanAppend(meta, actorID); err != nil {
 		return nil, nil, err
+	}
+	if domain.IsProfessionalBookkeeping(meta) {
+		return nil, nil, domain.ErrBookkeepingModeMismatch
 	}
 	schema := domain.ResolveEntrySchema(meta.EntrySchema)
 	data := entry.NormalizeData()

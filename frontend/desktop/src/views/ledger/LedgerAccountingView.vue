@@ -3,6 +3,26 @@
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
 
+    <section class="acct-summary detail-card">
+      <div class="acct-summary__stats">
+        <div>
+          <span class="acct-summary__label">科目</span>
+          <strong>{{ chart.accounts?.length || 0 }}</strong>
+        </div>
+        <div>
+          <span class="acct-summary__label">已过账凭证</span>
+          <strong>{{ journals.length }}</strong>
+        </div>
+        <div>
+          <span class="acct-summary__label">开放期间</span>
+          <strong>{{ openPeriodCount }}</strong>
+        </div>
+      </div>
+      <p v-if="!chart.accounts?.length" class="field-hint">
+        科目表尚未初始化，请点击下方按钮恢复默认科目后再记账。
+      </p>
+    </section>
+
     <nav class="acct-tabs" aria-label="财务功能">
       <button
         v-for="t in tabs"
@@ -197,18 +217,55 @@
         </div>
       </div>
     </section>
+
+    <button
+      type="button"
+      class="fab-entry btn-primary"
+      :disabled="busy || !chart.accounts?.length"
+      title="录入复式凭证"
+      @click="openJournalEntry"
+    >
+      <AppIcon name="plus" size="sm" />
+      <span>记一笔</span>
+    </button>
+
+    <div v-if="showJournalModal" class="modal" @click.self="closeJournalEntry">
+      <form class="modal-card entry-modal wide" @submit.prevent="submitJournalFromModal">
+        <h3>记一笔（复式凭证）</h3>
+        <div class="form-row">
+          <label>凭证日期</label>
+          <input v-model="journalForm.date" type="date" required class="field-sm" />
+        </div>
+        <div class="form-row">
+          <label>摘要</label>
+          <input v-model="journalForm.description" class="field-sm" placeholder="可选" />
+        </div>
+        <div v-for="(ln, i) in journalForm.lines" :key="i" class="journal-line">
+          <AppSelect v-model="ln.accountCode" :options="accountOptions" sm placeholder="科目" />
+          <input v-model="ln.debit" placeholder="借方" class="field-sm amount" />
+          <input v-model="ln.credit" placeholder="贷方" class="field-sm amount" />
+          <DeleteButton icon-only sm title="删除行" @click="journalForm.lines.splice(i, 1)" />
+        </div>
+        <button type="button" class="btn-ghost" @click="addJournalLine">+ 分录行</button>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" @click="closeJournalEntry">取消</button>
+          <button type="submit" class="btn-primary" :disabled="busy">{{ busy ? '过账中…' : '过账' }}</button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { api, ApiError } from '../../api/http'
+import AppIcon from '../../components/AppIcon.vue'
 import AppSelect from '../../components/AppSelect.vue'
 import DeleteButton from '../../components/DeleteButton.vue'
 import FileUploadZone from '../../components/FileUploadZone.vue'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 
-const { ledgerId, error, msg } = useLedgerDetail()
+const { ledgerId, error, msg, load: reloadLedger, isProfessionalLedger } = useLedgerDetail()
 
 const tabs = [
   { id: 'coa', label: '科目' },
@@ -219,7 +276,8 @@ const tabs = [
   { id: 'bank', label: '对账' },
 ]
 
-const tab = ref('coa')
+const tab = ref('journal')
+const showJournalModal = ref(false)
 const busy = ref(false)
 const chart = ref({ accounts: [] })
 const journals = ref([])
@@ -246,6 +304,29 @@ const accountOptions = computed(() =>
     .map((a) => ({ value: a.code, label: `${a.code} ${a.name}` }))
 )
 
+const openPeriodCount = computed(
+  () => periods.value.filter((p) => p.status !== 'closed').length
+)
+
+function lid() {
+  return ledgerId.value
+}
+
+function openJournalEntry() {
+  tab.value = 'journal'
+  showJournalModal.value = true
+}
+
+function closeJournalEntry() {
+  if (busy.value) return
+  showJournalModal.value = false
+}
+
+async function submitJournalFromModal() {
+  await postJournal()
+  if (!error.value) showJournalModal.value = false
+}
+
 function categoryLabel(c) {
   const m = {
     asset: '资产',
@@ -262,17 +343,18 @@ function addJournalLine() {
 }
 
 async function loadAll() {
+  if (!isProfessionalLedger.value || !lid()) return
   busy.value = true
   error.value = ''
   try {
-    chart.value = await api.getAccountingChart(ledgerId)
-    const jr = await api.listAccountingJournals(ledgerId)
+    chart.value = await api.getAccountingChart(lid())
+    const jr = await api.listAccountingJournals(lid())
     journals.value = jr.journals || []
-    const pr = await api.listAccountingPeriods(ledgerId)
+    const pr = await api.listAccountingPeriods(lid())
     periods.value = pr.periods || []
-    const at = await api.listAccountingAttachments(ledgerId)
+    const at = await api.listAccountingAttachments(lid())
     attachments.value = at.attachments || []
-    const bs = await api.listBankStatements(ledgerId)
+    const bs = await api.listBankStatements(lid())
     bankStatements.value = bs.statements || []
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '加载失败'
@@ -284,8 +366,8 @@ async function loadAll() {
 async function resetChart() {
   busy.value = true
   try {
-    const def = await api.getAccountingChart(ledgerId)
-    await api.putAccountingChart(ledgerId, def)
+    const def = await api.getAccountingChart(lid())
+    await api.putAccountingChart(lid(), def)
     msg.value = '已恢复默认科目表'
     await loadAll()
   } catch (e) {
@@ -298,13 +380,14 @@ async function resetChart() {
 async function postJournal() {
   busy.value = true
   try {
-    await api.postAccountingJournal(ledgerId, {
+    await api.postAccountingJournal(lid(), {
       date: journalForm.date,
       description: journalForm.description,
       lines: journalForm.lines.filter((l) => l.accountCode),
     })
     msg.value = '凭证已过账'
     await loadAll()
+    await reloadLedger()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '过账失败'
   } finally {
@@ -315,7 +398,7 @@ async function postJournal() {
 async function closePeriod(period) {
   busy.value = true
   try {
-    await api.closeAccountingPeriod(ledgerId, period)
+    await api.closeAccountingPeriod(lid(), period)
     msg.value = `${period} 已结账锁定`
     await loadAll()
   } catch (e) {
@@ -328,7 +411,7 @@ async function closePeriod(period) {
 async function reopenPeriod(period) {
   busy.value = true
   try {
-    await api.reopenAccountingPeriod(ledgerId, period)
+    await api.reopenAccountingPeriod(lid(), period)
     msg.value = `${period} 已重新开放`
     await loadAll()
   } catch (e) {
@@ -342,7 +425,7 @@ async function loadReports() {
   busy.value = true
   try {
     const p = reportPeriod.value ? reportPeriod.value.replace('/', '-') : ''
-    reports.value = await api.getAccountingReports(ledgerId, p)
+    reports.value = await api.getAccountingReports(lid(), p)
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '报表生成失败'
   } finally {
@@ -354,7 +437,7 @@ async function onAttachFile(file) {
   if (!file || !attachSeq.value) return
   busy.value = true
   try {
-    await api.uploadAccountingAttachment(ledgerId, attachSeq.value, file)
+    await api.uploadAccountingAttachment(lid(), attachSeq.value, file)
     msg.value = '附件已上传'
     await loadAll()
   } catch (e) {
@@ -368,7 +451,7 @@ async function onBankImport(file) {
   if (!file) return
   busy.value = true
   try {
-    await api.importBankStatement(ledgerId, file)
+    await api.importBankStatement(lid(), file)
     msg.value = '对账单已导入'
     await loadAll()
   } catch (e) {
@@ -383,7 +466,7 @@ async function matchLine(stmtId, lineId) {
   if (!seq) return
   busy.value = true
   try {
-    await api.matchBankLine(ledgerId, stmtId, lineId, seq)
+    await api.matchBankLine(lid(), stmtId, lineId, seq)
     msg.value = '已匹配'
     await loadAll()
   } catch (e) {
@@ -393,10 +476,61 @@ async function matchLine(stmtId, lineId) {
   }
 }
 
+watch(
+  () => [ledgerId.value, isProfessionalLedger.value],
+  () => {
+    if (isProfessionalLedger.value) loadAll()
+  },
+  { immediate: true }
+)
+
 onMounted(loadAll)
 </script>
 
 <style scoped>
+.ledger-accounting {
+  position: relative;
+  padding-bottom: 4.5rem;
+}
+.acct-summary__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2rem;
+}
+.acct-summary__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+.fab-entry {
+  position: fixed;
+  right: 2rem;
+  bottom: 2rem;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 999px;
+  border: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.fab-entry:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.entry-modal.wide {
+  width: min(100%, 36rem);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
 .acct-tabs {
   display: flex;
   flex-wrap: wrap;

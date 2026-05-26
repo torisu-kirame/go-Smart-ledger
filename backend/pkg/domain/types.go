@@ -38,8 +38,9 @@ type LedgerMeta struct {
 	CreatorID      string           `json:"creatorId"`
 	LedgerAddress  string           `json:"ledgerAddress,omitempty"`
 	Members        []Member         `json:"members"`
-	EntrySchema    EntrySchema      `json:"entrySchema,omitempty"`
-	ApprovalPolicy ApprovalPolicy   `json:"approvalPolicy,omitempty"`
+	BookkeepingMode string           `json:"bookkeepingMode,omitempty"` // simple | professional
+	EntrySchema     EntrySchema      `json:"entrySchema,omitempty"`
+	ApprovalPolicy  ApprovalPolicy   `json:"approvalPolicy,omitempty"`
 	Encryption     LedgerEncryption `json:"encryption,omitempty"`
 	LatestSeq      uint64           `json:"latestSeq"`
 	LatestRoot     string           `json:"latestRoot"`

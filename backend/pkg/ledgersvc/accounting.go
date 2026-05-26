@@ -14,9 +14,28 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/storage"
 )
 
+func (s *Service) requireProfessional(meta *domain.LedgerMeta) error {
+	if domain.IsProfessionalBookkeeping(meta) {
+		return nil
+	}
+	return domain.ErrBookkeepingModeMismatch
+}
+
+func (s *Service) getProfessionalLedger(ctx context.Context, ledgerID, userID string) (*domain.LedgerMeta, error) {
+	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return meta, s.requireProfessional(meta)
+}
+
 // GetChart returns COA or default if unset.
 func (s *Service) GetChart(ctx context.Context, ledgerID, userID string) (*accounting.ChartOfAccounts, error) {
-	if _, err := s.GetForUser(ctx, ledgerID, userID); err != nil {
+	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireProfessional(meta); err != nil {
 		return nil, err
 	}
 	var chart accounting.ChartOfAccounts
@@ -32,6 +51,9 @@ func (s *Service) GetChart(ctx context.Context, ledgerID, userID string) (*accou
 func (s *Service) PutChart(ctx context.Context, ledgerID, userID string, chart accounting.ChartOfAccounts) (*accounting.ChartOfAccounts, error) {
 	meta, err := s.GetForUser(ctx, ledgerID, userID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireProfessional(meta); err != nil {
 		return nil, err
 	}
 	chart.LedgerID = ledgerID
@@ -51,6 +73,9 @@ func (s *Service) PutChart(ctx context.Context, ledgerID, userID string, chart a
 func (s *Service) PostJournal(ctx context.Context, ledgerID, userID string, j accounting.JournalEntry) (*accounting.JournalEntry, error) {
 	meta, err := s.GetForUser(ctx, ledgerID, userID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireProfessional(meta); err != nil {
 		return nil, err
 	}
 	chart, err := s.GetChart(ctx, ledgerID, userID)
@@ -87,7 +112,7 @@ func (s *Service) PostJournal(ctx context.Context, ledgerID, userID string, j ac
 
 // ListJournals loads journal entries from chain events.
 func (s *Service) ListJournals(ctx context.Context, ledgerID, userID string) ([]accounting.JournalEntry, error) {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +136,7 @@ func (s *Service) ListJournals(ctx context.Context, ledgerID, userID string) ([]
 
 // ListPeriods returns period states (open months inferred from journals if missing).
 func (s *Service) ListPeriods(ctx context.Context, ledgerID, userID string) ([]accounting.PeriodState, error) {
-	if _, err := s.GetForUser(ctx, ledgerID, userID); err != nil {
+	if _, err := s.getProfessionalLedger(ctx, ledgerID, userID); err != nil {
 		return nil, err
 	}
 	rows, err := s.chain.Query(ctx,
@@ -153,7 +178,7 @@ func (s *Service) ListPeriods(ctx context.Context, ledgerID, userID string) ([]a
 
 // ClosePeriod locks a month from new journals.
 func (s *Service) ClosePeriod(ctx context.Context, ledgerID, userID, period string) (*accounting.PeriodState, error) {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +203,7 @@ func (s *Service) ClosePeriod(ctx context.Context, ledgerID, userID, period stri
 
 // ReopenPeriod opens a closed period (creator-level; any member for now).
 func (s *Service) ReopenPeriod(ctx context.Context, ledgerID, userID, period string) (*accounting.PeriodState, error) {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +222,7 @@ func (s *Service) ReopenPeriod(ctx context.Context, ledgerID, userID, period str
 
 // GetReports builds financial statements from posted journals.
 func (s *Service) GetReports(ctx context.Context, ledgerID, userID, period string) (*accounting.FinancialReports, error) {
-	if _, err := s.GetForUser(ctx, ledgerID, userID); err != nil {
+	if _, err := s.getProfessionalLedger(ctx, ledgerID, userID); err != nil {
 		return nil, err
 	}
 	if period != "" {
@@ -229,7 +254,7 @@ func (s *Service) LinkAttachment(
 	body []byte,
 	backup *storage.DualBackup,
 ) (*accounting.Attachment, error) {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +295,7 @@ func (s *Service) LinkAttachment(
 
 // ListAttachments returns all attachment metadata for a ledger.
 func (s *Service) ListAttachments(ctx context.Context, ledgerID, userID string, entrySeq uint64) ([]accounting.Attachment, error) {
-	if _, err := s.GetForUser(ctx, ledgerID, userID); err != nil {
+	if _, err := s.getProfessionalLedger(ctx, ledgerID, userID); err != nil {
 		return nil, err
 	}
 	prefix := domain.LedgerAttachmentPrefix(ledgerID)
@@ -296,7 +321,7 @@ func (s *Service) ListAttachments(ctx context.Context, ledgerID, userID string, 
 
 // ImportBankStatement parses CSV and stores on chain.
 func (s *Service) ImportBankStatement(ctx context.Context, ledgerID, userID, accountCode string, r io.Reader, filename string) (*accounting.BankStatement, error) {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +343,7 @@ func (s *Service) ImportBankStatement(ctx context.Context, ledgerID, userID, acc
 
 // ListBankStatements returns imported statements.
 func (s *Service) ListBankStatements(ctx context.Context, ledgerID, userID string) ([]accounting.BankStatement, error) {
-	if _, err := s.GetForUser(ctx, ledgerID, userID); err != nil {
+	if _, err := s.getProfessionalLedger(ctx, ledgerID, userID); err != nil {
 		return nil, err
 	}
 	rows, err := s.chain.Query(ctx,
@@ -339,7 +364,7 @@ func (s *Service) ListBankStatements(ctx context.Context, ledgerID, userID strin
 
 // MatchBankLine links a statement line to an entry seq.
 func (s *Service) MatchBankLine(ctx context.Context, ledgerID, userID, stmtID, lineID string, entrySeq uint64) (*accounting.BankStatement, error) {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}

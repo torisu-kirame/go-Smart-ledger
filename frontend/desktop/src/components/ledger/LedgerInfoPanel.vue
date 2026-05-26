@@ -43,6 +43,10 @@
         <dd>{{ ledger.type === 'multi' ? '多人账本' : '私人账本' }}</dd>
       </div>
       <div class="info-row">
+        <dt>记账方式</dt>
+        <dd>{{ bookkeepingModeLabel(bookkeepingMode) }}</dd>
+      </div>
+      <div class="info-row">
         <dt>创建者</dt>
         <dd class="mono">{{ ledger.creatorId }}</dd>
       </div>
@@ -58,7 +62,7 @@
         <dt>端到端加密</dt>
         <dd>{{ ledger.encryption?.enabled ? '已启用' : '未启用' }}</dd>
       </div>
-      <div class="info-row">
+      <div v-if="isSimpleLedger" class="info-row">
         <dt>审批策略</dt>
         <dd>
           {{
@@ -107,8 +111,8 @@
           </ul>
         </dd>
       </div>
-      <div v-if="schemaLabel" class="info-row">
-        <dt>记账模板</dt>
+      <div v-if="schemaLabel && isSimpleLedger" class="info-row">
+        <dt>流水模板</dt>
         <dd>{{ schemaLabel }}</dd>
       </div>
     </dl>
@@ -126,14 +130,20 @@ import {
   getInfoUnlockSession,
   setInfoUnlockSession,
 } from '../../composables/useLedgerDetail'
+import { bookkeepingModeLabel } from '../../utils/bookkeepingMode'
 
 const auth = useAuthStore()
-const { ledgerId, ledger, groupKey, error, msg, schema } = useLedgerDetail()
+const { ledgerId, ledger, groupKey, error, msg, schema, bookkeepingMode, isSimpleLedger } =
+  useLedgerDetail()
 
 const passphrase = ref('')
 const unlocking = ref(false)
 const unlockError = ref('')
-const sessionUnlocked = ref(getInfoUnlockSession(ledgerId))
+const sessionUnlocked = ref(getInfoUnlockSession(ledgerId.value))
+
+watch(ledgerId, (id) => {
+  sessionUnlocked.value = getInfoUnlockSession(id)
+})
 
 const groupKeyReady = computed(() => {
   if (!ledger.value?.encryption?.enabled) return true
@@ -173,7 +183,7 @@ watch(
   () => groupKeyReady.value,
   (ready) => {
     if (ready && ledger.value?.encryption?.enabled) {
-      setInfoUnlockSession(ledgerId)
+      setInfoUnlockSession(ledgerId.value)
       sessionUnlocked.value = true
     }
   }
@@ -202,14 +212,14 @@ async function tryUnlock() {
         unlockError.value = '未找到您的密钥包装'
         return
       }
-      groupKey.value = await unwrapGroupKey(wrapped, passphrase.value, ledgerId, uid)
-      saveLocalGroupKey(ledgerId, groupKey.value)
-      setInfoUnlockSession(ledgerId)
+      groupKey.value = await unwrapGroupKey(wrapped, passphrase.value, ledgerId.value, uid)
+      saveLocalGroupKey(ledgerId.value, groupKey.value)
+      setInfoUnlockSession(ledgerId.value)
       sessionUnlocked.value = true
       msg.value = '账本信息已解锁'
     } else {
       await api.verifyPassword(passphrase.value)
-      setInfoUnlockSession(ledgerId)
+      setInfoUnlockSession(ledgerId.value)
       sessionUnlocked.value = true
       msg.value = '身份已验证'
     }

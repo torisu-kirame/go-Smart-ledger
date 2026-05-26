@@ -166,14 +166,17 @@ export const api = {
   listLedgers: () => request('/ledgers'),
   getLedger: (id) => request(`/ledgers/${id}`),
   ragExport: (id) => request(`/ledgers/${encodeURIComponent(id)}/rag-export`),
-  createLedger: (data) =>
-    request('/ledgers', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        entrySchema: data.entrySchema || { templateId: 'default' },
-      }),
-    }),
+  createLedger: (data) => {
+    const mode = data.bookkeepingMode || 'simple'
+    const body = { ...data, bookkeepingMode: mode }
+    if (mode === 'professional') {
+      body.entrySchema = { templateId: 'professional', fields: [] }
+      body.approvalPolicy = { enabled: false, threshold: 1 }
+    } else {
+      body.entrySchema = data.entrySchema || { templateId: 'default' }
+    }
+    return request('/ledgers', { method: 'POST', body: JSON.stringify(body) })
+  },
   appendEntry: (id, entry) =>
     request(`/ledgers/${id}/entries`, {
       method: 'POST',

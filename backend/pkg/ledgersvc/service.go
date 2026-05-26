@@ -40,9 +40,14 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 	if err := domain.ValidateCreate(t, members); err != nil {
 		return nil, err
 	}
-	schema = domain.ResolveEntrySchema(schema)
-	if err := domain.ValidateSchema(schema); err != nil {
-		return nil, err
+	mode := domain.NormalizeBookkeepingMode(opts.BookkeepingMode)
+	if mode == domain.BookkeepingProfessional {
+		schema = domain.ProfessionalEntrySchema()
+	} else {
+		schema = domain.ResolveEntrySchema(schema)
+		if err := domain.ValidateSchema(schema); err != nil {
+			return nil, err
+		}
 	}
 	idInt, err := snowflake.NextInt64()
 	if err != nil {
@@ -73,9 +78,10 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		Name:            name,
 		CreatorID:       creatorID,
 		LedgerAddress:   ledgerAddr,
-		Members:         members,
-		EntrySchema:     schema,
-		ApprovalPolicy:  ap,
+		Members:          members,
+		BookkeepingMode:  mode,
+		EntrySchema:      schema,
+		ApprovalPolicy:   ap,
 		Encryption:      enc,
 		StorageLocation: domain.NormalizeStorageLocation(opts.StorageLocation),
 		LatestSeq:       0,
@@ -87,8 +93,13 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err
 	}
+	if mode == domain.BookkeepingProfessional {
+		def := accounting.DefaultChart(id)
+		_ = s.putJSON(ctx, domain.LedgerCOAKey(id), id, def)
+	}
 	payload, _ := json.Marshal(map[string]any{
-		"name": name, "type": t, "members": members, "ledgerAddress": ledgerAddr, "entrySchema": schema,
+		"name": name, "type": t, "members": members, "ledgerAddress": ledgerAddr,
+		"bookkeepingMode": mode, "entrySchema": schema,
 	})
 	if _, err := s.appendEvent(ctx, meta, creatorID, domain.EventLedgerCreated, payload); err != nil {
 		return nil, err
@@ -354,7 +365,8 @@ func MapDomainError(err error) int {
 		errors.Is(err, accounting.ErrStmtNotFound),
 		errors.Is(err, accounting.ErrLineNotFound),
 		errors.Is(err, domain.ErrEncryptionAlreadyEnabled),
-		errors.Is(err, domain.ErrInvalidApprovalPolicy):
+		errors.Is(err, domain.ErrInvalidApprovalPolicy),
+		errors.Is(err, domain.ErrBookkeepingModeMismatch):
 		return 400
 	default:
 		return 500
