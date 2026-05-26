@@ -38,6 +38,13 @@
             查看
           </router-link>
           <router-link
+            :to="`${basePath}/accounting`"
+            class="ledger-tab"
+            :class="{ active: activeTab === 'accounting' }"
+          >
+            财务
+          </router-link>
+          <router-link
             :to="`${basePath}/settings`"
             class="ledger-tab"
             :class="{ active: activeTab === 'settings' }"
@@ -71,13 +78,19 @@ const { ledger, loading, load } = provideLedgerDetail(ledgerId)
 const activeTab = computed(() => {
   const p = route.path
   if (p.endsWith('/settings')) return 'settings'
+  if (p.endsWith('/accounting')) return 'accounting'
   if (p.endsWith('/view')) return 'view'
   return 'overview'
 })
 
 const crumbs = computed(() => {
   const name = ledger.value?.name || '…'
-  const suffixMap = { overview: '详情', view: '查看', settings: '设置' }
+  const suffixMap = {
+    overview: '详情',
+    view: '查看',
+    accounting: '财务',
+    settings: '设置',
+  }
   const suffix = suffixMap[activeTab.value] || '详情'
   return [
     { label: t('layout.nav.ledgers'), to: '/ledgers' },

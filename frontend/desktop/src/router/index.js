@@ -40,6 +40,10 @@ const routes = [
             component: () => import('../views/ledger/LedgerContentView.vue'),
           },
           {
+            path: 'accounting',
+            component: () => import('../views/ledger/LedgerAccountingView.vue'),
+          },
+          {
             path: 'settings',
             component: () => import('../views/ledger/LedgerSettingsView.vue'),
           },

@@ -261,4 +261,47 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  getAccountingChart: (id) => request(`/ledgers/${id}/accounting/chart`),
+  putAccountingChart: (id, chart) =>
+    request(`/ledgers/${id}/accounting/chart`, { method: 'PUT', body: JSON.stringify(chart) }),
+  listAccountingJournals: (id) => request(`/ledgers/${id}/accounting/journals`),
+  postAccountingJournal: (id, journal) =>
+    request(`/ledgers/${id}/accounting/journals`, { method: 'POST', body: JSON.stringify(journal) }),
+  listAccountingPeriods: (id) => request(`/ledgers/${id}/accounting/periods`),
+  closeAccountingPeriod: (id, period) =>
+    request(`/ledgers/${id}/accounting/periods/${encodeURIComponent(period)}/close`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  reopenAccountingPeriod: (id, period) =>
+    request(`/ledgers/${id}/accounting/periods/${encodeURIComponent(period)}/reopen`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  getAccountingReports: (id, period = '') => {
+    const q = period ? `?period=${encodeURIComponent(period)}` : ''
+    return request(`/ledgers/${id}/accounting/reports${q}`)
+  },
+  listAccountingAttachments: (id, entrySeq = 0) => {
+    const q = entrySeq ? `?entrySeq=${entrySeq}` : ''
+    return request(`/ledgers/${id}/accounting/attachments${q}`)
+  },
+  uploadAccountingAttachment: (id, entrySeq, file) => {
+    const fd = new FormData()
+    fd.append('entrySeq', String(entrySeq))
+    fd.append('file', file)
+    return request(`/ledgers/${id}/accounting/attachments`, { method: 'POST', body: fd })
+  },
+  listBankStatements: (id) => request(`/ledgers/${id}/accounting/bank-statements`),
+  importBankStatement: (id, file, accountCode = '1002') => {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (accountCode) fd.append('accountCode', accountCode)
+    return request(`/ledgers/${id}/accounting/bank-statements/import`, { method: 'POST', body: fd })
+  },
+  matchBankLine: (id, stmtId, lineId, entrySeq) =>
+    request(`/ledgers/${id}/accounting/bank-statements/${encodeURIComponent(stmtId)}/match`, {
+      method: 'POST',
+      body: JSON.stringify({ lineId, entrySeq }),
+    }),
 }
