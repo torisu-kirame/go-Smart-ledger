@@ -69,9 +69,9 @@ func ClassicEntrySchema() EntrySchema {
 	}
 }
 
-// BuiltinTemplates returns preset schemas for API / UI.
+// BuiltinTemplates returns preset schemas for API / UI (excludes legacy classic).
 func BuiltinTemplates() []EntrySchema {
-	return []EntrySchema{DefaultEntrySchema(), ClassicEntrySchema()}
+	return []EntrySchema{DefaultEntrySchema()}
 }
 
 // ResolveEntrySchema returns ledger schema; empty meta uses classic columns (legacy ledgers).

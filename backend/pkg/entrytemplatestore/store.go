@@ -68,6 +68,18 @@ func (s *Store) ListForUser(userID string) ([]Template, error) {
 }
 
 func (s *Store) GetByID(templateID, userID string) (*Template, error) {
+	if templateID == domain.TemplateClassic {
+		// Legacy built-in removed from listing; still resolvable for old ledgers.
+		sch := domain.ClassicEntrySchema()
+		now := time.Now().UTC()
+		return &Template{
+			TemplateID: sch.TemplateID,
+			Name:       "经典记账（已下线）",
+			Builtin:    true,
+			Fields:     sch.Fields,
+			CreatedAt:  now,
+		}, nil
+	}
 	if isBuiltinID(templateID) {
 		for _, t := range builtinTemplates() {
 			if t.TemplateID == templateID {
@@ -201,11 +213,8 @@ func builtinTemplates() []Template {
 	out := make([]Template, 0, len(domain.BuiltinTemplates()))
 	for _, s := range domain.BuiltinTemplates() {
 		name := s.TemplateID
-		switch s.TemplateID {
-		case domain.TemplateDefault:
+		if s.TemplateID == domain.TemplateDefault {
 			name = "标准记账"
-		case domain.TemplateClassic:
-			name = "经典记账"
 		}
 		out = append(out, Template{
 			TemplateID: s.TemplateID,
@@ -219,5 +228,5 @@ func builtinTemplates() []Template {
 }
 
 func isBuiltinID(id string) bool {
-	return id == domain.TemplateDefault || id == domain.TemplateClassic
+	return id == domain.TemplateDefault
 }
