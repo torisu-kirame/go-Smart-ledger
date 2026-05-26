@@ -2,6 +2,7 @@ export const messages = {
   zh: {
     dashboard: {
       title: '系统概览',
+      subtitle: '网关、链节点与账本一览，快速进入常用功能。',
       refresh: '刷新',
       cardGateway: '网关',
       cardChain: '链节点',
@@ -15,7 +16,7 @@ export const messages = {
       guide3: '「Excel 导入」批量入账；「备份 / 恢复」导出或还原账本快照。',
       guide4: '「团队」是协作入口（类似群）；加入团队不等于获得账本权限，需在账本管理中邀请。',
       guide5: '「链浏览器」查看区块与上链队列；若记账上链失败，可在概览 / 队列页重试。',
-      openChain: '打开链浏览器 →',
+      openChain: '打开链浏览器',
       queueAlertPending: '上链队列：{pending} 条待重试',
       queueAlertBoth: '上链队列：{pending} 条待重试，{failed} 条失败',
       loadFail: '加载失败',
@@ -23,8 +24,11 @@ export const messages = {
     layout: {
       settings: '设置',
       logout: '退出',
+      tagline: '智能账本控制台',
+      profileHint: '账户与资料',
       chainLink: '链浏览器',
       nav: {
+        label: '主导航',
         home: '概览',
         ledgers: '账本管理',
         templates: '记账模板',
@@ -33,6 +37,12 @@ export const messages = {
         friends: '好友',
         teams: '团队',
         chain: '链浏览器',
+      },
+      navGroup: {
+        workspace: '工作区',
+        data: '数据',
+        collab: '协作',
+        system: '系统',
       },
     },
     settings: {
@@ -163,6 +173,7 @@ export const messages = {
   en: {
     dashboard: {
       title: 'Overview',
+      subtitle: 'Gateway, chain, and ledgers at a glance.',
       refresh: 'Refresh',
       cardGateway: 'Gateway',
       cardChain: 'Chain node',
@@ -176,7 +187,7 @@ export const messages = {
       guide3: 'Use Excel Import for bulk entries; Backup / Restore for snapshots.',
       guide4: 'Teams are collaboration groups; joining a team does not grant ledger access—invite members on Ledgers.',
       guide5: 'Open Chain Explorer for blocks and the submit queue; retry failed submissions from Overview or the queue tab.',
-      openChain: 'Open chain explorer →',
+      openChain: 'Open chain explorer',
       queueAlertPending: 'Submit queue: {pending} pending retry',
       queueAlertBoth: 'Submit queue: {pending} pending, {failed} failed',
       loadFail: 'Failed to load',
@@ -184,8 +195,11 @@ export const messages = {
     layout: {
       settings: 'Settings',
       logout: 'Log out',
+      tagline: 'Smart ledger console',
+      profileHint: 'Account & profile',
       chainLink: 'Chain Explorer',
       nav: {
+        label: 'Main navigation',
         home: 'Overview',
         ledgers: 'Ledgers',
         templates: 'Entry Templates',
@@ -194,6 +208,12 @@ export const messages = {
         friends: 'Friends',
         teams: 'Teams',
         chain: 'Chain Explorer',
+      },
+      navGroup: {
+        workspace: 'Workspace',
+        data: 'Data',
+        collab: 'Collaboration',
+        system: 'System',
       },
     },
     settings: {

@@ -6,7 +6,10 @@
         <button class="btn-ghost" type="button" :disabled="syncingAll || !list.length" @click="syncAllLocal">
           {{ syncingAll ? '同步中…' : '全部同步到本机' }}
         </button>
-        <button class="btn-primary" type="button" @click="openCreate">创建账本</button>
+        <button class="btn-primary ledger-create" type="button" @click="openCreate">
+          <AppIcon name="plus" size="sm" />
+          <span>创建账本</span>
+        </button>
       </div>
     </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
@@ -142,6 +145,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import AppIcon from '../components/AppIcon.vue'
 import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
@@ -494,6 +498,11 @@ async function create() {
 .alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.75rem; }
 .muted { color: var(--text-muted); }
 .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.ledger-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .panel-highlight { border-color: var(--accent, #3b82f6); }
 .section-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.75rem; }

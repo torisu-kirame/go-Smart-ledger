@@ -1,43 +1,55 @@
 <template>
   <div class="page dashboard">
     <header class="page-header">
-      <h2>{{ t('dashboard.title') }}</h2>
-      <button class="btn-ghost" type="button" :disabled="loading" @click="load">
-        {{ t('dashboard.refresh') }}
+      <div>
+        <h2>{{ t('dashboard.title') }}</h2>
+        <p class="page-subtitle">{{ t('dashboard.subtitle') }}</p>
+      </div>
+      <button class="icon-btn icon-btn--ghost" type="button" :disabled="loading" @click="load">
+        <AppIcon name="refresh" size="sm" />
+        <span>{{ t('dashboard.refresh') }}</span>
       </button>
     </header>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="chainPending > 0 || chainFailed > 0" class="alert alert-warn chain-alert">
-      <span>
-        {{ queueAlertText }}
-      </span>
-      <router-link to="/chain">{{ t('dashboard.openChain') }}</router-link>
+      <span>{{ queueAlertText }}</span>
+      <router-link to="/chain" class="chain-alert-link">
+        <span>{{ t('dashboard.openChain') }}</span>
+        <AppIcon name="arrow-right" size="sm" />
+      </router-link>
     </div>
 
     <div class="grid-stats">
-      <div class="card">
+      <div class="stat-card">
+        <div class="stat-card__icon"><AppIcon name="activity" size="md" /></div>
         <h4>{{ t('dashboard.cardGateway') }}</h4>
         <div class="val">{{ gatewayOk ? t('dashboard.ok') : '…' }}</div>
       </div>
-      <div class="card">
+      <div class="stat-card">
+        <div class="stat-card__icon"><AppIcon name="chain" size="md" /></div>
         <h4>{{ t('dashboard.cardChain') }}</h4>
         <div class="val" :class="chainOnline ? 'ok' : 'bad'">
           {{ chainOnline ? t('chain.nodeOnline') : t('chain.nodeOffline') }}
         </div>
       </div>
-      <div class="card">
+      <div class="stat-card">
+        <div class="stat-card__icon"><AppIcon name="layers" size="md" /></div>
         <h4>{{ t('dashboard.cardHeight') }}</h4>
         <div class="val mono">{{ chainHeight }}</div>
       </div>
-      <div class="card">
+      <div class="stat-card">
+        <div class="stat-card__icon"><AppIcon name="ledger" size="md" /></div>
         <h4>{{ t('dashboard.cardLedgers') }}</h4>
         <div class="val">{{ ledgers.length }}</div>
       </div>
     </div>
 
     <div class="panel">
-      <h3>{{ t('dashboard.quickTitle') }}</h3>
+      <div class="panel-title-row">
+        <AppIcon name="home" size="sm" />
+        <h3>{{ t('dashboard.quickTitle') }}</h3>
+      </div>
       <div class="quick-grid">
         <router-link
           v-for="item in quickLinks"
@@ -45,6 +57,9 @@
           :to="item.to"
           class="quick-card"
         >
+          <span class="quick-card__icon">
+            <AppIcon :name="item.icon" size="sm" />
+          </span>
           <span class="quick-label">{{ item.label }}</span>
         </router-link>
       </div>
@@ -61,8 +76,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import AppIcon from '../components/AppIcon.vue'
 import { api, ApiError } from '../api/http'
 import { useI18n } from '../composables/useI18n'
+import { NAV_ICON_BY_ROUTE } from '../icons/registry.js'
 
 const { t } = useI18n()
 
@@ -84,7 +101,10 @@ const quickLinks = computed(() => [
   { to: '/teams', label: t('layout.nav.teams') },
   { to: '/chain', label: t('layout.nav.chain') },
   { to: '/settings', label: t('layout.settings') },
-])
+].map((item) => ({
+  ...item,
+  icon: NAV_ICON_BY_ROUTE[item.to] || 'home',
+})))
 
 const guideSteps = computed(() => [
   t('dashboard.guide1'),
@@ -137,54 +157,38 @@ onMounted(load)
 </script>
 
 <style scoped>
-.dashboard .page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.dashboard .page-header h2 {
-  margin: 0;
-}
 .grid-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
-.val.ok { color: var(--success); }
-.val.bad { color: var(--text-muted); }
+
+.val.ok {
+  color: var(--success);
+}
+
+.val.bad {
+  color: var(--text-muted);
+}
+
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 0.65rem;
 }
-.quick-card {
-  display: block;
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 500;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-.quick-card:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
+
 .guide-steps {
   margin: 0;
   padding-left: 1.25rem;
   line-height: 1.65;
   color: var(--text);
 }
+
 .guide-steps li + li {
   margin-top: 0.5rem;
 }
+
 .chain-alert {
   display: flex;
   align-items: center;
@@ -192,12 +196,17 @@ onMounted(load)
   gap: 1rem;
   flex-wrap: wrap;
 }
-.chain-alert a {
+
+.chain-alert-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   color: inherit;
   font-weight: 600;
   text-decoration: none;
 }
-.chain-alert a:hover {
-  text-decoration: underline;
+
+.chain-alert-link:hover {
+  color: var(--accent);
 }
 </style>

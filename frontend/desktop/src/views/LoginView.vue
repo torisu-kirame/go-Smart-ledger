@@ -1,8 +1,20 @@
 <template>
   <div class="login-page">
-    <button class="theme-switch" @click="onToggleTheme">{{ themeLabel }}</button>
+    <button class="theme-switch icon-btn icon-btn--ghost" type="button" @click="onToggleTheme">
+      <AppIcon name="palette" size="sm" />
+      <span>{{ themeLabel }}</span>
+    </button>
+
     <form class="login-card" @submit.prevent="submit">
-      <h1>Smart Ledger</h1>
+      <div class="login-brand">
+        <span class="login-brand-icon" aria-hidden="true">
+          <AppIcon name="brand" size="xl" />
+        </span>
+        <div>
+          <h1>Smart Ledger</h1>
+          <p class="login-tagline">智能账本 · 多人协作 · 链上锚定</p>
+        </div>
+      </div>
 
       <div class="tabs">
         <button type="button" :class="{ active: mode === 'login' }" @click="mode = 'login'">登录</button>
@@ -20,11 +32,14 @@
         <label>验证码</label>
         <div class="cap-row">
           <input v-model="form.captchaCode" required placeholder="输入图中字符" />
-          <img v-if="captchaImg" :src="captchaImg" alt="captcha" @click="loadCaptcha" title="点击刷新" />
+          <button type="button" class="captcha-btn" title="点击刷新" @click="loadCaptcha">
+            <img v-if="captchaImg" :src="captchaImg" alt="captcha" />
+            <AppIcon v-else name="refresh" size="sm" />
+          </button>
         </div>
       </div>
 
-      <button class="btn-primary" style="width:100%" :disabled="loading">
+      <button class="btn-primary login-submit" type="submit" :disabled="loading">
         {{ loading ? (mode === 'login' ? '登录中…' : '注册中…') : (mode === 'login' ? '登录' : '注册并登录') }}
       </button>
     </form>
@@ -34,6 +49,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import AppIcon from '../components/AppIcon.vue'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { cycleTheme, getTheme } from '../utils/theme'
@@ -123,12 +139,124 @@ async function submit() {
 </script>
 
 <style scoped>
-.login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-.login-card { width: 420px; max-width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; box-shadow: var(--shadow-lg); }
-.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-.tabs button { flex: 1; padding: 0.5rem; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); }
-.tabs button.active { background: rgba(61,139,253,.2); border-color: var(--accent); color: var(--accent); }
-.cap-row { display: flex; gap: 0.5rem; align-items: center; }
-.cap-row img { height: 40px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); }
-.theme-switch { position: fixed; top: 16px; right: 16px; z-index: 10; }
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  width: 440px;
+  max-width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.login-brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--accent-soft), color-mix(in srgb, var(--accent) 20%, transparent));
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.login-brand h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.login-tagline {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.tabs button {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.tabs button.active {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+}
+
+.cap-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  max-width: var(--field-max);
+}
+
+.cap-row input {
+  flex: 1;
+}
+
+.captcha-btn {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6.5rem;
+  color: var(--text-muted);
+}
+
+.captcha-btn img {
+  height: 40px;
+  width: auto;
+  border-radius: 8px;
+  display: block;
+}
+
+.captcha-btn:hover {
+  border-color: var(--accent);
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.theme-switch {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+}
 </style>

@@ -15,7 +15,9 @@
       @change="onInputChange"
     />
     <div class="upload-body">
-      <div class="upload-icon" aria-hidden="true">↑</div>
+      <div class="upload-icon" aria-hidden="true">
+        <AppIcon name="upload" size="md" />
+      </div>
       <p class="upload-title">{{ title }}</p>
       <p v-if="fileName" class="upload-file mono">{{ fileName }}</p>
     </div>
@@ -24,6 +26,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import AppIcon from './AppIcon.vue'
 
 const props = defineProps({
   accept: { type: String, default: '' },
@@ -132,16 +135,14 @@ defineExpose({ clear })
 }
 
 .upload-icon {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 1.1rem;
-  font-weight: 700;
 }
 
 .upload-title {

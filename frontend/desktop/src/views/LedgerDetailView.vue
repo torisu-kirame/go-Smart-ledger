@@ -1,6 +1,11 @@
 <template>
   <div v-if="ledger" class="page">
-    <h2><router-link to="/ledgers" style="color:var(--text-muted)">←</router-link> {{ ledger.name }}</h2>
+    <header class="page-header page-header--with-back">
+      <h2>
+        <PageBackLink to="/ledgers" label="返回" />
+        {{ ledger.name }}
+      </h2>
+    </header>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
 
@@ -100,6 +105,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import EntryFormFields from '../components/EntryFormFields.vue'
+import PageBackLink from '../components/PageBackLink.vue'
 import { emptyEntryData, resolveSchema } from '../utils/entrySchema'
 import {
   encryptEntryData,

@@ -1,6 +1,11 @@
 <template>
   <div class="page">
-    <h2>备份 / 恢复</h2>
+    <header class="page-header">
+      <div>
+        <h2>备份 / 恢复</h2>
+        <p class="page-subtitle">加密导出账本快照，或从备份文件恢复数据。</p>
+      </div>
+    </header>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 

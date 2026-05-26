@@ -8,14 +8,17 @@
       :class="{ active: active === id }"
       @click="$emit('select', id)"
     >
-      {{ t(`settings.nav.${id}`) }}
+      <AppIcon :name="sectionIcon(id)" size="sm" class="settings-nav-item__icon" />
+      <span>{{ t(`settings.nav.${id}`) }}</span>
     </button>
   </nav>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import AppIcon from '../AppIcon.vue'
 import { useI18n } from '../../composables/useI18n'
+import { SETTINGS_ICON_BY_SECTION } from '../../icons/registry.js'
 import { SETTINGS_SECTIONS } from '../../utils/settingsSections'
 
 defineProps({
@@ -27,6 +30,10 @@ defineEmits(['select'])
 const { t } = useI18n()
 const sections = SETTINGS_SECTIONS
 const ariaLabel = computed(() => t('settings.nav.label'))
+
+function sectionIcon(id) {
+  return SETTINGS_ICON_BY_SECTION[id] || 'settings'
+}
 </script>
 
 <style scoped>
@@ -34,10 +41,13 @@ const ariaLabel = computed(() => t('settings.nav.label'))
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  min-width: 9.5rem;
+  min-width: 10.5rem;
 }
 
 .settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   text-align: left;
   padding: 0.55rem 0.85rem;
   border: none;
@@ -51,6 +61,11 @@ const ariaLabel = computed(() => t('settings.nav.label'))
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+.settings-nav-item__icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 .settings-nav-item:hover {
   background: var(--hover);
   color: var(--text);
@@ -58,6 +73,10 @@ const ariaLabel = computed(() => t('settings.nav.label'))
 
 .settings-nav-item.active {
   background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-nav-item.active .settings-nav-item__icon {
   color: var(--accent);
 }
 </style>

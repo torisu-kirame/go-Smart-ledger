@@ -3,7 +3,7 @@
     <header class="page-header">
       <div>
         <h2>团队</h2>
-        <p class="section-hint">
+        <p class="page-subtitle">
           团队是协作入口；点击团队进入聊天。关联账本仅为快捷入口，查看账本须各自接受邀请。
         </p>
       </div>
@@ -17,7 +17,10 @@
         >
           全部已读
         </button>
-        <button class="btn-primary" type="button" @click="openCreate">创建团队</button>
+        <button class="btn-primary team-create" type="button" @click="openCreate">
+          <AppIcon name="plus" size="sm" />
+          <span>创建团队</span>
+        </button>
       </div>
     </header>
 
@@ -102,6 +105,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import AppIcon from '../components/AppIcon.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
 import TeamAvatar from '../components/TeamAvatar.vue'
 
@@ -244,6 +248,11 @@ onUnmounted(() => {
   max-width: 42rem;
 }
 .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.team-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
 .team-list-panel { padding: 0.35rem 0; }
 .team-row {

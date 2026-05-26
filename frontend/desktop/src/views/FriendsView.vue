@@ -1,6 +1,11 @@
 <template>
   <div class="page">
-    <h2>好友</h2>
+    <header class="page-header">
+      <div>
+        <h2>好友</h2>
+        <p class="page-subtitle">搜索用户、处理好友申请与协作邀请。</p>
+      </div>
+    </header>
 
     <section v-if="incoming.length" class="card highlight">
       <h3>收到的好友申请</h3>

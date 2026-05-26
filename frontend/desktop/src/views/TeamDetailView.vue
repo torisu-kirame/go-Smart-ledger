@@ -2,8 +2,8 @@
   <div v-if="team" class="page team-detail">
     <header class="page-header">
       <div>
-        <h2>
-          <router-link to="/teams" class="back">←</router-link>
+        <h2 class="page-header--with-back">
+          <PageBackLink to="/teams" label="返回" />
           {{ team.name }}
         </h2>
         <p class="section-hint">团队 Chat 与关联账本；账本数据仍须各自接受邀请后查看。</p>
@@ -30,8 +30,9 @@
             </div>
             <div v-if="m.type === 'text'" class="msg-body">{{ m.body }}</div>
             <div v-else class="msg-file">
-              <a v-if="fileLinks[m.id]" :href="fileLinks[m.id]" target="_blank" rel="noopener noreferrer">
-                📎 {{ m.fileName }} ({{ formatSize(m.fileSize) }})
+              <a v-if="fileLinks[m.id]" :href="fileLinks[m.id]" target="_blank" rel="noopener noreferrer" class="file-link">
+                <AppIcon name="paperclip" size="sm" />
+                <span>{{ m.fileName }} ({{ formatSize(m.fileSize) }})</span>
               </a>
               <span v-else class="muted">加载附件…</span>
             </div>
@@ -39,9 +40,13 @@
         </div>
         <form class="chat-compose" @submit.prevent="sendText">
           <input v-model="draft" placeholder="输入消息…" maxlength="4000" />
-          <button class="btn-primary" type="submit" :disabled="sending || !draft.trim()">发送</button>
-          <label class="file-btn btn-ghost">
-            发文件
+          <button class="btn-primary chat-send" type="submit" :disabled="sending || !draft.trim()">
+            <AppIcon name="send" size="sm" />
+            <span>发送</span>
+          </button>
+          <label class="file-btn icon-btn icon-btn--ghost">
+            <AppIcon name="paperclip" size="sm" />
+            <span>发文件</span>
             <input type="file" hidden @change="onFilePick" />
           </label>
         </form>
@@ -93,8 +98,10 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import AppIcon from '../components/AppIcon.vue'
 import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
+import PageBackLink from '../components/PageBackLink.vue'
 import { api, ApiError, fetchTeamChatFileBlob } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 
@@ -302,8 +309,27 @@ watch(teamId, (id, prev) => {
 </script>
 
 <style scoped>
-.back { color: var(--text-muted); margin-right: 0.5rem; }
 .section-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0.35rem 0 0; }
+.file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.file-link:hover { text-decoration: underline; }
+.chat-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.file-btn {
+  cursor: pointer;
+}
+.file-btn input {
+  display: none;
+}
 .layout {
   display: grid;
   grid-template-columns: 1fr min(320px, 36%);
