@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/accounting"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/evmanchor"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
@@ -343,7 +344,15 @@ func MapDomainError(err error) int {
 		errors.Is(err, domain.ErrAlreadyMember),
 		errors.Is(err, domain.ErrInvalidApproval),
 		errors.Is(err, domain.ErrCannotApproveOwn),
-		errors.Is(err, ErrRestoreConflict):
+		errors.Is(err, ErrRestoreConflict),
+		errors.Is(err, accounting.ErrUnbalanced),
+		errors.Is(err, accounting.ErrInvalidJournal),
+		errors.Is(err, accounting.ErrInvalidAccount),
+		errors.Is(err, accounting.ErrAccountNotFound),
+		errors.Is(err, accounting.ErrPeriodClosed),
+		errors.Is(err, accounting.ErrInvalidPeriod),
+		errors.Is(err, accounting.ErrStmtNotFound),
+		errors.Is(err, accounting.ErrLineNotFound):
 		return 400
 	default:
 		return 500
