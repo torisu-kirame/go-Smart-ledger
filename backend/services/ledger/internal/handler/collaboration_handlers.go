@@ -31,6 +31,10 @@ func RegisterCollaborationHandlers(server *rest.Server, serverCtx *svc.ServiceCo
 		{Method: http.MethodPost, Path: "/ledgers/:id/encryption/rotate", Handler: rotateKeysHandler(serverCtx)},
 		{Method: http.MethodPatch, Path: "/ledgers/:id/storage-location", Handler: setStorageLocationHandler(serverCtx)},
 		{Method: http.MethodPatch, Path: "/ledgers/:id", Handler: updateLedgerHandler(serverCtx)},
+		{Method: http.MethodPatch, Path: "/ledgers/:id/approval-policy", Handler: setApprovalPolicyHandler(serverCtx)},
+		{Method: http.MethodPost, Path: "/ledgers/:id/encryption/enable", Handler: enableEncryptionHandler(serverCtx)},
+		{Method: http.MethodPatch, Path: "/ledgers/:id/encryption/passphrase-view-policy", Handler: setPassphraseViewPolicyHandler(serverCtx)},
+		{Method: http.MethodPut, Path: "/ledgers/:id/encryption/passphrase-view-wrap", Handler: registerPassphraseViewWrapHandler(serverCtx)},
 		{Method: http.MethodDelete, Path: "/ledgers/:id", Handler: archiveLedgerHandler(serverCtx)},
 	}, prefix)
 }
@@ -239,6 +243,120 @@ func updateLedgerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		meta, err := svcCtx.Ledger.UpdateLedger(r.Context(), id, uid, body.Name)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, mapper.LedgerToResp(meta))
+	}
+}
+
+type approvalPolicyBody struct {
+	Enabled   bool `json:"enabled"`
+	Threshold int  `json:"threshold"`
+}
+
+func setApprovalPolicyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var body approvalPolicyBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		meta, err := svcCtx.Ledger.SetApprovalPolicy(r.Context(), id, uid, domain.ApprovalPolicy{
+			Enabled:   body.Enabled,
+			Threshold: body.Threshold,
+		})
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, mapper.LedgerToResp(meta))
+	}
+}
+
+type enableEncryptionBody struct {
+	Enabled     bool              `json:"enabled"`
+	Algo        string            `json:"algo,optional"`
+	WrappedKeys map[string]string `json:"wrappedKeys"`
+}
+
+func enableEncryptionHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var body enableEncryptionBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		meta, err := svcCtx.Ledger.EnableEncryption(r.Context(), id, uid, domain.LedgerEncryption{
+			Enabled:     body.Enabled,
+			Algo:        body.Algo,
+			WrappedKeys: body.WrappedKeys,
+		})
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, mapper.LedgerToResp(meta))
+	}
+}
+
+type passphraseViewPolicyBody struct {
+	Enabled bool `json:"enabled"`
+}
+
+func setPassphraseViewPolicyHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var body passphraseViewPolicyBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		meta, err := svcCtx.Ledger.SetPassphraseViewPolicy(r.Context(), id, uid, body.Enabled)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, mapper.LedgerToResp(meta))
+	}
+}
+
+type passphraseViewWrapBody struct {
+	Wrapped string `json:"wrapped"`
+}
+
+func registerPassphraseViewWrapHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var body passphraseViewWrapBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		meta, err := svcCtx.Ledger.RegisterPassphraseViewWrap(r.Context(), id, uid, body.Wrapped)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return

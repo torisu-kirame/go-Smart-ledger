@@ -14,7 +14,9 @@ var (
 	ErrCannotInviteSelf      = errors.New("cannot invite yourself")
 	ErrAlreadyMember         = errors.New("user is already a member")
 	ErrInvalidApproval    = errors.New("invalid approval")
-	ErrCannotApproveOwn   = errors.New("proposer cannot approve own entry")
+	ErrCannotApproveOwn          = errors.New("proposer cannot approve own entry")
+	ErrEncryptionAlreadyEnabled  = errors.New("encryption already enabled")
+	ErrInvalidApprovalPolicy     = errors.New("invalid approval policy")
 )
 
 func ValidateCreate(t LedgerType, members []Member) error {

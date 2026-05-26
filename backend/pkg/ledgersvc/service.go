@@ -352,7 +352,9 @@ func MapDomainError(err error) int {
 		errors.Is(err, accounting.ErrPeriodClosed),
 		errors.Is(err, accounting.ErrInvalidPeriod),
 		errors.Is(err, accounting.ErrStmtNotFound),
-		errors.Is(err, accounting.ErrLineNotFound):
+		errors.Is(err, accounting.ErrLineNotFound),
+		errors.Is(err, domain.ErrEncryptionAlreadyEnabled),
+		errors.Is(err, domain.ErrInvalidApprovalPolicy):
 		return 400
 	default:
 		return 500

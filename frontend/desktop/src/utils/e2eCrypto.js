@@ -4,6 +4,7 @@
  */
 
 const STORAGE_PREFIX = 'sl-group-key:'
+const PASSPHRASE_PREFIX = 'sl-e2e-passphrase:'
 
 function enc() {
   return new TextEncoder()
@@ -102,6 +103,53 @@ export function saveLocalGroupKey(ledgerId, groupKeyB64) {
 
 export function loadLocalGroupKey(ledgerId) {
   return localStorage.getItem(STORAGE_PREFIX + ledgerId) || ''
+}
+
+export function saveLocalPassphrase(ledgerId, passphrase) {
+  if (passphrase) {
+    localStorage.setItem(PASSPHRASE_PREFIX + ledgerId, passphrase)
+  }
+}
+
+export function loadLocalPassphrase(ledgerId) {
+  return localStorage.getItem(PASSPHRASE_PREFIX + ledgerId) || ''
+}
+
+async function deriveLoginViewKey(loginPassword, userId) {
+  const material = enc().encode(`${loginPassword}|${userId}`)
+  const base = await crypto.subtle.importKey('raw', material, 'PBKDF2', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc().encode('smart-ledger-passphrase-view'),
+      iterations: 120000,
+      hash: 'SHA-256',
+    },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
+/** Wrap ledger passphrase with login-password-derived key (for server-side member retrieval). */
+export async function wrapPassphraseForLoginView(passphrase, loginPassword, userId) {
+  const key = await deriveLoginViewKey(loginPassword, userId)
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc().encode(passphrase))
+  const packed = new Uint8Array(iv.length + ct.byteLength)
+  packed.set(iv, 0)
+  packed.set(new Uint8Array(ct), iv.length)
+  return toB64(packed.buffer)
+}
+
+export async function unwrapPassphraseForLoginView(wrappedB64, loginPassword, userId) {
+  const key = await deriveLoginViewKey(loginPassword, userId)
+  const packed = fromB64(wrappedB64)
+  const iv = packed.slice(0, 12)
+  const data = packed.slice(12)
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data)
+  return new TextDecoder().decode(plain)
 }
 
 export async function buildEncryptionForCreate(members, creatorId, passphrase, ledgerIdPlaceholder = 'new') {

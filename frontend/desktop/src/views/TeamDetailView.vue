@@ -33,17 +33,20 @@
             </div>
           </div>
         </div>
+        <FileUploadZone
+          compact
+          block
+          class="chat-upload"
+          :disabled="sending"
+          title="点击或拖拽发送文件"
+          @file="onFilePick"
+        />
         <form class="chat-compose" @submit.prevent="sendText">
           <input v-model="draft" placeholder="输入消息…" maxlength="4000" />
           <button class="btn-primary chat-send" type="submit" :disabled="sending || !draft.trim()">
             <AppIcon name="send" size="sm" />
             <span>发送</span>
           </button>
-          <label class="file-btn icon-btn icon-btn--ghost">
-            <AppIcon name="paperclip" size="sm" />
-            <span>发文件</span>
-            <input type="file" hidden @change="onFilePick" />
-          </label>
         </form>
       </section>
 
@@ -96,6 +99,7 @@ import { useRoute } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
+import FileUploadZone from '../components/FileUploadZone.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { usePageCrumbs } from '../composables/usePageCrumbs'
 import { api, ApiError, fetchTeamChatFileBlob } from '../api/http'
@@ -236,9 +240,7 @@ async function sendText() {
   }
 }
 
-async function onFilePick(ev) {
-  const file = ev.target.files?.[0]
-  ev.target.value = ''
+async function onFilePick(file) {
   if (!file) return
   sending.value = true
   error.value = ''
@@ -321,11 +323,8 @@ watch(teamId, (id, prev) => {
   align-items: center;
   gap: 0.35rem;
 }
-.file-btn {
-  cursor: pointer;
-}
-.file-btn input {
-  display: none;
+.chat-upload {
+  margin-top: 0.65rem;
 }
 .layout {
   display: grid;
@@ -370,8 +369,6 @@ watch(teamId, (id, prev) => {
   align-items: center;
 }
 .chat-compose input { flex: 1; min-width: 12rem; }
-.file-btn { cursor: pointer; margin: 0; }
-.file-btn input { display: none; }
 .ledger-list { list-style: none; padding: 0; margin: 0 0 1rem; }
 .ledger-list li {
   padding: 0.65rem 0;

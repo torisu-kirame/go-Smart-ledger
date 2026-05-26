@@ -35,6 +35,109 @@
       </button>
     </section>
 
+    <section class="detail-card">
+      <h3 class="detail-card__title">安全与协作</h3>
+
+      <div v-if="isMulti" class="policy-block">
+        <h4 class="policy-block__heading">审批策略</h4>
+        <p class="field-hint">
+          启用后，记账需经全体成员批准后方可上链（批准人数等于当前成员总数）。
+        </p>
+        <template v-if="isCreator">
+          <div class="toggle-row">
+            <span class="toggle-row__text">启用审批流</span>
+            <ToggleSwitch
+              v-model="approvalEnabled"
+              :disabled="policySaving"
+              aria-label="启用审批流"
+              @update:model-value="onApprovalToggle"
+            />
+          </div>
+          <p v-if="approvalEnabled" class="field-hint" style="margin-top: 0.5rem">
+            当前需 {{ memberCount }} 名成员全部批准（与成员总数一致）。
+          </p>
+        </template>
+        <template v-else>
+          <p class="status-line">
+            {{
+              ledger.approvalPolicy?.enabled
+                ? `已启用（需 ${ledger.approvalPolicy.threshold} 人批准）`
+                : '未启用'
+            }}
+          </p>
+          <p class="field-hint">仅创建者可修改。</p>
+        </template>
+      </div>
+
+      <div class="policy-block">
+        <h4 class="policy-block__heading">端到端加密</h4>
+        <p class="field-hint">
+          启用后记账明细在客户端加密后再提交，服务端不保存明文。口令仅保存在本机，遗失将无法解密历史数据。
+        </p>
+        <template v-if="ledger.encryption?.enabled">
+          <div class="status-line badge-wrap">
+            <span class="badge badge-ok">已启用</span>
+            <span class="muted">{{ ledger.encryption.algo || 'aes-gcm-v1' }}</span>
+            <button
+              v-if="canOpenPassphraseView"
+              type="button"
+              class="btn-icon"
+              title="查看加密口令"
+              aria-label="查看加密口令"
+              @click="openPassphraseModal"
+            >
+              <AppIcon name="eye" size="sm" />
+            </button>
+          </div>
+          <div v-if="isCreator" class="toggle-row" style="margin-top: 0.65rem">
+            <span class="toggle-row__text">允许账本成员查看加密口令</span>
+            <ToggleSwitch
+              v-model="passphraseViewEnabled"
+              :disabled="policySaving"
+              aria-label="允许账本成员查看加密口令"
+              @update:model-value="onPassphraseViewToggle"
+            />
+          </div>
+          <p v-else-if="ledger.encryption.passphraseViewEnabled" class="field-hint">
+            创建者已允许成员在验证登录密码后查看加密口令。
+          </p>
+        </template>
+        <template v-else-if="isCreator">
+          <div class="toggle-row">
+            <span class="toggle-row__text">启用组级端到端加密</span>
+            <ToggleSwitch
+              v-model="enableE2E"
+              :disabled="policySaving"
+              aria-label="启用组级端到端加密"
+            />
+          </div>
+          <div v-if="enableE2E" class="form-row" style="margin-top: 0.65rem">
+            <label>加密口令（账本密码）</label>
+            <input
+              v-model="e2ePassphrase"
+              type="password"
+              class="field-sm"
+              placeholder="为每位成员包装组密钥，请妥善保管"
+              autocomplete="new-password"
+            />
+          </div>
+          <button
+            type="button"
+            class="btn-primary"
+            style="margin-top: 0.65rem"
+            :disabled="policySaving || !canEnableE2E"
+            @click="saveEncryption"
+          >
+            {{ policySaving ? '启用中…' : '启用加密' }}
+          </button>
+        </template>
+        <template v-else>
+          <p class="status-line">未启用</p>
+          <p class="field-hint">仅创建者可启用。</p>
+        </template>
+      </div>
+    </section>
+
     <section class="detail-card detail-card--danger">
       <h3 class="detail-card__title">注销账本</h3>
       <p class="danger-hint">
@@ -68,6 +171,70 @@
         </div>
       </template>
     </section>
+
+    <div v-if="showPassphraseModal" class="modal" @click.self="closePassphraseModal">
+      <div class="modal-card">
+        <h3 class="modal-title">查看加密口令</h3>
+        <p v-if="viewError" class="alert alert-error">{{ viewError }}</p>
+
+        <template v-if="viewStep === 'password'">
+          <p class="field-hint">请输入您当前账号的登录密码以验证身份。</p>
+          <div class="form-row">
+            <label>登录密码</label>
+            <input
+              v-model="viewLoginPassword"
+              type="password"
+              class="field-sm"
+              autocomplete="current-password"
+              @keyup.enter="confirmViewPassphrase"
+            />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-ghost" @click="closePassphraseModal">取消</button>
+            <button
+              type="button"
+              class="btn-primary"
+              :disabled="viewLoading || !viewLoginPassword"
+              @click="confirmViewPassphrase"
+            >
+              {{ viewLoading ? '验证中…' : '确认' }}
+            </button>
+          </div>
+        </template>
+
+        <template v-else-if="viewStep === 'register'">
+          <p class="field-hint">
+            尚未登记口令副本。请输入账本加密口令，系统将以您的登录密码加密后保存，便于日后查看。
+          </p>
+          <div class="form-row">
+            <label>账本加密口令</label>
+            <input v-model="registerLedgerPassphrase" type="password" class="field-sm" autocomplete="off" />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-ghost" @click="closePassphraseModal">取消</button>
+            <button
+              type="button"
+              class="btn-primary"
+              :disabled="viewLoading || registerLedgerPassphrase.length < 6"
+              @click="registerAndRevealPassphrase"
+            >
+              {{ viewLoading ? '保存中…' : '登记并查看' }}
+            </button>
+          </div>
+        </template>
+
+        <template v-else-if="viewStep === 'revealed'">
+          <div class="form-row">
+            <label>加密口令</label>
+            <input :value="revealedPassphrase" type="text" class="field-sm" readonly />
+          </div>
+          <p class="field-hint">请妥善保管，遗失将无法解密历史记账数据。</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-primary" @click="closePassphraseModal">关闭</button>
+          </div>
+        </template>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -77,12 +244,22 @@ import { useRouter } from 'vue-router'
 import { api, ApiError } from '../../api/http'
 import { useAuthStore } from '../../stores/auth'
 import AppSelect from '../../components/AppSelect.vue'
+import AppIcon from '../../components/AppIcon.vue'
+import ToggleSwitch from '../../components/ToggleSwitch.vue'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 import { clearInfoUnlockSession } from '../../composables/useLedgerDetail'
 import {
   normalizeStorageLocation,
   STORAGE_LOCATIONS,
 } from '../../utils/ledgerStorage'
+import {
+  buildEncryptionForCreate,
+  saveLocalGroupKey,
+  saveLocalPassphrase,
+  loadLocalPassphrase,
+  wrapPassphraseForLoginView,
+  unwrapPassphraseForLoginView,
+} from '../../utils/e2eCrypto'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -91,15 +268,40 @@ const { ledgerId, ledger, error, msg } = useLedgerDetail()
 const nameDraft = ref('')
 const saving = ref(false)
 const storageSaving = ref(false)
+const policySaving = ref(false)
+const approvalEnabled = ref(false)
+const passphraseViewEnabled = ref(false)
+const enableE2E = ref(false)
+const e2ePassphrase = ref('')
 const showArchiveConfirm = ref(false)
 const confirmPassword = ref('')
 const archiving = ref(false)
 
+const showPassphraseModal = ref(false)
+const viewStep = ref('password')
+const viewLoginPassword = ref('')
+const viewError = ref('')
+const viewLoading = ref(false)
+const revealedPassphrase = ref('')
+const registerLedgerPassphrase = ref('')
+
 const storageOptions = STORAGE_LOCATIONS.map((o) => ({ value: o.id, label: o.label }))
 const storageLoc = computed(() => normalizeStorageLocation(ledger.value?.storageLocation))
 const isCreator = computed(() => ledger.value?.creatorId === auth.user?.id)
+const isMulti = computed(() => ledger.value?.type === 'multi')
+const memberCount = computed(() => ledger.value?.members?.length || 1)
 const nameChanged = computed(
   () => nameDraft.value.trim() && nameDraft.value.trim() !== ledger.value?.name
+)
+
+const canOpenPassphraseView = computed(() => {
+  if (!ledger.value?.encryption?.enabled) return false
+  if (isCreator.value) return true
+  return !!ledger.value.encryption.passphraseViewEnabled
+})
+
+const canEnableE2E = computed(
+  () => enableE2E.value && e2ePassphrase.value.length >= 6 && !ledger.value?.encryption?.enabled
 )
 
 watch(
@@ -109,6 +311,136 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => ledger.value?.approvalPolicy,
+  (ap) => {
+    approvalEnabled.value = !!ap?.enabled
+  },
+  { immediate: true, deep: true }
+)
+
+watch(
+  () => ledger.value?.encryption?.passphraseViewEnabled,
+  (v) => {
+    passphraseViewEnabled.value = !!v
+  },
+  { immediate: true }
+)
+
+function resetPassphraseModal() {
+  viewStep.value = 'password'
+  viewLoginPassword.value = ''
+  viewError.value = ''
+  revealedPassphrase.value = ''
+  registerLedgerPassphrase.value = ''
+}
+
+function openPassphraseModal() {
+  resetPassphraseModal()
+  showPassphraseModal.value = true
+}
+
+function closePassphraseModal() {
+  showPassphraseModal.value = false
+  resetPassphraseModal()
+}
+
+async function onApprovalToggle(enabled) {
+  approvalEnabled.value = enabled
+  policySaving.value = true
+  error.value = ''
+  try {
+    const updated = await api.setLedgerApprovalPolicy(ledgerId, {
+      enabled,
+      threshold: enabled ? memberCount.value : 1,
+    })
+    ledger.value = { ...ledger.value, ...updated }
+    msg.value = enabled ? '审批策略已启用' : '审批策略已关闭'
+  } catch (e) {
+    approvalEnabled.value = !enabled
+    error.value = e instanceof ApiError ? e.message : '保存失败'
+  } finally {
+    policySaving.value = false
+  }
+}
+
+async function onPassphraseViewToggle(enabled) {
+  policySaving.value = true
+  error.value = ''
+  const prev = !enabled
+  try {
+    const updated = await api.setLedgerPassphraseViewPolicy(ledgerId, { enabled })
+    ledger.value = { ...ledger.value, ...updated }
+    msg.value = enabled ? '已允许成员查看加密口令' : '已关闭成员查看加密口令'
+    if (enabled && loadLocalPassphrase(ledgerId)) {
+      openPassphraseModal()
+      viewStep.value = 'password'
+    }
+  } catch (e) {
+    passphraseViewEnabled.value = prev
+    error.value = e instanceof ApiError ? e.message : '保存失败'
+  } finally {
+    policySaving.value = false
+  }
+}
+
+async function confirmViewPassphrase() {
+  viewError.value = ''
+  viewLoading.value = true
+  try {
+    await api.verifyPassword(viewLoginPassword.value)
+    const uid = auth.user?.id
+    const local = loadLocalPassphrase(ledgerId)
+    if (local) {
+      revealedPassphrase.value = local
+      viewStep.value = 'revealed'
+      return
+    }
+    const wrapped = ledger.value?.encryption?.passphraseWrappedKeys?.[uid]
+    if (wrapped) {
+      revealedPassphrase.value = await unwrapPassphraseForLoginView(
+        wrapped,
+        viewLoginPassword.value,
+        uid
+      )
+      saveLocalPassphrase(ledgerId, revealedPassphrase.value)
+      viewStep.value = 'revealed'
+      return
+    }
+    if (isCreator.value || ledger.value?.encryption?.passphraseViewEnabled) {
+      viewStep.value = 'register'
+      return
+    }
+    viewError.value = '无法获取加密口令，请联系账本创建者'
+  } catch (e) {
+    viewError.value = e instanceof ApiError ? e.message : '验证失败'
+  } finally {
+    viewLoading.value = false
+  }
+}
+
+async function registerAndRevealPassphrase() {
+  viewError.value = ''
+  viewLoading.value = true
+  try {
+    const uid = auth.user?.id
+    const wrapped = await wrapPassphraseForLoginView(
+      registerLedgerPassphrase.value,
+      viewLoginPassword.value,
+      uid
+    )
+    const updated = await api.registerLedgerPassphraseViewWrap(ledgerId, { wrapped })
+    ledger.value = { ...ledger.value, ...updated }
+    saveLocalPassphrase(ledgerId, registerLedgerPassphrase.value)
+    revealedPassphrase.value = registerLedgerPassphrase.value
+    viewStep.value = 'revealed'
+  } catch (e) {
+    viewError.value = e instanceof ApiError ? e.message : '登记失败'
+  } finally {
+    viewLoading.value = false
+  }
+}
 
 async function saveName() {
   const name = nameDraft.value.trim()
@@ -138,6 +470,39 @@ async function onStorageChange(value) {
     error.value = e instanceof ApiError ? e.message : '更新失败'
   } finally {
     storageSaving.value = false
+  }
+}
+
+async function saveEncryption() {
+  if (!canEnableE2E.value) return
+  policySaving.value = true
+  error.value = ''
+  try {
+    const members = (ledger.value?.members || []).map((m) => ({
+      id: m.id,
+      address: m.address || '',
+    }))
+    const enc = await buildEncryptionForCreate(
+      members,
+      auth.user.id,
+      e2ePassphrase.value,
+      ledgerId
+    )
+    const updated = await api.enableLedgerEncryption(ledgerId, {
+      enabled: true,
+      algo: 'aes-gcm-v1',
+      wrappedKeys: enc.wrappedKeys,
+    })
+    saveLocalGroupKey(ledgerId, enc._groupKey)
+    saveLocalPassphrase(ledgerId, e2ePassphrase.value)
+    ledger.value = { ...ledger.value, ...updated }
+    enableE2E.value = false
+    e2ePassphrase.value = ''
+    msg.value = '端到端加密已启用'
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '启用失败'
+  } finally {
+    policySaving.value = false
   }
 }
 
@@ -196,6 +561,68 @@ async function doArchive() {
   margin: 0.35rem 0 0;
   font-size: 0.8125rem;
   color: var(--text-muted);
+}
+.policy-block {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px dashed var(--border);
+}
+.policy-block:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+.policy-block__heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+.toggle-row__text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.status-line {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+}
+.badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.btn-icon:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.modal-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 .btn-danger {
   background: var(--danger);

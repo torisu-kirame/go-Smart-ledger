@@ -115,7 +115,7 @@ import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
-import { buildEncryptionForCreate, saveLocalGroupKey } from '../utils/e2eCrypto'
+import { buildEncryptionForCreate, saveLocalGroupKey, saveLocalPassphrase } from '../utils/e2eCrypto'
 import { DEFAULT_STORAGE_LOCATION, storageLocationLabel } from '../utils/ledgerStorage'
 
 const router = useRouter()
@@ -314,12 +314,21 @@ async function create() {
       creatorId: auth.user.id,
       members,
       entrySchema: buildEntrySchema(),
-      approvalPolicy: form.type === 'multi' ? { enabled: true, threshold: 2 } : { enabled: false },
+      approvalPolicy:
+        form.type === 'multi'
+          ? {
+              enabled: true,
+              threshold: Math.max(2, members.length + inviteTargets.length),
+            }
+          : { enabled: false },
       encryption,
       storageLocation: DEFAULT_STORAGE_LOCATION,
     })
     if (groupKey && created.id) {
       saveLocalGroupKey(created.id, groupKey)
+    }
+    if (form.enableE2E && form.e2ePassphrase && created.id) {
+      saveLocalPassphrase(created.id, form.e2ePassphrase)
     }
     let inviteNote = ''
     if (form.type === 'multi' && inviteTargets.length) {

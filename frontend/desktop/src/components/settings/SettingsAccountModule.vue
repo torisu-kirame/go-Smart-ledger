@@ -11,6 +11,7 @@
           compact
           accept="image/png,image/jpeg,image/webp,image/gif"
           :title="t('settings.personal.avatarTitle')"
+          :hint="t('settings.personal.avatarHint')"
           :disabled="uploading"
           @file="$emit('upload-avatar', $event)"
         />

@@ -35,9 +35,11 @@ type ApprovalPolicyReq struct {
 }
 
 type EncryptionReq struct {
-	Enabled     bool              `json:"enabled,optional"`
-	Algo        string            `json:"algo,optional"`
-	WrappedKeys map[string]string `json:"wrappedKeys,optional"`
+	Enabled               bool              `json:"enabled,optional"`
+	Algo                  string            `json:"algo,optional"`
+	WrappedKeys           map[string]string `json:"wrappedKeys,optional"`
+	PassphraseViewEnabled bool              `json:"passphraseViewEnabled,optional"`
+	PassphraseWrappedKeys map[string]string `json:"passphraseWrappedKeys,optional"`
 }
 
 type CreateLedgerReq struct {

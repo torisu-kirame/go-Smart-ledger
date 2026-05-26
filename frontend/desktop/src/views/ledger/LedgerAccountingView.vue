@@ -143,14 +143,17 @@
     <!-- F44 附件 -->
     <section v-show="tab === 'attach'" class="detail-card">
       <h3 class="detail-card__title">凭证附件</h3>
-      <div class="form-row inline">
+      <div class="form-row">
         <label>事件 Seq</label>
         <input v-model.number="attachSeq" type="number" min="1" class="field-sm" />
-        <label class="file-label">
-          <input type="file" hidden @change="onAttachFile" />
-          <span class="btn-ghost">上传附件</span>
-        </label>
       </div>
+      <FileUploadZone
+        block
+        :disabled="busy || !attachSeq"
+        title="点击或拖拽上传凭证附件"
+        :hint="attachSeq ? '' : '请先填写上方事件 Seq'"
+        @file="onAttachFile"
+      />
       <div v-if="!attachments.length" class="muted">暂无附件</div>
       <ul class="attach-list">
         <li v-for="a in attachments" :key="a.id">
@@ -164,11 +167,14 @@
     <!-- F42 对账 -->
     <section v-show="tab === 'bank'" class="detail-card">
       <h3 class="detail-card__title">银行对账</h3>
-      <label class="file-label">
-        <input type="file" accept=".csv,text/csv" hidden @change="onBankImport" />
-        <span class="btn-primary">导入银行 CSV</span>
-      </label>
-      <p class="field-hint">CSV 需含日期、金额列；可选摘要列。</p>
+      <FileUploadZone
+        block
+        accept=".csv,text/csv"
+        :disabled="busy"
+        title="点击或拖拽导入银行 CSV"
+        hint="CSV 需含日期、金额列；可选摘要列"
+        @file="onBankImport"
+      />
       <div v-for="stmt in bankStatements" :key="stmt.id" class="bank-stmt">
         <h4>{{ stmt.filename || stmt.id }} · {{ stmt.lines?.length || 0 }} 笔</h4>
         <div v-for="ln in stmt.lines" :key="ln.id" class="bank-line">
@@ -199,6 +205,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../../api/http'
 import AppSelect from '../../components/AppSelect.vue'
 import DeleteButton from '../../components/DeleteButton.vue'
+import FileUploadZone from '../../components/FileUploadZone.vue'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 
 const { ledgerId, error, msg } = useLedgerDetail()
@@ -343,8 +350,7 @@ async function loadReports() {
   }
 }
 
-async function onAttachFile(ev) {
-  const file = ev.target.files?.[0]
+async function onAttachFile(file) {
   if (!file || !attachSeq.value) return
   busy.value = true
   try {
@@ -355,12 +361,10 @@ async function onAttachFile(ev) {
     error.value = e instanceof ApiError ? e.message : '上传失败'
   } finally {
     busy.value = false
-    ev.target.value = ''
   }
 }
 
-async function onBankImport(ev) {
-  const file = ev.target.files?.[0]
+async function onBankImport(file) {
   if (!file) return
   busy.value = true
   try {
@@ -371,7 +375,6 @@ async function onBankImport(ev) {
     error.value = e instanceof ApiError ? e.message : '导入失败'
   } finally {
     busy.value = false
-    ev.target.value = ''
   }
 }
 
@@ -497,9 +500,5 @@ onMounted(loadAll)
   font-size: 0.8125rem;
   color: var(--text-muted);
   margin: 0.5rem 0;
-}
-.file-label {
-  cursor: pointer;
-  display: inline-block;
 }
 </style>

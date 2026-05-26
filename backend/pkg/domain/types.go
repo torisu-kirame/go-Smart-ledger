@@ -135,7 +135,9 @@ const (
 	EventBackupAnchored    = "BackupAnchored"
 	EventExternalAnchored  = "ExternalAnchored"
 	EventLedgerUpdated     = "LedgerUpdated"
-	EventLedgerArchived    = "LedgerArchived"
+	EventLedgerArchived         = "LedgerArchived"
+	EventApprovalPolicyUpdated  = "ApprovalPolicyUpdated"
+	EventEncryptionEnabled      = "EncryptionEnabled"
 )
 // Collaboration events: EntryProposed, EntryApproved, EntryRejected,
 // MemberInvited, MemberJoined, GroupKeyRotated — see collaboration.go

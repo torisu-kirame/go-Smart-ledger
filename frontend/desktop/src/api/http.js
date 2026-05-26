@@ -213,6 +213,26 @@ export const api = {
     }),
   updateLedger: (id, body) =>
     request(`/ledgers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  setLedgerApprovalPolicy: (id, approvalPolicy) =>
+    request(`/ledgers/${id}/approval-policy`, {
+      method: 'PATCH',
+      body: JSON.stringify(approvalPolicy),
+    }),
+  enableLedgerEncryption: (id, encryption) =>
+    request(`/ledgers/${id}/encryption/enable`, {
+      method: 'POST',
+      body: JSON.stringify(encryption),
+    }),
+  setLedgerPassphraseViewPolicy: (id, body) =>
+    request(`/ledgers/${id}/encryption/passphrase-view-policy`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  registerLedgerPassphraseViewWrap: (id, body) =>
+    request(`/ledgers/${id}/encryption/passphrase-view-wrap`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   archiveLedger: (id) => request(`/ledgers/${id}`, { method: 'DELETE' }),
   rotateGroupKeys: (id, wrappedKeys) =>
     request(`/ledgers/${id}/encryption/rotate`, {

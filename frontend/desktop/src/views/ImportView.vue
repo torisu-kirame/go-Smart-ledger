@@ -22,8 +22,10 @@
     <div class="panel">
       <h3>2. 上传并预览</h3>
       <FileUploadZone
+        block
         accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-        title="拖拽 Excel 到此处，或点击选择"
+        title="点击或拖拽上传 Excel"
+        hint="支持 .xlsx / .xls"
         :disabled="!ledgerId"
         @file="onUploadFile"
       />

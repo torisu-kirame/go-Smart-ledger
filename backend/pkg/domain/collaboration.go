@@ -10,9 +10,11 @@ type ApprovalPolicy struct {
 
 // LedgerEncryption holds per-member wrapped group keys (F19, client-side crypto).
 type LedgerEncryption struct {
-	Enabled     bool              `json:"enabled"`
-	Algo        string            `json:"algo,omitempty"` // aes-gcm-v1
-	WrappedKeys map[string]string `json:"wrappedKeys,omitempty"`
+	Enabled               bool              `json:"enabled"`
+	Algo                  string            `json:"algo,omitempty"` // aes-gcm-v1
+	WrappedKeys           map[string]string `json:"wrappedKeys,omitempty"`
+	PassphraseViewEnabled bool              `json:"passphraseViewEnabled,omitempty"`
+	PassphraseWrappedKeys map[string]string `json:"passphraseWrappedKeys,omitempty"`
 }
 
 // PendingEntry is stored off-chain in world_state until approved or rejected.
