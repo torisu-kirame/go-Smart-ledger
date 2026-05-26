@@ -1,19 +1,17 @@
 <template>
   <div class="settings-module">
-    <div class="form-row">
+    <div class="form-row theme-picker-row">
       <label>{{ t('settings.theme.appearance') }}</label>
-      <div class="theme-grid">
-        <button
+      <div class="theme-list">
+        <ThemePreviewCard
           v-for="p in THEME_PRESETS"
           :key="p.id"
-          type="button"
-          class="theme-chip"
-          :class="{ active: themeId === p.id }"
-          @click="setThemeId(p.id)"
-        >
-          <span class="theme-preview" :data-theme-id="p.id" />
-          <span>{{ themePresetName(p) }}</span>
-        </button>
+          :theme-id="p.id"
+          :accent-id="accentId"
+          :label="themePresetName(p)"
+          :active="themeId === p.id"
+          @select="setThemeId(p.id)"
+        />
       </div>
     </div>
 
@@ -39,6 +37,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import ThemePreviewCard from '../ThemePreviewCard.vue'
 import { useI18n } from '../../composables/useI18n'
 import { ACCENT_PRESETS, getAccent, getTheme, setAccent, setTheme, THEME_PRESETS } from '../../utils/theme'
 
@@ -73,58 +72,14 @@ function setAccentColor(id) {
 </script>
 
 <style scoped>
-.theme-grid {
+.theme-picker-row {
+  max-width: none;
+}
+
+.theme-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.theme-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.7rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.theme-chip:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.theme-chip.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.theme-preview {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  border: 1px solid rgba(128, 128, 128, 0.35);
-  flex-shrink: 0;
-}
-
-.theme-preview[data-theme-id='classic-light'] {
-  background: #f3f6fc;
-  border-color: #d8e1f1;
-}
-
-.theme-preview[data-theme-id='classic-dark'] {
-  background: #0b1020;
-  border-color: #2b3a58;
-}
-
-.theme-preview[data-theme-id='deep-dark'] {
-  background: #050508;
-  border-color: #1c1c22;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .accent-grid {
@@ -157,6 +112,6 @@ function setAccentColor(id) {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(128, 128, 128, 0.25);
 }
 </style>

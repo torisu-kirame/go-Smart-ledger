@@ -67,12 +67,12 @@ const form = reactive({ username: '', password: '', confirm: '', captchaCode: ''
 
 const THEME_NAMES = {
   'classic-light': '经典白',
-  'classic-dark': '经典黑',
+  'classic-dark': '深蓝',
   'deep-dark': '深黑',
 }
 
 const themeLabel = computed(() => {
-  const name = THEME_NAMES[theme.value] || '经典黑'
+  const name = THEME_NAMES[theme.value] || '深蓝'
   return `主题 · ${name}`
 })
 

@@ -47,7 +47,8 @@ type CreateLedgerReq struct {
 	Members        []Member          `json:"members"`
 	EntrySchema    EntrySchemaReq    `json:"entrySchema,optional"`
 	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,optional"`
-	Encryption     EncryptionReq     `json:"encryption,optional"`
+	Encryption       EncryptionReq     `json:"encryption,optional"`
+	StorageLocation  string            `json:"storageLocation,optional"`
 }
 
 type EntrySchemaReq struct {
@@ -84,6 +85,7 @@ type EventResp struct {
 	Hash      string `json:"hash"`
 	SignerId  string `json:"signerId,omitempty"`
 	CreatedAt string `json:"createdAt"`
+	Payload   any    `json:"payload,omitempty"`
 }
 
 type HealthResp struct {
@@ -109,8 +111,15 @@ type LedgerResp struct {
 	BlockHeight    uint64            `json:"blockHeight,omitempty"`
 	AnchorStatus     string               `json:"anchorStatus"`
 	ExternalAnchor   *ExternalAnchorResp  `json:"externalAnchor,omitempty"`
-	LastBackupRef    string               `json:"lastBackupRef,omitempty"`
-	LastBackupCid    string               `json:"lastBackupCid,omitempty"`
+	LastBackupRef     string               `json:"lastBackupRef,omitempty"`
+	LastBackupCid     string               `json:"lastBackupCid,omitempty"`
+	StorageLocation   string               `json:"storageLocation,omitempty"`
+	CreatedAt         string               `json:"createdAt,omitempty"`
+	UpdatedAt         string               `json:"updatedAt,omitempty"`
+}
+
+type SetStorageLocationReq struct {
+	StorageLocation string `json:"storageLocation"`
 }
 
 type ListEventsReq struct {

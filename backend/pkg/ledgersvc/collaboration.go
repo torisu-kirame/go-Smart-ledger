@@ -13,8 +13,9 @@ import (
 
 // CreateOptions optional policies for new ledgers (F17/F19).
 type CreateOptions struct {
-	ApprovalPolicy domain.ApprovalPolicy
-	Encryption     domain.LedgerEncryption
+	ApprovalPolicy  domain.ApprovalPolicy
+	Encryption      domain.LedgerEncryption
+	StorageLocation string
 }
 
 func (s *Service) ListForUser(ctx context.Context, userID string) ([]*domain.LedgerMeta, error) {
@@ -27,6 +28,9 @@ func (s *Service) ListForUser(ctx context.Context, userID string) ([]*domain.Led
 	}
 	out := make([]*domain.LedgerMeta, 0, len(all))
 	for _, m := range all {
+		if !m.ArchivedAt.IsZero() {
+			continue
+		}
 		if domain.IsMember(m, userID) {
 			out = append(out, m)
 		}
@@ -38,6 +42,9 @@ func (s *Service) GetForUser(ctx context.Context, ledgerID, userID string) (*dom
 	meta, err := s.loadMeta(ctx, ledgerID)
 	if err != nil {
 		return nil, err
+	}
+	if !meta.ArchivedAt.IsZero() {
+		return nil, domain.ErrLedgerNotFound
 	}
 	if userID != "" && !domain.IsMember(meta, userID) {
 		return nil, domain.ErrUnauthorized
@@ -301,6 +308,21 @@ func (s *Service) AcceptInvite(ctx context.Context, ledgerID, userID string) (*d
 	_ = s.deleteKey(ctx, domain.LedgerInviteKey(ledgerID, userID))
 	payload, _ := json.Marshal(map[string]any{"userId": userID, "role": role})
 	_, _ = s.appendEvent(ctx, meta, userID, domain.EventMemberJoined, payload)
+	return meta, nil
+}
+
+// SetStorageLocation updates where ledger snapshots are preferred to be stored.
+func (s *Service) SetStorageLocation(ctx context.Context, ledgerID, userID, location string) (*domain.LedgerMeta, error) {
+	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	if err != nil {
+		return nil, err
+	}
+	loc := domain.NormalizeStorageLocation(location)
+	meta.StorageLocation = loc
+	meta.UpdatedAt = time.Now().UTC()
+	if err := s.putMeta(ctx, meta); err != nil {
+		return nil, err
+	}
 	return meta, nil
 }
 

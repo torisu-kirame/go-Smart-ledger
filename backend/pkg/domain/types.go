@@ -9,6 +9,22 @@ const (
 	LedgerMulti   LedgerType = "multi"
 )
 
+// Ledger data storage location (user-selectable).
+const (
+	StorageLocationCloud = "cloud"
+	StorageLocationLocal = "local"
+	StorageLocationIPFS  = "ipfs"
+)
+
+func NormalizeStorageLocation(s string) string {
+	switch s {
+	case StorageLocationCloud, StorageLocationLocal, StorageLocationIPFS:
+		return s
+	default:
+		return StorageLocationIPFS
+	}
+}
+
 type Member struct {
 	ID      string `json:"id"`
 	Address string `json:"address"`
@@ -29,9 +45,11 @@ type LedgerMeta struct {
 	LatestRoot     string           `json:"latestRoot"`
 	AnchorStatus    string                `json:"anchorStatus"`
 	ExternalAnchor  *ExternalAnchorRecord `json:"externalAnchor,omitempty"`
-	LastBackupRef   string                `json:"lastBackupRef,omitempty"`
-	LastBackupCID   string                `json:"lastBackupCid,omitempty"`
-	CreatedAt       time.Time             `json:"createdAt"`
+	LastBackupRef     string                `json:"lastBackupRef,omitempty"`
+	LastBackupCID     string                `json:"lastBackupCid,omitempty"`
+	StorageLocation   string                `json:"storageLocation,omitempty"`
+	ArchivedAt        time.Time             `json:"archivedAt,omitempty"`
+	CreatedAt         time.Time             `json:"createdAt"`
 	UpdatedAt       time.Time             `json:"updatedAt"`
 }
 
@@ -116,6 +134,8 @@ const (
 	EventBatchSealed       = "BatchSealed"
 	EventBackupAnchored    = "BackupAnchored"
 	EventExternalAnchored  = "ExternalAnchored"
+	EventLedgerUpdated     = "LedgerUpdated"
+	EventLedgerArchived    = "LedgerArchived"
 )
 // Collaboration events: EntryProposed, EntryApproved, EntryRejected,
 // MemberInvited, MemberJoined, GroupKeyRotated — see collaboration.go

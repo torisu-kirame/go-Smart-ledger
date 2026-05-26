@@ -1,12 +1,10 @@
 <template>
   <div class="page" @click="closeMenu">
-    <header class="page-header">
-      <div>
-        <h2>团队</h2>
-        <p class="page-subtitle">
-          团队是协作入口；点击团队进入聊天。关联账本仅为快捷入口，查看账本须各自接受邀请。
-        </p>
-      </div>
+    <PageHeader
+      :crumbs="crumbs"
+      subtitle="团队是协作入口；点击团队进入聊天。关联账本仅为快捷入口，查看账本须各自接受邀请。"
+    >
+      <template #actions>
       <div class="header-actions">
         <button
           v-if="totalUnread > 0"
@@ -22,7 +20,8 @@
           <span>创建团队</span>
         </button>
       </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
 
@@ -106,10 +105,13 @@ import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import AppIcon from '../components/AppIcon.vue'
+import PageHeader from '../components/PageHeader.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
 import TeamAvatar from '../components/TeamAvatar.vue'
 
 const router = useRouter()
+const { crumbs } = usePageCrumbs()
 const auth = useAuthStore()
 const teams = ref([])
 const totalUnread = ref(0)

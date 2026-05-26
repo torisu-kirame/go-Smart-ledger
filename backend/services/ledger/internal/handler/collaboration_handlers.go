@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -28,6 +29,9 @@ func RegisterCollaborationHandlers(server *rest.Server, serverCtx *svc.ServiceCo
 		{Method: http.MethodPost, Path: "/ledgers/:id/invites/accept", Handler: acceptInviteHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/:id/sync", Handler: syncLedgerHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/encryption/rotate", Handler: rotateKeysHandler(serverCtx)},
+		{Method: http.MethodPatch, Path: "/ledgers/:id/storage-location", Handler: setStorageLocationHandler(serverCtx)},
+		{Method: http.MethodPatch, Path: "/ledgers/:id", Handler: updateLedgerHandler(serverCtx)},
+		{Method: http.MethodDelete, Path: "/ledgers/:id", Handler: archiveLedgerHandler(serverCtx)},
 	}, prefix)
 }
 
@@ -213,6 +217,74 @@ func acceptInviteHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
+type storageLocationBody struct {
+	StorageLocation string `json:"storageLocation"`
+}
+
+type updateLedgerBody struct {
+	Name string `json:"name"`
+}
+
+func updateLedgerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var body updateLedgerBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		meta, err := svcCtx.Ledger.UpdateLedger(r.Context(), id, uid, body.Name)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, mapper.LedgerToResp(meta))
+	}
+}
+
+func archiveLedgerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		if err := svcCtx.Ledger.ArchiveLedger(r.Context(), id, uid); err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func setStorageLocationHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		var body storageLocationBody
+		if err := httpx.Parse(r, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		if body.StorageLocation == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "storageLocation required"))
+			return
+		}
+		meta, err := svcCtx.Ledger.SetStorageLocation(r.Context(), id, uid, body.StorageLocation)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, mapper.LedgerToResp(meta))
+	}
+}
+
 func syncLedgerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := pathvar.Vars(r)["id"]
@@ -261,11 +333,18 @@ func eventToMap(ev *domain.EventRecord) map[string]any {
 	if ev == nil {
 		return nil
 	}
-	return map[string]any{
+	out := map[string]any{
 		"seq":       ev.Seq,
 		"type":      ev.Type,
 		"hash":      ev.Hash,
 		"signerId":  ev.SignerID,
 		"createdAt": ev.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
+	if len(ev.Payload) > 0 {
+		var payload any
+		if json.Unmarshal(ev.Payload, &payload) == nil {
+			out["payload"] = payload
+		}
+	}
+	return out
 }

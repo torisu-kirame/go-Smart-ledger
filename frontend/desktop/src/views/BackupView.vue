@@ -1,11 +1,9 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <div>
-        <h2>备份 / 恢复</h2>
-        <p class="page-subtitle">加密导出账本快照，或从备份文件恢复数据。</p>
-      </div>
-    </header>
+    <PageHeader
+      :crumbs="crumbs"
+      subtitle="加密导出账本快照，或从备份文件恢复数据。"
+    />
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
@@ -58,9 +56,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSelect from '../components/AppSelect.vue'
+import PageHeader from '../components/PageHeader.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import { api, ApiError } from '../api/http'
 
 const route = useRoute()
+const { crumbs } = usePageCrumbs()
 const ledgers = ref([])
 const ledgerId = ref(route.query.ledgerId || '')
 const password = ref('')

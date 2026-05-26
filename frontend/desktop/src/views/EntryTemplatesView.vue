@@ -1,9 +1,10 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <h2>记账模板</h2>
-      <button class="btn-primary" @click="openCreate">新建模板</button>
-    </header>
+    <PageHeader :crumbs="crumbs">
+      <template #actions>
+        <button class="btn-primary" @click="openCreate">新建模板</button>
+      </template>
+    </PageHeader>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
@@ -59,9 +60,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { api, ApiError } from '../api/http'
 import AppSelect from '../components/AppSelect.vue'
+import PageHeader from '../components/PageHeader.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import DeleteButton from '../components/DeleteButton.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 
+const { crumbs } = usePageCrumbs()
 const templates = ref([])
 const error = ref('')
 const msg = ref('')

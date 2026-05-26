@@ -19,12 +19,12 @@
             :key="item.to"
             :to="item.to"
             custom
-            v-slot="{ href, navigate, isActive, isExactActive }"
+            v-slot="{ href, navigate }"
           >
             <a
               :href="href"
               class="nav-item"
-              :class="{ active: navActive(item, isActive, isExactActive) }"
+              :class="{ active: navItemActive(item) }"
               @click="navigate"
             >
               <AppIcon :name="item.icon" size="sm" class="nav-item__icon" />
@@ -64,7 +64,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { api } from '../api/http'
 import { useAuthStore } from '../stores/auth'
@@ -72,6 +72,7 @@ import { useI18n } from '../composables/useI18n'
 import { NAV_ICON_BY_ROUTE } from '../icons/registry.js'
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
@@ -124,9 +125,15 @@ const footAvatar = computed(() =>
   auth.user?.id ? api.userAvatarUrl(auth.user.id) : ''
 )
 
-function navActive(item, isActive, isExactActive) {
-  if (item.exact) return isExactActive
-  return isActive
+/** 一级导航：二级路径（如 /ledgers/:id）仍高亮对应模块 */
+function navItemActive(item) {
+  const navRoot = route.meta?.navRoot
+  if (navRoot && item.to === navRoot) return true
+
+  const path = route.path
+  if (item.to === '/') return path === '/' || path === ''
+  if (path === item.to) return true
+  return path.startsWith(`${item.to}/`)
 }
 
 function goSettings(hash = '') {

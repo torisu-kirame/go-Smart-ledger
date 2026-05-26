@@ -1,5 +1,5 @@
 <template>
-  <div class="form-grid">
+  <div class="form-grid" :class="{ 'form-grid--column': column }">
     <div v-for="f in schema.fields" :key="f.key" class="form-row">
       <label>{{ f.label }}<span v-if="f.required" class="req">*</span></label>
       <AppSelect
@@ -41,6 +41,8 @@ const props = defineProps({
   schema: { type: Object, required: true },
   model: { type: Object, required: true },
   members: { type: Array, default: () => [] },
+  /** 纵向单列：标签在上、输入在下 */
+  column: { type: Boolean, default: false },
 })
 
 const memberOptions = computed(() =>
@@ -65,6 +67,20 @@ const memberOptions = computed(() =>
 .form-grid input,
 .form-grid :deep(.app-select) {
   max-width: 100%;
+}
+.form-grid--column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: none;
+}
+.form-grid--column .form-row {
+  display: grid;
+  gap: 0.35rem;
+}
+.form-grid--column label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 .req { color: var(--danger); margin-left: 0.15rem; }
 </style>

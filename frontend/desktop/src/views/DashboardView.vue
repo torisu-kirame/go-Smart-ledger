@@ -1,15 +1,13 @@
 <template>
   <div class="page dashboard">
-    <header class="page-header">
-      <div>
-        <h2>{{ t('dashboard.title') }}</h2>
-        <p class="page-subtitle">{{ t('dashboard.subtitle') }}</p>
-      </div>
-      <button class="icon-btn icon-btn--ghost" type="button" :disabled="loading" @click="load">
-        <AppIcon name="refresh" size="sm" />
-        <span>{{ t('dashboard.refresh') }}</span>
-      </button>
-    </header>
+    <PageHeader :crumbs="crumbs" :subtitle="t('dashboard.subtitle')">
+      <template #actions>
+        <button class="icon-btn icon-btn--ghost" type="button" :disabled="loading" @click="load">
+          <AppIcon name="refresh" size="sm" />
+          <span>{{ t('dashboard.refresh') }}</span>
+        </button>
+      </template>
+    </PageHeader>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="chainPending > 0 || chainFailed > 0" class="alert alert-warn chain-alert">
@@ -77,11 +75,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import PageHeader from '../components/PageHeader.vue'
 import { api, ApiError } from '../api/http'
 import { useI18n } from '../composables/useI18n'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import { NAV_ICON_BY_ROUTE } from '../icons/registry.js'
 
 const { t } = useI18n()
+const { crumbs } = usePageCrumbs()
 
 const loading = ref(false)
 const error = ref('')

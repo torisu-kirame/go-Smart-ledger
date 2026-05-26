@@ -1,9 +1,6 @@
 <template>
   <div class="page settings-page">
-    <header class="page-header settings-header">
-      <h2>{{ t('settings.title') }}</h2>
-      <p class="settings-subtitle">{{ t('settings.subtitle') }}</p>
-    </header>
+    <PageHeader :crumbs="headerCrumbs" :subtitle="t('settings.subtitle')" />
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -51,6 +48,7 @@ import SettingsAccountModule from '../components/settings/SettingsAccountModule.
 import SettingsAiModule from '../components/settings/SettingsAiModule.vue'
 import SettingsAppearanceModule from '../components/settings/SettingsAppearanceModule.vue'
 import SettingsLanguageModule from '../components/settings/SettingsLanguageModule.vue'
+import PageHeader from '../components/PageHeader.vue'
 import SettingsModuleNav from '../components/settings/SettingsModuleNav.vue'
 import SettingsSecurityModule from '../components/settings/SettingsSecurityModule.vue'
 import { api, ApiError } from '../api/http'
@@ -78,6 +76,11 @@ const avatarBust = ref(0)
 const panelTitleId = computed(() => `settings-panel-${activeSection.value}`)
 const moduleTitle = computed(() => t(`settings.modules.${activeSection.value}.title`))
 const moduleDesc = computed(() => t(`settings.modules.${activeSection.value}.desc`))
+
+const headerCrumbs = computed(() => [
+  { label: t('settings.title'), to: { path: '/settings', hash: '#appearance' } },
+  { label: t(`settings.nav.${activeSection.value}`) },
+])
 
 function selectSection(id) {
   activeSection.value = id
@@ -167,17 +170,6 @@ watch(() => route.hash, syncHashFromRoute)
 <style scoped>
 .settings-page {
   max-width: 52rem;
-}
-
-.settings-header {
-  margin-bottom: 1rem;
-}
-
-.settings-subtitle {
-  margin: 0.25rem 0 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  font-weight: 400;
 }
 
 .settings-layout {

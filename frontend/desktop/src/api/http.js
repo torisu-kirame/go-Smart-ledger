@@ -79,6 +79,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     }),
+  verifyPassword: (password) =>
+    request('/users/me/verify-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
   uploadAvatar: (file) => {
     const fd = new FormData()
     fd.append('avatar', file)
@@ -201,6 +206,14 @@ export const api = {
     request(`/ledgers/${id}/invites/accept`, { method: 'POST', body: '{}' }),
   syncLedger: (id, sinceSeq = 0) =>
     request(`/ledgers/${id}/sync?sinceSeq=${sinceSeq}`),
+  setLedgerStorageLocation: (id, storageLocation) =>
+    request(`/ledgers/${id}/storage-location`, {
+      method: 'PATCH',
+      body: JSON.stringify({ storageLocation }),
+    }),
+  updateLedger: (id, body) =>
+    request(`/ledgers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  archiveLedger: (id) => request(`/ledgers/${id}`, { method: 'DELETE' }),
   rotateGroupKeys: (id, wrappedKeys) =>
     request(`/ledgers/${id}/encryption/rotate`, {
       method: 'POST',

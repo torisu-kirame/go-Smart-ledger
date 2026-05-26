@@ -81,6 +81,15 @@ func (s *MySQLStore) FindByID(id string) (*User, error) {
 	return &User{ID: strconv.FormatUint(uid, 10), Username: username}, nil
 }
 
+func (s *MySQLStore) VerifyPassword(id, password string) error {
+	user, err := s.FindByID(id)
+	if err != nil {
+		return err
+	}
+	_, err = s.Authenticate(user.Username, password)
+	return err
+}
+
 // EnsureSeed creates the first admin user when the table is empty.
 // Returns the new user's ID when created, or "" if users already exist.
 func (s *MySQLStore) EnsureSeed(username, password string) (string, error) {

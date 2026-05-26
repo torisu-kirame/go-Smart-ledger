@@ -20,6 +20,7 @@ type Store interface {
 	Authenticate(username, password string) (*User, error)
 	Create(username, password string) (*User, error)
 	FindByID(id string) (*User, error)
+	VerifyPassword(id, password string) error
 }
 
 // AccountStore supports account lifecycle (delete).

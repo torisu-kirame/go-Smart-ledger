@@ -35,6 +35,9 @@ export function setLocale(locale) {
   return next
 }
 
-export function dashboardPath(locale) {
-  return locale === LOCALES.en ? '/dashboard/' : '/explorer-zh/'
+export function dashboardPath(locale, themeId = 'classic-dark') {
+  const base = locale === LOCALES.en ? '/dashboard/' : '/explorer-zh/'
+  const theme = encodeURIComponent(themeId || 'classic-dark')
+  const join = base.includes('?') ? '&' : '?'
+  return `${base}${join}theme=${theme}`
 }

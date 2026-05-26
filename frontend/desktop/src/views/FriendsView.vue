@@ -1,11 +1,9 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <div>
-        <h2>好友</h2>
-        <p class="page-subtitle">搜索用户、处理好友申请与协作邀请。</p>
-      </div>
-    </header>
+    <PageHeader
+      :crumbs="crumbs"
+      subtitle="搜索用户、处理好友申请与协作邀请。"
+    />
 
     <section v-if="incoming.length" class="card highlight">
       <h3>收到的好友申请</h3>
@@ -106,11 +104,14 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import PageHeader from '../components/PageHeader.vue'
 import DeleteButton from '../components/DeleteButton.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const { crumbs } = usePageCrumbs()
 const searchId = ref('')
 const searchResult = ref(null)
 const searchError = ref('')

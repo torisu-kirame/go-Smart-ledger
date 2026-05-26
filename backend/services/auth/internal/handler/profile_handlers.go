@@ -24,10 +24,43 @@ func registerProfileHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
 		{Method: http.MethodPatch, Path: "/me", Handler: patchMeHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/me/avatar", Handler: uploadAvatarHandler(svcCtx)},
 		{Method: http.MethodPost, Path: "/me/delete-account", Handler: deleteAccountHandler(svcCtx)},
+		{Method: http.MethodPost, Path: "/me/verify-password", Handler: verifyPasswordHandler(svcCtx)},
 		{Method: http.MethodPut, Path: "/me/public-key", Handler: putPublicKeyHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/me/public-key", Handler: getPublicKeyHandler(svcCtx)},
 		{Method: http.MethodGet, Path: "/:userId/avatar", Handler: getAvatarHandler(svcCtx)},
 	}, rest.WithPrefix("/api/v1/users"))
+}
+
+type verifyPasswordReq struct {
+	Password string `json:"password"`
+}
+
+func verifyPasswordHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, err := userIDFromRequest(r)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		var req verifyPasswordReq
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		if req.Password == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "password required"))
+			return
+		}
+		if err := svcCtx.Users.VerifyPassword(uid, req.Password); err != nil {
+			if err == userstore.ErrInvalidCredentials {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "invalid password"))
+				return
+			}
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func deleteAccountHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

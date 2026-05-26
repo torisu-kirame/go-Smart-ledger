@@ -67,20 +67,21 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		enc.Algo = "aes-gcm-v1"
 	}
 	meta := &domain.LedgerMeta{
-		ID:             id,
-		Type:           t,
-		Name:           name,
-		CreatorID:      creatorID,
-		LedgerAddress:  ledgerAddr,
-		Members:        members,
-		EntrySchema:    schema,
-		ApprovalPolicy: ap,
-		Encryption:     enc,
-		LatestSeq:      0,
-		LatestRoot:     domain.MerkleRoot(nil),
-		AnchorStatus:   "pending",
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:              id,
+		Type:            t,
+		Name:            name,
+		CreatorID:       creatorID,
+		LedgerAddress:   ledgerAddr,
+		Members:         members,
+		EntrySchema:     schema,
+		ApprovalPolicy:  ap,
+		Encryption:      enc,
+		StorageLocation: domain.NormalizeStorageLocation(opts.StorageLocation),
+		LatestSeq:       0,
+		LatestRoot:      domain.MerkleRoot(nil),
+		AnchorStatus:    "pending",
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err

@@ -135,11 +135,52 @@ th { color: var(--muted); font-weight: 600; }
 pre.json {
   margin: 0;
   padding: 0.75rem;
-  background: #0d1117;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   overflow: auto;
   font-size: 0.75rem;
   font-family: var(--mono);
+}
+
+/* —— Smart Ledger 主题同步（?theme= 查询参数）—— */
+
+html[data-theme='classic-light'],
+html[data-theme='light'] {
+  --bg: #dce3ef;
+  --sidebar: #e8edf5;
+  --card: #f2f5fa;
+  --border: #b8c5d9;
+  --text: #1a2438;
+  --muted: #5a6b85;
+  --accent: #3d7eff;
+  --green: #168f6a;
+  --red: #c44558;
+}
+
+html[data-theme='classic-dark'],
+html[data-theme='dark'] {
+  --bg: #0a1424;
+  --sidebar: #0f1c32;
+  --card: #152845;
+  --border: #243d5e;
+  --text: #e4ecf8;
+  --muted: #8fa3c4;
+  --accent: #4f8cff;
+  --green: #2ecf9b;
+  --red: #f06f7b;
+}
+
+html[data-theme='deep-dark'] {
+  --bg: #050508;
+  --sidebar: #0a0a0e;
+  --card: #121218;
+  --border: #222228;
+  --text: #ececf1;
+  --muted: #8b8b96;
+  --accent: #5b8def;
+  --green: #2ecf9b;
+  --red: #ef6b7a;
 }
 
 .muted { color: var(--muted); }

@@ -7,19 +7,85 @@ const routes = [
     path: '/',
     component: () => import('../layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('../views/DashboardView.vue') },
-      { path: 'entry-templates', component: () => import('../views/EntryTemplatesView.vue') },
-      { path: 'ledgers', component: () => import('../views/LedgersView.vue') },
-      { path: 'ledgers/:id', component: () => import('../views/LedgerDetailView.vue') },
-      { path: 'import', component: () => import('../views/ImportView.vue') },
-      { path: 'backup', component: () => import('../views/BackupView.vue') },
-      { path: 'friends', component: () => import('../views/FriendsView.vue') },
-      { path: 'settings', component: () => import('../views/SettingsView.vue') },
+      {
+        path: '',
+        component: () => import('../views/DashboardView.vue'),
+        meta: { titleKey: 'layout.nav.home', navRoot: '/' },
+      },
+      {
+        path: 'entry-templates',
+        component: () => import('../views/EntryTemplatesView.vue'),
+        meta: { titleKey: 'layout.nav.templates', navRoot: '/entry-templates' },
+      },
+      {
+        path: 'ledgers',
+        component: () => import('../views/LedgersView.vue'),
+        meta: { titleKey: 'layout.nav.ledgers', navRoot: '/ledgers' },
+      },
+      {
+        path: 'ledgers/:id',
+        component: () => import('../layouts/LedgerDetailLayout.vue'),
+        meta: {
+          titleKey: 'layout.nav.ledgers',
+          breadcrumbParent: '/ledgers',
+          navRoot: '/ledgers',
+        },
+        children: [
+          {
+            path: '',
+            component: () => import('../views/ledger/LedgerOverviewView.vue'),
+          },
+          {
+            path: 'view',
+            component: () => import('../views/ledger/LedgerContentView.vue'),
+          },
+          {
+            path: 'settings',
+            component: () => import('../views/ledger/LedgerSettingsView.vue'),
+          },
+        ],
+      },
+      {
+        path: 'import',
+        component: () => import('../views/ImportView.vue'),
+        meta: { titleKey: 'layout.nav.import', navRoot: '/import' },
+      },
+      {
+        path: 'backup',
+        component: () => import('../views/BackupView.vue'),
+        meta: { titleKey: 'layout.nav.backup', navRoot: '/backup' },
+      },
+      {
+        path: 'friends',
+        component: () => import('../views/FriendsView.vue'),
+        meta: { titleKey: 'layout.nav.friends', navRoot: '/friends' },
+      },
+      {
+        path: 'settings',
+        component: () => import('../views/SettingsView.vue'),
+        meta: { titleKey: 'layout.settings', navRoot: '/settings' },
+      },
       { path: 'profile', redirect: '/settings' },
-      { path: 'teams', component: () => import('../views/TeamsView.vue') },
-      { path: 'teams/:teamId', component: () => import('../views/TeamDetailView.vue') },
+      {
+        path: 'teams',
+        component: () => import('../views/TeamsView.vue'),
+        meta: { titleKey: 'layout.nav.teams', navRoot: '/teams' },
+      },
+      {
+        path: 'teams/:teamId',
+        component: () => import('../views/TeamDetailView.vue'),
+        meta: {
+          titleKey: 'layout.nav.teams',
+          breadcrumbParent: '/teams',
+          navRoot: '/teams',
+        },
+      },
       { path: 'invites', redirect: '/ledgers' },
-      { path: 'chain', component: () => import('../views/ChainExplorerView.vue') },
+      {
+        path: 'chain',
+        component: () => import('../views/ChainExplorerView.vue'),
+        meta: { titleKey: 'layout.nav.chain', navRoot: '/chain' },
+      },
     ],
   },
 ]

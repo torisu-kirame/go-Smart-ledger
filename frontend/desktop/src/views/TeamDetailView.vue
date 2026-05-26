@@ -1,14 +1,9 @@
 <template>
   <div v-if="team" class="page team-detail">
-    <header class="page-header">
-      <div>
-        <h2 class="page-header--with-back">
-          <PageBackLink to="/teams" label="返回" />
-          {{ team.name }}
-        </h2>
-        <p class="section-hint">团队 Chat 与关联账本；账本数据仍须各自接受邀请后查看。</p>
-      </div>
-    </header>
+    <PageHeader
+      :crumbs="crumbs"
+      subtitle="团队 Chat 与关联账本；账本数据仍须各自接受邀请后查看。"
+    />
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -101,7 +96,8 @@ import { useRoute } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
-import PageBackLink from '../components/PageBackLink.vue'
+import PageHeader from '../components/PageHeader.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import { api, ApiError, fetchTeamChatFileBlob } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 
@@ -110,6 +106,7 @@ const auth = useAuthStore()
 const teamId = computed(() => route.params.teamId)
 
 const team = ref(null)
+const { crumbs } = usePageCrumbs(computed(() => team.value?.name || '…'))
 const ledgers = ref([])
 const messages = ref([])
 const fileLinks = ref({})

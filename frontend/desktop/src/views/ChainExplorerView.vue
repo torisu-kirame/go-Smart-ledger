@@ -1,9 +1,7 @@
 <template>
   <div class="page chain-page">
-    <header class="head">
-      <div>
-        <h2>{{ t('chain.title') }}</h2>
-      </div>
+    <PageHeader :crumbs="crumbs">
+      <template #actions>
       <div class="tabs">
         <button
           type="button"
@@ -20,11 +18,12 @@
           {{ t('chain.tabOverview') }}
         </button>
       </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <div v-if="tab === 'dashboard'" class="frame-wrap">
       <iframe
-        :key="locale"
+        :key="`${locale}-${appTheme}`"
         class="explorer-frame"
         :src="dashboardSrc"
         :title="t('chain.iframeTitle')"
@@ -122,13 +121,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { api, ApiError } from '../api/http'
+import PageHeader from '../components/PageHeader.vue'
 import { useI18n } from '../composables/useI18n'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import { dashboardPath } from '../utils/locale'
+import { getTheme, THEME_CHANGE } from '../utils/theme'
 
 const { locale, t } = useI18n()
+const { crumbs } = usePageCrumbs()
 
+const appTheme = ref(getTheme())
 const tab = ref('dashboard')
 const status = ref(null)
 const consensus = ref(null)
@@ -136,7 +140,15 @@ const blocks = ref([])
 const queue = ref([])
 const error = ref('')
 
-const dashboardSrc = computed(() => dashboardPath(locale.value))
+const dashboardSrc = computed(() => dashboardPath(locale.value, appTheme.value))
+
+function onThemeChange(ev) {
+  appTheme.value = ev.detail || getTheme()
+}
+
+function onStorageTheme(ev) {
+  if (ev.key === 'smart-ledger-theme') appTheme.value = getTheme()
+}
 
 function queueStatusLabel(s) {
   const map = {
@@ -195,7 +207,14 @@ watch(locale, () => {
 })
 
 onMounted(() => {
+  window.addEventListener(THEME_CHANGE, onThemeChange)
+  window.addEventListener('storage', onStorageTheme)
   if (tab.value === 'overview') loadOverview()
+})
+
+onUnmounted(() => {
+  window.removeEventListener(THEME_CHANGE, onThemeChange)
+  window.removeEventListener('storage', onStorageTheme)
 })
 </script>
 
@@ -209,9 +228,15 @@ onMounted(() => {
   padding: 0.4rem 0.85rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--bg-card);
+  color: var(--text-muted);
   cursor: pointer;
+  font-weight: 600;
+}
+
+.tabs button:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 .tabs button.active {
   background: var(--accent);
@@ -225,7 +250,7 @@ onMounted(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  background: #0d1117;
+  background: var(--chain-frame-bg, var(--bg));
 }
 .explorer-frame {
   display: block;
@@ -242,7 +267,7 @@ onMounted(() => {
   max-height: 200px;
   margin: 0;
   padding: 0.75rem;
-  background: var(--surface-elevated);
+  background: var(--bg);
   border-radius: var(--radius-sm);
 }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }

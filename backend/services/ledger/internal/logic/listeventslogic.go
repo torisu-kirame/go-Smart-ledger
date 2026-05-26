@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/types"
@@ -29,12 +30,17 @@ func (l *ListEventsLogic) ListEvents(id string, req *types.ListEventsReq) ([]typ
 	}
 	out := make([]types.EventResp, len(events))
 	for i, e := range events {
+		var payload any
+		if len(e.Payload) > 0 {
+			_ = json.Unmarshal(e.Payload, &payload)
+		}
 		out[i] = types.EventResp{
 			Seq:       e.Seq,
 			Type:      e.Type,
 			Hash:      e.Hash,
 			SignerId:  e.SignerID,
 			CreatedAt: e.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			Payload:   payload,
 		}
 	}
 	return out, nil

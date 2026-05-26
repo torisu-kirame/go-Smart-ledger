@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MiniLedger 区块浏览器</title>
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search)
+      var t = p.get('theme') || 'classic-dark'
+      if (t === 'light') t = 'classic-light'
+      if (t === 'dark') t = 'classic-dark'
+      document.documentElement.setAttribute('data-theme', t)
+    })()
+  </script>
   <link rel="stylesheet" href="/explorer-zh/style.css" />
 </head>
 <body>

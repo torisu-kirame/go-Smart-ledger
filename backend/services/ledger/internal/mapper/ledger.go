@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"time"
+
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/types"
@@ -29,8 +31,11 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		LatestRoot:    m.LatestRoot,
 		AnchorStatus:    m.AnchorStatus,
 		ExternalAnchor:  externalToResp(m.ExternalAnchor),
-		LastBackupRef:   m.LastBackupRef,
-		LastBackupCid: m.LastBackupCID,
+		LastBackupRef:     m.LastBackupRef,
+		LastBackupCid:     m.LastBackupCID,
+		StorageLocation: domain.NormalizeStorageLocation(m.StorageLocation),
+		CreatedAt:       m.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       m.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
@@ -45,6 +50,7 @@ func CreateOptionsFromReq(req *types.CreateLedgerReq) ledgersvc.CreateOptions {
 			Algo:        req.Encryption.Algo,
 			WrappedKeys: req.Encryption.WrappedKeys,
 		},
+		StorageLocation: req.StorageLocation,
 	}
 }
 

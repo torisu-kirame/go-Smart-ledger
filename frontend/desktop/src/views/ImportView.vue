@@ -1,8 +1,6 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <h2>Excel 导入</h2>
-    </header>
+    <PageHeader :crumbs="crumbs" />
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
@@ -73,10 +71,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import AppSelect from '../components/AppSelect.vue'
+import PageHeader from '../components/PageHeader.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import FileUploadZone from '../components/FileUploadZone.vue'
 import { cellValue, resolveSchema } from '../utils/entrySchema'
 
 const route = useRoute()
+const { crumbs } = usePageCrumbs()
 const router = useRouter()
 const auth = useAuthStore()
 const ledgers = ref([])

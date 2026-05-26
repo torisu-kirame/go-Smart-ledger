@@ -1,17 +1,15 @@
 <template>
   <div class="page">
-    <header class="page-header">
-      <h2>账本管理</h2>
+    <PageHeader :crumbs="crumbs">
+      <template #actions>
       <div class="header-actions">
-        <button class="btn-ghost" type="button" :disabled="syncingAll || !list.length" @click="syncAllLocal">
-          {{ syncingAll ? '同步中…' : '全部同步到本机' }}
-        </button>
         <button class="btn-primary ledger-create" type="button" @click="openCreate">
           <AppIcon name="plus" size="sm" />
           <span>创建账本</span>
         </button>
       </div>
-    </header>
+      </template>
+    </PageHeader>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
@@ -28,58 +26,23 @@
       </div>
     </section>
 
-    <section ref="inviteSectionRef" class="panel">
-      <h3>邀请成员加入账本</h3>
-      <p class="section-hint">向多人账本发送邀请；对方在「收到的账本邀请」中同意后成为成员。团队本身不自动授予账本权限。</p>
-      <div v-if="!multiLedgers.length" class="muted">暂无多人账本，请先创建或接受邀请加入。</div>
-      <template v-else>
-        <div class="form-row">
-          <label>选择账本</label>
-          <AppSelect v-model="inviteLedgerId" :options="multiLedgerOptions" />
-        </div>
-        <div class="form-row member-add-block">
-          <label>被邀请人</label>
-          <MemberAddPanel
-            v-model="inviteUserId"
-            :multiple="false"
-            :exclude-ids="inviteExcludeIds"
-          />
-        </div>
-        <button class="btn-primary" :disabled="inviteBusy || !inviteUserId || !inviteLedgerId" @click="sendInvite">
-          发送邀请
-        </button>
-        <div v-if="outgoingInvites.length" class="outgoing-list">
-          <h4>待对方处理的邀请</h4>
-          <div v-for="inv in outgoingInvites" :key="inv.inviteeId" class="invite-row compact">
-            <span>用户 <span class="mono">{{ inv.inviteeId }}</span></span>
-            <span class="muted">{{ formatInviteTime(inv.createdAt) }}</span>
-          </div>
-        </div>
-      </template>
-    </section>
-
     <div class="panel">
       <div v-if="!list.length" class="muted empty">暂无账本，点击右上角创建</div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>名称</th><th>类型</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
+          <thead><tr><th>名称</th><th>类型</th><th>存储</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
           <tbody>
             <tr v-for="l in list" :key="l.id">
               <td>{{ l.name }}</td>
               <td><span :class="['badge', l.type === 'multi' ? 'badge-multi' : 'badge-private']">{{ l.type === 'multi' ? '多人' : '私人' }}</span></td>
+              <td>{{ storageLocationLabel(l.storageLocation) }}</td>
               <td class="mono" :title="l.ledgerAddress">{{ shortAddr(l.ledgerAddress) }}</td>
               <td class="mono">{{ l.latestSeq }}</td>
               <td><span :class="['badge', l.anchorStatus === 'synced' ? 'badge-ok' : 'badge-pending']">{{ l.anchorStatus }}</span></td>
               <td class="row-actions">
+                <router-link :to="`/ledgers/${l.id}/view`">查看</router-link>
                 <router-link :to="`/ledgers/${l.id}`">详情</router-link>
-                <button
-                  v-if="l.type === 'multi'"
-                  type="button"
-                  class="btn-link"
-                  @click="focusInvite(l.id)"
-                >
-                  邀请
-                </button>
+                <router-link :to="`/ledgers/${l.id}/settings`">设置</router-link>
               </td>
             </tr>
           </tbody>
@@ -141,28 +104,26 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import AppIcon from '../components/AppIcon.vue'
+import PageHeader from '../components/PageHeader.vue'
+import { usePageCrumbs } from '../composables/usePageCrumbs'
 import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 import { buildEncryptionForCreate, saveLocalGroupKey } from '../utils/e2eCrypto'
-import { syncLedgerToLocal } from '../localdb/db'
+import { DEFAULT_STORAGE_LOCATION, storageLocationLabel } from '../utils/ledgerStorage'
 
 const router = useRouter()
+const { crumbs } = usePageCrumbs()
 const auth = useAuthStore()
 const list = ref([])
 const incomingInvites = ref([])
-const outgoingInvites = ref([])
-const inviteLedgerId = ref('')
-const inviteUserId = ref('')
 const inviteBusy = ref(false)
-const inviteSectionRef = ref(null)
-const syncingAll = ref(false)
 const error = ref('')
 const success = ref('')
 const show = ref(false)
@@ -190,20 +151,6 @@ const templateOptions = computed(() => [
   })),
   { value: 'custom', label: '临时自定义（不保存）' },
 ])
-
-const multiLedgers = computed(() => list.value.filter((l) => l.type === 'multi'))
-const multiLedgerOptions = computed(() =>
-  multiLedgers.value.map((l) => ({
-    value: l.id,
-    label: `${l.name}（${shortAddr(l.ledgerAddress)}）`,
-  }))
-)
-const inviteExcludeIds = computed(() => {
-  const ledger = list.value.find((l) => l.id === inviteLedgerId.value)
-  const ids = (ledger?.members || []).map((m) => m.id)
-  if (auth.user?.id) ids.push(auth.user.id)
-  return ids
-})
 
 const selectedTemplateFields = computed(() => {
   if (form.templateId === 'custom') return ''
@@ -272,24 +219,6 @@ function inviteLedgerName(ledgerId) {
   return l?.name || '账本'
 }
 
-function formatInviteTime(t) {
-  if (!t) return ''
-  return new Date(t).toLocaleString()
-}
-
-async function loadOutgoingInvites() {
-  if (!inviteLedgerId.value) {
-    outgoingInvites.value = []
-    return
-  }
-  try {
-    const res = await api.listLedgerInvites(inviteLedgerId.value)
-    outgoingInvites.value = res.invites || []
-  } catch {
-    outgoingInvites.value = []
-  }
-}
-
 async function loadInvites() {
   try {
     const res = await api.listMyInvites()
@@ -302,17 +231,8 @@ async function loadInvites() {
 async function load() {
   const data = await api.listLedgers()
   list.value = Array.isArray(data) ? data : []
-  if (!inviteLedgerId.value && multiLedgers.value.length) {
-    inviteLedgerId.value = multiLedgers.value[0].id
-  } else if (inviteLedgerId.value && !multiLedgers.value.some((l) => l.id === inviteLedgerId.value)) {
-    inviteLedgerId.value = multiLedgers.value[0]?.id || ''
-  }
-  await Promise.all([loadInvites(), loadOutgoingInvites()])
+  await loadInvites()
 }
-
-watch(inviteLedgerId, () => {
-  loadOutgoingInvites()
-})
 
 async function acceptInvite(ledgerId) {
   inviteBusy.value = true
@@ -327,43 +247,6 @@ async function acceptInvite(ledgerId) {
   } finally {
     inviteBusy.value = false
   }
-}
-
-async function sendInvite() {
-  const targetId = typeof inviteUserId.value === 'string' ? inviteUserId.value.trim() : ''
-  if (!inviteLedgerId.value || !targetId) {
-    error.value = '请选择账本并填写被邀请人'
-    return
-  }
-  inviteBusy.value = true
-  error.value = ''
-  try {
-    await api.inviteMember(inviteLedgerId.value, targetId)
-    success.value = '邀请已发送，等待对方在「收到的账本邀请」中同意'
-    inviteUserId.value = ''
-    await loadOutgoingInvites()
-  } catch (e) {
-    error.value = inviteErrorMessage(e, '邀请失败')
-  } finally {
-    inviteBusy.value = false
-  }
-}
-
-function inviteErrorMessage(e, fallback) {
-  if (!(e instanceof ApiError)) return fallback
-  const m = e.message || ''
-  if (m.includes('already a member')) return '对方已是账本成员'
-  if (m.includes('invite already pending')) return '已向该用户发送过邀请'
-  if (m.includes('cannot invite yourself')) return '不能邀请自己'
-  return m || fallback
-}
-
-function focusInvite(ledgerId) {
-  inviteLedgerId.value = ledgerId
-  loadOutgoingInvites()
-  nextTick(() => {
-    inviteSectionRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-  })
 }
 
 async function sendInvitesToUsers(ledgerId, userIds) {
@@ -384,24 +267,6 @@ async function sendInvitesToUsers(ledgerId, userIds) {
   return sent
 }
 
-async function syncAllLocal() {
-  syncingAll.value = true
-  error.value = ''
-  success.value = ''
-  let total = 0
-  try {
-    for (const l of list.value) {
-      const res = await syncLedgerToLocal(api, l.id)
-      total += res.newCount
-    }
-    success.value = `已将 ${list.value.length} 个账本同步到本机 SQLite（新增 ${total} 条事件）`
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '批量同步失败'
-  } finally {
-    syncingAll.value = false
-  }
-}
-
 onMounted(async () => {
   try {
     const res = await api.listEntryTemplates()
@@ -410,8 +275,6 @@ onMounted(async () => {
     templates.value = [DEFAULT_ENTRY_SCHEMA]
   }
   await load()
-  const q = router.currentRoute.value.query?.invite
-  if (q) focusInvite(String(q))
 })
 
 function buildMembers() {
@@ -453,6 +316,7 @@ async function create() {
       entrySchema: buildEntrySchema(),
       approvalPolicy: form.type === 'multi' ? { enabled: true, threshold: 2 } : { enabled: false },
       encryption,
+      storageLocation: DEFAULT_STORAGE_LOCATION,
     })
     if (groupKey && created.id) {
       saveLocalGroupKey(created.id, groupKey)
@@ -464,7 +328,6 @@ async function create() {
     }
     show.value = false
     await load()
-    inviteLedgerId.value = created.id
     success.value = `已创建账本「${created.name}」（ID: ${created.id}）${inviteNote}`
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '创建失败'
@@ -517,9 +380,6 @@ async function create() {
 }
 .invite-row .mono { font-size: 0.8125rem; color: var(--text-muted); margin-left: 0.5rem; }
 .invite-row .inviter { display: block; font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.2rem; }
-.invite-row.compact { padding: 0.4rem 0; }
-.outgoing-list { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); }
-.outgoing-list h4 { margin: 0 0 0.5rem; font-size: 0.875rem; font-weight: 600; }
 .field-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.5rem; }
 .member-add-block { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
 .form-row { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; max-width: 28rem; }
