@@ -1,8 +1,5 @@
 <template>
   <div class="ledger-view-page">
-    <div v-if="msg" class="alert alert-success">{{ msg }}</div>
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-
     <div v-if="ledger.encryption?.enabled && !groupKeyReady" class="detail-card unlock-panel">
       <h3 class="detail-card__title">端到端加密</h3>
       <div class="form-row">

@@ -1,8 +1,5 @@
 <template>
   <div class="ledger-overview">
-    <div v-if="msg" class="alert alert-success">{{ msg }}</div>
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-
     <div class="overview-layout">
       <aside class="overview-aside">
         <LedgerInfoPanel />

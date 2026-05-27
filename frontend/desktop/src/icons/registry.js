@@ -129,6 +129,7 @@ export const NAV_ICON_BY_ROUTE = {
   '/friends': 'friends',
   '/teams': 'teams',
   '/chain': 'chain',
+  '/logs': 'activity',
   '/settings': 'settings',
 }
 

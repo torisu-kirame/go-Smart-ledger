@@ -21,6 +21,12 @@ export const messages = {
       queueAlertBoth: '上链队列：{pending} 条待重试，{failed} 条失败',
       loadFail: '加载失败',
     },
+    logs: {
+      subtitle: '应用操作与提示记录（与顶部弹窗同步）',
+      count: '共 {n} 条',
+      clear: '清空',
+      empty: '暂无日志，操作成功或失败时会出现记录。',
+    },
     layout: {
       settings: '设置',
       logout: '退出',
@@ -37,6 +43,7 @@ export const messages = {
         friends: '好友',
         teams: '团队',
         chain: '链浏览器',
+        logs: '日志',
       },
       navGroup: {
         workspace: '工作区',
@@ -196,6 +203,12 @@ export const messages = {
       queueAlertBoth: 'Submit queue: {pending} pending, {failed} failed',
       loadFail: 'Failed to load',
     },
+    logs: {
+      subtitle: 'Operation log synced with top toasts',
+      count: '{n} entries',
+      clear: 'Clear',
+      empty: 'No entries yet. Logs appear when actions succeed or fail.',
+    },
     layout: {
       settings: 'Settings',
       logout: 'Log out',
@@ -212,6 +225,7 @@ export const messages = {
         friends: 'Friends',
         teams: 'Teams',
         chain: 'Chain Explorer',
+        logs: 'Logs',
       },
       navGroup: {
         workspace: 'Workspace',

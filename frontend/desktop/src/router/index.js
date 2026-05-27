@@ -41,7 +41,34 @@ const routes = [
           },
           {
             path: 'accounting',
-            component: () => import('../views/ledger/LedgerAccountingView.vue'),
+            component: () => import('../views/ledger/LedgerAccountingLayout.vue'),
+            children: [
+              { path: '', redirect: (to) => `${to.path}/view` },
+              {
+                path: 'view',
+                component: () => import('../views/ledger/LedgerAccountingBrowseView.vue'),
+              },
+              {
+                path: 'coa',
+                component: () => import('../views/ledger/LedgerAccountingCoaView.vue'),
+              },
+              {
+                path: 'period',
+                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
+              },
+              {
+                path: 'report',
+                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
+              },
+              {
+                path: 'attach',
+                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
+              },
+              {
+                path: 'bank',
+                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
+              },
+            ],
           },
           {
             path: 'settings',
@@ -89,6 +116,11 @@ const routes = [
         path: 'chain',
         component: () => import('../views/ChainExplorerView.vue'),
         meta: { titleKey: 'layout.nav.chain', navRoot: '/chain' },
+      },
+      {
+        path: 'logs',
+        component: () => import('../views/LogView.vue'),
+        meta: { titleKey: 'layout.nav.logs', navRoot: '/logs' },
       },
     ],
   },

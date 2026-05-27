@@ -1,5 +1,6 @@
 import { computed, inject, provide, ref, unref, watch } from 'vue'
 import { api } from '../api/http'
+import { useNotifyStore } from '../stores/notify'
 import { loadLocalGroupKey } from '../utils/e2eCrypto'
 import { refreshLedgerFromServer } from '../utils/ledgerRefresh'
 import { resolveSchema } from '../utils/entrySchema'
@@ -31,6 +32,7 @@ export function clearInfoUnlockSession(ledgerId) {
  * @param {import('vue').Ref<string> | string} ledgerIdSource route param id
  */
 export function provideLedgerDetail(ledgerIdSource) {
+  const notify = useNotifyStore()
   const ledgerId = computed(() => unref(ledgerIdSource))
 
   const ledger = ref(null)
@@ -104,6 +106,18 @@ export function provideLedgerDetail(ledgerIdSource) {
     },
     { immediate: true }
   )
+
+  watch(msg, (v) => {
+    if (!v) return
+    notify.success(v)
+    msg.value = ''
+  })
+
+  watch(error, (v) => {
+    if (!v) return
+    notify.error(v)
+    error.value = ''
+  })
 
   const ctx = {
     ledgerId,

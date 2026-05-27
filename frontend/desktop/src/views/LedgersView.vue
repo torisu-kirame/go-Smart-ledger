@@ -10,9 +10,6 @@
       </div>
       </template>
     </PageHeader>
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-    <div v-if="success" class="alert alert-success">{{ success }}</div>
-
     <section v-if="incomingInvites.length" class="panel panel-highlight">
       <h3>收到的账本邀请</h3>
       <p class="section-hint">仅被邀请并接受后，您才有权查看对应账本数据。</p>
@@ -122,6 +119,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { useNotifyStore } from '../stores/notify'
 import AppIcon from '../components/AppIcon.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { usePageCrumbs } from '../composables/usePageCrumbs'
@@ -142,6 +140,7 @@ import {
 const router = useRouter()
 const { crumbs } = usePageCrumbs()
 const auth = useAuthStore()
+const notify = useNotifyStore()
 const list = ref([])
 const incomingInvites = ref([])
 const inviteBusy = ref(false)
@@ -303,6 +302,18 @@ onMounted(async () => {
     templates.value = [DEFAULT_ENTRY_SCHEMA]
   }
   await load()
+})
+
+watch(success, (v) => {
+  if (!v) return
+  notify.success(v)
+  success.value = ''
+})
+
+watch(error, (v) => {
+  if (!v) return
+  notify.error(v)
+  error.value = ''
 })
 
 function buildMembers() {

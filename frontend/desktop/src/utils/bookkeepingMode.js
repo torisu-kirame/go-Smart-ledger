@@ -26,6 +26,6 @@ export function ledgerBookkeepingPath(ledger) {
   const id = ledger?.id
   if (!id) return '/ledgers'
   return isProfessionalBookkeeping(ledger)
-    ? `/ledgers/${id}/accounting`
+    ? `/ledgers/${id}/accounting/view`
     : `/ledgers/${id}/view`
 }

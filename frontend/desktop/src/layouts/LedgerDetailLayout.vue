@@ -41,7 +41,7 @@
           </router-link>
           <router-link
             v-if="isProfessionalLedger"
-            :to="`${basePath}/accounting`"
+            :to="`${basePath}/accounting/view`"
             class="ledger-tab"
             :class="{ active: activeTab === 'accounting' }"
           >
@@ -84,8 +84,8 @@ const { ledger, loading, bookkeepingMode, isSimpleLedger, isProfessionalLedger }
 const activeTab = computed(() => {
   const p = route.path
   if (p.endsWith('/settings')) return 'settings'
-  if (p.endsWith('/accounting')) return 'accounting'
-  if (p.endsWith('/view')) return 'view'
+  if (p.includes('/accounting')) return 'accounting'
+  if (p.endsWith('/view') && !p.includes('/accounting')) return 'view'
   return 'overview'
 })
 
@@ -114,10 +114,14 @@ watch(
   () => [ledger.value, route.path],
   () => {
     if (!ledger.value) return
-    if (isProfessionalLedger.value && route.path.endsWith('/view')) {
-      router.replace(`${basePath.value}/accounting`)
-    } else if (isSimpleLedger.value && route.path.endsWith('/accounting')) {
-      router.replace(`${basePath.value}/view`)
+    const p = route.path
+    const base = basePath.value
+    if (isProfessionalLedger.value && p === `${base}/view`) {
+      router.replace(`${base}/accounting/view`)
+    } else if (isSimpleLedger.value && p.includes('/accounting')) {
+      router.replace(`${base}/view`)
+    } else if (isProfessionalLedger.value && (p.endsWith('/accounting') || p.endsWith('/accounting/'))) {
+      router.replace(`${base}/accounting/view`)
     }
   }
 )

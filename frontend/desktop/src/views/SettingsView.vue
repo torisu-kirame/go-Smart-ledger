@@ -2,9 +2,6 @@
   <div class="page settings-page">
     <PageHeader :crumbs="headerCrumbs" :subtitle="t('settings.subtitle')" />
 
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-    <div v-if="success" class="alert alert-success">{{ success }}</div>
-
     <div class="settings-layout">
       <SettingsModuleNav :active="activeSection" @select="selectSection" />
 
@@ -55,11 +52,13 @@ import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import { normalizeSettingsHash } from '../utils/settingsSections'
+import { useNotifyStore } from '../stores/notify'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const { t } = useI18n()
+const notify = useNotifyStore()
 
 const activeSection = ref(normalizeSettingsHash(route.hash))
 const profile = ref(null)
@@ -165,6 +164,18 @@ onMounted(() => {
 })
 
 watch(() => route.hash, syncHashFromRoute)
+
+watch(success, (v) => {
+  if (!v) return
+  notify.success(v)
+  success.value = ''
+})
+
+watch(error, (v) => {
+  if (!v) return
+  notify.error(v)
+  error.value = ''
+})
 </script>
 
 <style scoped>

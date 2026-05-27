@@ -59,6 +59,7 @@
     <main class="main">
       <router-view />
     </main>
+    <ToastStack />
   </div>
 </template>
 
@@ -66,6 +67,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import ToastStack from '../components/ToastStack.vue'
 import { api } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
@@ -116,6 +118,7 @@ const navGroups = computed(() => [
     label: t('layout.navGroup.system'),
     items: [
       navItem('/chain', 'layout.nav.chain', true),
+      navItem('/logs', 'layout.nav.logs', true),
       navItem('/settings', 'layout.settings', true),
     ],
   },
