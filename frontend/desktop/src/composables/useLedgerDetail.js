@@ -5,6 +5,12 @@ import { loadLocalGroupKey } from '../utils/e2eCrypto'
 import { refreshLedgerFromServer } from '../utils/ledgerRefresh'
 import { resolveSchema } from '../utils/entrySchema'
 import {
+  DEFAULT_TABLE_ID,
+  isMultiTableLedger,
+  ledgerTables,
+  resolveSchemaForTable,
+} from '../utils/ledgerTables'
+import {
   isProfessionalBookkeeping,
   isSimpleBookkeeping,
   resolveBookkeepingMode,
@@ -44,7 +50,25 @@ export function provideLedgerDetail(ledgerIdSource) {
   const error = ref('')
   const msg = ref('')
 
-  const schema = computed(() => resolveSchema(ledger.value))
+  const activeTableId = ref(DEFAULT_TABLE_ID)
+
+  const tables = computed(() => ledgerTables(ledger.value))
+  const multiTableEnabled = computed(() => isMultiTableLedger(ledger.value))
+  const schema = computed(() =>
+    multiTableEnabled.value
+      ? resolveSchemaForTable(ledger.value, activeTableId.value)
+      : resolveSchema(ledger.value)
+  )
+
+  watch(
+    () => ledger.value?.id,
+    () => {
+      const list = ledgerTables(ledger.value)
+      if (!list.some((t) => t.id === activeTableId.value)) {
+        activeTableId.value = list[0]?.id || DEFAULT_TABLE_ID
+      }
+    }
+  )
   const bookkeepingMode = computed(() => resolveBookkeepingMode(ledger.value))
   const isSimpleLedger = computed(() => isSimpleBookkeeping(ledger.value))
   const isProfessionalLedger = computed(() => isProfessionalBookkeeping(ledger.value))
@@ -129,6 +153,9 @@ export function provideLedgerDetail(ledgerIdSource) {
     contentLoading,
     error,
     msg,
+    activeTableId,
+    tables,
+    multiTableEnabled,
     schema,
     bookkeepingMode,
     isSimpleLedger,

@@ -65,7 +65,15 @@ func (s *Service) ProposeEntry(ctx context.Context, ledgerID, actorID string, en
 	if domain.IsProfessionalBookkeeping(meta) {
 		return nil, nil, domain.ErrBookkeepingModeMismatch
 	}
-	schema := domain.ResolveEntrySchema(meta.EntrySchema)
+	domain.NormalizeLedgerTables(meta)
+	tableID := domain.ResolveTableID(meta, entry.TableID)
+	if err := domain.ValidateTableAccess(meta, tableID); err != nil {
+		return nil, nil, err
+	}
+	schema, err := domain.SchemaForTable(meta, tableID)
+	if err != nil {
+		return nil, nil, err
+	}
 	data := entry.NormalizeData()
 	if err := domain.ValidateEntryData(schema, data); err != nil {
 		return nil, nil, err
@@ -74,6 +82,7 @@ func (s *Service) ProposeEntry(ctx context.Context, ledgerID, actorID string, en
 	if err != nil {
 		return nil, nil, err
 	}
+	entry.TableID = tableID
 	raw, _ := json.Marshal(entry.ForChain(schema))
 
 	if !domain.ApprovalRequired(meta) {

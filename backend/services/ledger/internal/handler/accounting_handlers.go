@@ -160,7 +160,8 @@ func listAttachmentsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if s := r.URL.Query().Get("entrySeq"); s != "" {
 			seq, _ = strconv.ParseUint(s, 10, 64)
 		}
-		list, err := svcCtx.Ledger.ListAttachments(r.Context(), id, uid, seq)
+		tableID := r.URL.Query().Get("tableId")
+		list, err := svcCtx.Ledger.ListAttachments(r.Context(), id, uid, tableID, seq)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return
@@ -198,7 +199,8 @@ func uploadAttachmentHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		mime := hdr.Header.Get("Content-Type")
-		att, err := svcCtx.Ledger.LinkAttachment(r.Context(), id, uid, seq, hdr.Filename, mime, int64(len(body)), body, svcCtx.Backup)
+		tableID := r.FormValue("tableId")
+		att, err := svcCtx.Ledger.LinkAttachment(r.Context(), id, uid, tableID, seq, hdr.Filename, mime, int64(len(body)), body, svcCtx.Backup)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return

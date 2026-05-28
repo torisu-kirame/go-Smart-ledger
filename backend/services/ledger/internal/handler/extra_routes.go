@@ -65,19 +65,30 @@ func schemaTemplatesHandler() http.HandlerFunc {
 func templateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		schema := domain.DefaultEntrySchema()
+		var data []byte
+		var err error
 		if lid := r.URL.Query().Get("ledgerId"); lid != "" {
-			if meta, err := svcCtx.Ledger.Get(r.Context(), lid); err == nil {
-				schema = domain.ResolveEntrySchema(meta.EntrySchema)
-			}
-		} else if tid := r.URL.Query().Get("templateId"); tid != "" {
-			for _, t := range domain.BuiltinTemplates() {
-				if t.TemplateID == tid {
-					schema = t
-					break
+			if meta, errGet := svcCtx.Ledger.Get(r.Context(), lid); errGet == nil {
+				domain.NormalizeLedgerTables(meta)
+				if meta.MultiTableEnabled && len(meta.Tables) > 0 {
+					data, err = importxlsx.BuildTemplateWorkbook(meta.Tables)
+				} else {
+					schema = domain.ResolveEntrySchema(meta.EntrySchema)
+					data, err = importxlsx.BuildTemplate(schema)
 				}
 			}
 		}
-		data, err := importxlsx.BuildTemplate(schema)
+		if data == nil {
+			if tid := r.URL.Query().Get("templateId"); tid != "" {
+				for _, t := range domain.BuiltinTemplates() {
+					if t.TemplateID == tid {
+						schema = t
+						break
+					}
+				}
+			}
+			data, err = importxlsx.BuildTemplate(schema)
+		}
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
@@ -111,8 +122,33 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return
 		}
-		schema := domain.ResolveEntrySchema(meta.EntrySchema)
-		rows, err := importxlsx.Parse(data, schema)
+		domain.NormalizeLedgerTables(meta)
+		tableID := r.FormValue("tableId")
+		if tableID == "" {
+			tableID = r.URL.Query().Get("tableId")
+		}
+		if meta.MultiTableEnabled && tableID == "" {
+			sheets, err := importxlsx.ParseForTables(data, meta.Tables)
+			if err != nil {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
+				return
+			}
+			httpx.OkJsonCtx(r.Context(), w, map[string]any{
+				"multiTable": true,
+				"sheets":     sheets,
+			})
+			return
+		}
+		schema, err := domain.SchemaForTable(meta, tableID)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		sheetName := ""
+		if t := domain.TableByID(meta, tableID); t != nil {
+			sheetName = t.Name
+		}
+		rows, err := importxlsx.ParseSheet(data, sheetName, schema)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
 			return
@@ -126,6 +162,8 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			}
 		}
 		httpx.OkJsonCtx(r.Context(), w, map[string]any{
+			"multiTable":  meta.MultiTableEnabled,
+			"tableId":     domain.ResolveTableID(meta, tableID),
 			"rows":        rows,
 			"valid":       valid,
 			"invalid":     invalid,
@@ -136,11 +174,12 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 }
 
 type importCommitBody struct {
-	SignerID     string                `json:"signerId"`
-	Rows         []importxlsx.RowPreview `json:"rows"`
-	AutoAnchor   bool                  `json:"autoAnchor"`
-	AutoBackup   bool                  `json:"autoBackup"`
-	BackupPassword string              `json:"backupPassword,omitempty"`
+	SignerID       string                  `json:"signerId"`
+	TableId        string                  `json:"tableId,optional"`
+	Rows           []importxlsx.RowPreview `json:"rows"`
+	AutoAnchor     bool                    `json:"autoAnchor"`
+	AutoBackup     bool                    `json:"autoBackup"`
+	BackupPassword string                  `json:"backupPassword,omitempty"`
 }
 
 func importCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -155,7 +194,7 @@ func importCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "signerId required"))
 			return
 		}
-		res, err := svcCtx.Ledger.BatchImport(r.Context(), id, body.SignerID, body.Rows, body.AutoAnchor)
+		res, err := svcCtx.Ledger.BatchImport(r.Context(), id, body.SignerID, body.TableId, body.Rows, body.AutoAnchor)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return

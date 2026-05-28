@@ -20,8 +20,10 @@ func LedgerToResp(m *domain.LedgerMeta) *types.LedgerResp {
 		CreatorId:      m.CreatorID,
 		LedgerAddress:  m.LedgerAddress,
 		Members:         members,
-		BookkeepingMode: domain.ResolvedBookkeepingMode(m),
-		EntrySchema:     EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
+		BookkeepingMode:   domain.ResolvedBookkeepingMode(m),
+		MultiTableEnabled: m.MultiTableEnabled,
+		Tables:            TablesToResp(m.Tables),
+		EntrySchema:       EntrySchemaToResp(domain.ResolveEntrySchema(m.EntrySchema)),
 		ApprovalPolicy: types.ApprovalPolicyReq{Enabled: m.ApprovalPolicy.Enabled, Threshold: m.ApprovalPolicy.Threshold},
 		Encryption: types.EncryptionReq{
 			Enabled:               m.Encryption.Enabled,

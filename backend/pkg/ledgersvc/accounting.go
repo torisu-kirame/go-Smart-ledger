@@ -244,79 +244,41 @@ func (s *Service) GetReports(ctx context.Context, ledgerID, userID, period strin
 	return &rep, nil
 }
 
-// LinkAttachment stores file on IPFS/disk and links to entry seq.
+// LinkAttachment links a file to an event seq (professional or simple ledger).
 func (s *Service) LinkAttachment(
 	ctx context.Context,
-	ledgerID, userID string,
+	ledgerID, userID, tableID string,
 	entrySeq uint64,
 	filename, mime string,
 	size int64,
 	body []byte,
 	backup *storage.DualBackup,
 ) (*accounting.Attachment, error) {
-	meta, err := s.getProfessionalLedger(ctx, ledgerID, userID)
+	meta, err := s.GetForUser(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
-	if entrySeq == 0 || entrySeq > meta.LatestSeq {
-		return nil, domain.ErrEntryValidation
-	}
-	id, err := snowflake.NextString()
-	if err != nil {
-		return nil, err
-	}
-	cid := ""
-	ref := ""
-	if backup != nil {
-		putRes, err := backup.Put(ctx, ledgerID+":attach:"+id, "attach", body)
-		if err == nil && putRes != nil {
-			ref = putRes.Ref
-			cid = putRes.IPFSCID
+	if domain.IsProfessionalBookkeeping(meta) {
+		if err := s.requireProfessional(meta); err != nil {
+			return nil, err
 		}
+		tableID = ""
 	}
-	att := accounting.Attachment{
-		ID:         id,
-		EntrySeq:   entrySeq,
-		Filename:   filename,
-		MimeType:   mime,
-		Size:       size,
-		CID:        cid,
-		Ref:        ref,
-		UploadedBy: userID,
-		CreatedAt:  time.Now().UTC(),
-	}
-	if err := s.putJSON(ctx, domain.LedgerAttachmentKey(ledgerID, entrySeq, id), ledgerID, att); err != nil {
-		return nil, err
-	}
-	raw, _ := json.Marshal(att)
-	_, _ = s.appendEvent(ctx, meta, userID, accounting.EventAttachmentLinked, raw)
-	return &att, nil
+	return s.LinkEntryAttachment(ctx, ledgerID, userID, tableID, entrySeq, filename, mime, size, body, backup)
 }
 
-// ListAttachments returns all attachment metadata for a ledger.
-func (s *Service) ListAttachments(ctx context.Context, ledgerID, userID string, entrySeq uint64) ([]accounting.Attachment, error) {
-	if _, err := s.getProfessionalLedger(ctx, ledgerID, userID); err != nil {
-		return nil, err
-	}
-	prefix := domain.LedgerAttachmentPrefix(ledgerID)
-	rows, err := s.chain.Query(ctx,
-		`SELECT key, value FROM world_state WHERE key LIKE ? ORDER BY key`,
-		prefix+"%")
+// ListAttachments returns attachment metadata (optional tableId / entrySeq filters).
+func (s *Service) ListAttachments(ctx context.Context, ledgerID, userID, tableID string, entrySeq uint64) ([]accounting.Attachment, error) {
+	meta, err := s.GetForUser(ctx, ledgerID, userID)
 	if err != nil {
 		return nil, err
 	}
-	var out []accounting.Attachment
-	for _, row := range rows {
-		var att accounting.Attachment
-		if unmarshalStateValue(row.Value, &att) != nil {
-			continue
+	if domain.IsProfessionalBookkeeping(meta) {
+		if err := s.requireProfessional(meta); err != nil {
+			return nil, err
 		}
-		if entrySeq > 0 && att.EntrySeq != entrySeq {
-			continue
-		}
-		out = append(out, att)
 	}
-	return out, nil
+	return s.ListEntryAttachments(ctx, ledgerID, userID, tableID, entrySeq)
 }
 
 // ImportBankStatement parses CSV and stores on chain.

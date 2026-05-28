@@ -21,8 +21,8 @@ type ImportCommitResult struct {
 	Root       string `json:"root,omitempty"`
 }
 
-// BatchImport appends valid rows, optional seal anchor, returns result.
-func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, rows []importxlsx.RowPreview, autoAnchor bool) (*ImportCommitResult, error) {
+// BatchImport appends valid rows into the given table, optional seal anchor.
+func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID, tableID string, rows []importxlsx.RowPreview, autoAnchor bool) (*ImportCommitResult, error) {
 	valid := 0
 	for _, r := range rows {
 		if r.Error != "" {
@@ -40,7 +40,15 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, ro
 	if domain.IsProfessionalBookkeeping(meta) {
 		return nil, domain.ErrBookkeepingModeMismatch
 	}
-	schema := domain.ResolveEntrySchema(meta.EntrySchema)
+	domain.NormalizeLedgerTables(meta)
+	tableID = domain.ResolveTableID(meta, tableID)
+	if err := domain.ValidateTableAccess(meta, tableID); err != nil {
+		return nil, err
+	}
+	schema, err := domain.SchemaForTable(meta, tableID)
+	if err != nil {
+		return nil, err
+	}
 	imported := 0
 	skipped := 0
 	for _, row := range rows {
@@ -53,6 +61,7 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, ro
 			skipped++
 			continue
 		}
+		entry.TableID = tableID
 		sid, err := domain.SignerFromEntry(schema, entry.NormalizeData(), signerID)
 		if err != nil {
 			skipped++
@@ -75,6 +84,7 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID string, ro
 	batchMeta, _ := json.Marshal(map[string]any{
 		"imported": imported,
 		"skipped":  skipped,
+		"tableId":  tableID,
 	})
 	if _, err := s.appendEvent(ctx, meta, signerID, domain.EventImportBatch, batchMeta); err != nil {
 		return nil, err

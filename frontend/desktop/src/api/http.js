@@ -183,11 +183,26 @@ export const api = {
       body: JSON.stringify({
         entry: {
           signerId: entry.signerId,
+          tableId: entry.tableId,
           schemaId: entry.schemaId,
           data: entry.data,
         },
       }),
     }),
+  setLedgerMultiTable: (id, enabled) =>
+    request(`/ledgers/${id}/multi-table`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+  createLedgerTable: (id, body) =>
+    request(`/ledgers/${id}/tables`, { method: 'POST', body: JSON.stringify(body) }),
+  updateLedgerTable: (id, tableId, body) =>
+    request(`/ledgers/${id}/tables/${encodeURIComponent(tableId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  deleteLedgerTable: (id, tableId) =>
+    request(`/ledgers/${id}/tables/${encodeURIComponent(tableId)}`, { method: 'DELETE' }),
   proposeEntry: (id, entry) =>
     request(`/ledgers/${id}/entries/propose`, {
       method: 'POST',
@@ -265,9 +280,10 @@ export const api = {
       headers: { Authorization: `Bearer ${getToken() || ''}` },
     })
   },
-  importPreview: (id, file) => {
+  importPreview: (id, file, tableId = '') => {
     const fd = new FormData()
     fd.append('file', file)
+    if (tableId) fd.append('tableId', tableId)
     return request(`/ledgers/${id}/import/preview`, { method: 'POST', body: fd })
   },
   importCommit: (id, body) =>
@@ -305,13 +321,17 @@ export const api = {
     const q = period ? `?period=${encodeURIComponent(period)}` : ''
     return request(`/ledgers/${id}/accounting/reports${q}`)
   },
-  listAccountingAttachments: (id, entrySeq = 0) => {
-    const q = entrySeq ? `?entrySeq=${entrySeq}` : ''
+  listAccountingAttachments: (id, { entrySeq = 0, tableId = '' } = {}) => {
+    const params = new URLSearchParams()
+    if (entrySeq) params.set('entrySeq', String(entrySeq))
+    if (tableId) params.set('tableId', tableId)
+    const q = params.toString() ? `?${params}` : ''
     return request(`/ledgers/${id}/accounting/attachments${q}`)
   },
-  uploadAccountingAttachment: (id, entrySeq, file) => {
+  uploadAccountingAttachment: (id, entrySeq, file, tableId = '') => {
     const fd = new FormData()
     fd.append('entrySeq', String(entrySeq))
+    if (tableId) fd.append('tableId', tableId)
     fd.append('file', file)
     return request(`/ledgers/${id}/accounting/attachments`, { method: 'POST', body: fd })
   },

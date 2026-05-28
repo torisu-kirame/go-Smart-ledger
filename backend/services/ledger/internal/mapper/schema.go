@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"time"
+
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/types"
 )
@@ -43,4 +45,25 @@ func EntrySchemaFromReq(s types.EntrySchemaReq) domain.EntrySchema {
 		}
 	}
 	return domain.EntrySchema{TemplateID: s.TemplateId, Fields: fields}
+}
+
+func TablesToResp(tables []domain.LedgerTable) []types.LedgerTableResp {
+	if len(tables) == 0 {
+		return nil
+	}
+	out := make([]types.LedgerTableResp, len(tables))
+	for i, t := range tables {
+		created := ""
+		if !t.CreatedAt.IsZero() {
+			created = t.CreatedAt.UTC().Format(time.RFC3339)
+		}
+		out[i] = types.LedgerTableResp{
+			Id:          t.ID,
+			Name:        t.Name,
+			EntrySchema: EntrySchemaToResp(domain.ResolveEntrySchema(t.EntrySchema)),
+			SortOrder:   t.SortOrder,
+			CreatedAt:   created,
+		}
+	}
+	return out
 }

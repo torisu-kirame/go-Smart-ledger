@@ -35,6 +35,48 @@
       </button>
     </section>
 
+    <section v-if="isSimpleLedger" class="detail-card">
+      <h3 class="detail-card__title">多表（F49）</h3>
+      <p class="field-hint">
+        开启后可在账本内创建多张表（类似 Excel 多 sheet），流水、导入与附件均按表隔离。
+      </p>
+      <template v-if="isCreator">
+        <div class="toggle-row">
+          <span class="toggle-row__text">启用多表</span>
+          <ToggleSwitch
+            v-model="multiTableOn"
+            :disabled="tableSaving"
+            aria-label="启用多表"
+            @update:model-value="onMultiTableToggle"
+          />
+        </div>
+        <template v-if="ledger.multiTableEnabled">
+          <ul class="table-list">
+            <li v-for="t in ledger.tables || []" :key="t.id">
+              <strong>{{ t.name }}</strong>
+              <span class="mono muted">{{ t.id }}</span>
+              <span class="muted">{{ (t.entrySchema?.fields || []).length }} 列</span>
+            </li>
+          </ul>
+          <div v-if="ledger.tables?.length > 1" class="form-row" style="margin-top: 0.75rem">
+            <label>新表名称</label>
+            <input v-model="newTableName" class="field-sm" placeholder="例如：差旅、采购" />
+            <button
+              type="button"
+              class="btn-primary"
+              style="margin-top: 0.5rem"
+              :disabled="tableSaving || !newTableName.trim()"
+              @click="createTable"
+            >
+              添加表
+            </button>
+          </div>
+          <p v-else class="field-hint">已启用多表。添加第二张表后即可在「流水」页切换表签。</p>
+        </template>
+      </template>
+      <p v-else class="field-hint">仅创建者可修改多表设置。</p>
+    </section>
+
     <section class="detail-card">
       <h3 class="detail-card__title">安全与协作</h3>
 
@@ -260,6 +302,7 @@ import {
   wrapPassphraseForLoginView,
   unwrapPassphraseForLoginView,
 } from '../../utils/e2eCrypto'
+import { DEFAULT_ENTRY_SCHEMA } from '../../utils/entrySchema'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -276,6 +319,9 @@ const e2ePassphrase = ref('')
 const showArchiveConfirm = ref(false)
 const confirmPassword = ref('')
 const archiving = ref(false)
+const tableSaving = ref(false)
+const multiTableOn = ref(false)
+const newTableName = ref('')
 
 const showPassphraseModal = ref(false)
 const viewStep = ref('password')
@@ -327,6 +373,49 @@ watch(
   },
   { immediate: true }
 )
+
+watch(
+  () => ledger.value?.multiTableEnabled,
+  (v) => {
+    multiTableOn.value = !!v
+  },
+  { immediate: true }
+)
+
+async function onMultiTableToggle(enabled) {
+  tableSaving.value = true
+  error.value = ''
+  try {
+    const updated = await api.setLedgerMultiTable(ledgerId.value, enabled)
+    await applyLedgerUpdate(updated)
+    msg.value = enabled ? '已启用多表' : '已关闭多表'
+  } catch (e) {
+    multiTableOn.value = !enabled
+    error.value = e instanceof ApiError ? e.message : '操作失败'
+  } finally {
+    tableSaving.value = false
+  }
+}
+
+async function createTable() {
+  const name = newTableName.value.trim()
+  if (!name) return
+  tableSaving.value = true
+  error.value = ''
+  try {
+    const updated = await api.createLedgerTable(ledgerId.value, {
+      name,
+      entrySchema: DEFAULT_ENTRY_SCHEMA,
+    })
+    await applyLedgerUpdate(updated)
+    newTableName.value = ''
+    msg.value = `已添加表「${name}」`
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '添加失败'
+  } finally {
+    tableSaving.value = false
+  }
+}
 
 function resetPassphraseModal() {
   viewStep.value = 'password'

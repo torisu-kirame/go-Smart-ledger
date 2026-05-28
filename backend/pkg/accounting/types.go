@@ -85,6 +85,7 @@ type PeriodState struct {
 // Attachment links a file (IPFS CID) to an entry event seq.
 type Attachment struct {
 	ID        string    `json:"id"`
+	TableID   string    `json:"tableId,omitempty"`
 	EntrySeq  uint64    `json:"entrySeq"`
 	Filename  string    `json:"filename"`
 	MimeType  string    `json:"mimeType,omitempty"`

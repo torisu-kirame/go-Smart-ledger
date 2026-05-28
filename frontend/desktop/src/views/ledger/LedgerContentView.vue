@@ -9,13 +9,33 @@
       </div>
     </div>
 
+    <nav v-if="multiTableEnabled" class="table-tabs" aria-label="账本表">
+      <button
+        v-for="t in tables"
+        :key="t.id"
+        type="button"
+        class="table-tab"
+        :class="{ active: activeTableId === t.id }"
+        @click="activeTableId = t.id"
+      >
+        {{ t.name }}
+      </button>
+    </nav>
+
     <LedgerContentPanel
       expanded
       :events="events"
       :schema="schema"
+      :table-id="activeTableId"
       :members="memberOptions"
       :group-key="groupKey"
       :loading="contentLoading"
+    />
+
+    <LedgerTableAttachments
+      v-if="isSimpleLedger"
+      :ledger-id="ledgerId"
+      :table-id="activeTableId"
     />
 
     <button
@@ -51,6 +71,7 @@ import { api, ApiError } from '../../api/http'
 import AppIcon from '../../components/AppIcon.vue'
 import EntryFormFields from '../../components/EntryFormFields.vue'
 import LedgerContentPanel from '../../components/LedgerContentPanel.vue'
+import LedgerTableAttachments from '../../components/ledger/LedgerTableAttachments.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 import { emptyEntryData } from '../../utils/entrySchema'
@@ -68,6 +89,10 @@ const {
   groupKey,
   contentLoading,
   schema,
+  activeTableId,
+  tables,
+  multiTableEnabled,
+  isSimpleLedger,
   memberOptions,
   error,
   msg,
@@ -140,6 +165,7 @@ async function buildEntryPayload() {
   }
   return {
     signerId: entryData.bookkeeper || auth.user?.id || '',
+    tableId: activeTableId.value,
     schemaId: schema.value.templateId,
     data,
   }
@@ -238,5 +264,26 @@ async function addEntry() {
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1.25rem;
+}
+.table-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.table-tab {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.table-tab.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  background: var(--accent-soft);
 }
 </style>

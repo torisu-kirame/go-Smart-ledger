@@ -90,6 +90,7 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
+	domain.NormalizeLedgerTables(meta)
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err
 	}
@@ -300,6 +301,7 @@ func (s *Service) loadMeta(ctx context.Context, id string) (*domain.LedgerMeta, 
 	if err := unmarshalStateValue(rows[0].Value, &meta); err != nil {
 		return nil, err
 	}
+	domain.NormalizeLedgerTables(&meta)
 	return &meta, nil
 }
 

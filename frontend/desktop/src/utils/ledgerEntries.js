@@ -47,12 +47,22 @@ async function resolveEntryData(payload, groupKey) {
   return data
 }
 
-/** 从链上事件解析记账行（仅 EntryAdded） */
-export async function buildEntryRows(events, schema, groupKey = '') {
+function payloadTableId(ev) {
+  try {
+    const p = typeof ev.payload === 'string' ? JSON.parse(ev.payload) : ev.payload
+    return p?.tableId || 'default'
+  } catch {
+    return 'default'
+  }
+}
+
+/** 从链上事件解析记账行（仅 EntryAdded）；可选按 tableId 过滤 */
+export async function buildEntryRows(events, schema, groupKey = '', tableId = null) {
   const fields = schema?.fields || []
   const rows = []
   for (const ev of events || []) {
     if (ev.type !== ENTRY_EVENT_TYPE) continue
+    if (tableId && payloadTableId(ev) !== tableId) continue
     const data = await resolveEntryData(ev.payload, groupKey)
     if (!data) continue
     if (data.__locked) {
@@ -71,6 +81,7 @@ export async function buildEntryRows(events, schema, groupKey = '') {
     }
     rows.push({
       seq: ev.seq,
+      tableId: payloadTableId(ev),
       signerId: ev.signerId,
       createdAt: ev.createdAt,
       locked: false,

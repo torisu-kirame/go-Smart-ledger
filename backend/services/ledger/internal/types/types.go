@@ -64,6 +64,14 @@ type EntrySchemaResp struct {
 	Fields     []EntryFieldDef `json:"fields"`
 }
 
+type LedgerTableResp struct {
+	Id          string          `json:"id"`
+	Name        string          `json:"name"`
+	EntrySchema EntrySchemaResp `json:"entrySchema"`
+	SortOrder   int             `json:"sortOrder"`
+	CreatedAt   string          `json:"createdAt,omitempty"`
+}
+
 type EntryFieldDef struct {
 	Key      string `json:"key"`
 	Label    string `json:"label"`
@@ -73,6 +81,7 @@ type EntryFieldDef struct {
 
 type EntryReq struct {
 	SignerId string            `json:"signerId,optional"`
+	TableId  string            `json:"tableId,optional"`
 	SchemaId string            `json:"schemaId,optional"`
 	Data     map[string]string `json:"data,optional"`
 	Date     string            `json:"date,optional"`
@@ -107,7 +116,9 @@ type LedgerResp struct {
 	LedgerAddress  string            `json:"ledgerAddress,omitempty"`
 	Members          []Member          `json:"members"`
 	BookkeepingMode  string            `json:"bookkeepingMode,omitempty"`
-	EntrySchema      EntrySchemaResp   `json:"entrySchema"`
+	MultiTableEnabled bool              `json:"multiTableEnabled,omitempty"`
+	Tables            []LedgerTableResp `json:"tables,omitempty"`
+	EntrySchema       EntrySchemaResp   `json:"entrySchema"`
 	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,omitempty"`
 	Encryption     EncryptionReq     `json:"encryption,omitempty"`
 	LatestSeq      uint64            `json:"latestSeq"`

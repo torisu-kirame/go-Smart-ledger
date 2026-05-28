@@ -187,7 +187,7 @@ async function onAttachFile(file) {
   if (!file || !attachSeq.value) return
   busy.value = true
   try {
-    await api.uploadAccountingAttachment(lid(), attachSeq.value, file)
+    await api.uploadAccountingAttachment(lid(), attachSeq.value, file, '')
     notify.success('附件已上传')
     await loadAll(ledgerId, true)
   } catch (e) {

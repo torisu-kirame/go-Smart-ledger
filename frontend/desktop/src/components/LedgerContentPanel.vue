@@ -93,6 +93,7 @@ const props = defineProps({
   schema: { type: Object, required: true },
   members: { type: Array, default: () => [] },
   groupKey: { type: String, default: '' },
+  tableId: { type: String, default: '' },
   loading: { type: Boolean, default: false },
   /** 占满查看页主区域高度 */
   expanded: { type: Boolean, default: false },
@@ -119,11 +120,12 @@ function cellText(row, col) {
 }
 
 async function refreshRows() {
-  rows.value = await buildEntryRows(props.events, props.schema, props.groupKey)
+  const tid = props.tableId || null
+  rows.value = await buildEntryRows(props.events, props.schema, props.groupKey, tid)
 }
 
 watch(
-  () => [props.events, props.schema, props.groupKey],
+  () => [props.events, props.schema, props.groupKey, props.tableId],
   () => {
     refreshRows()
   },

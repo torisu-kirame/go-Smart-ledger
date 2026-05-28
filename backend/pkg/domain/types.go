@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type LedgerType string
 
@@ -38,8 +41,10 @@ type LedgerMeta struct {
 	CreatorID      string           `json:"creatorId"`
 	LedgerAddress  string           `json:"ledgerAddress,omitempty"`
 	Members        []Member         `json:"members"`
-	BookkeepingMode string           `json:"bookkeepingMode,omitempty"` // simple | professional
-	EntrySchema     EntrySchema      `json:"entrySchema,omitempty"`
+	BookkeepingMode   string           `json:"bookkeepingMode,omitempty"` // simple | professional
+	MultiTableEnabled bool             `json:"multiTableEnabled,omitempty"`
+	Tables            []LedgerTable    `json:"tables,omitempty"`
+	EntrySchema       EntrySchema      `json:"entrySchema,omitempty"`
 	ApprovalPolicy  ApprovalPolicy   `json:"approvalPolicy,omitempty"`
 	Encryption     LedgerEncryption `json:"encryption,omitempty"`
 	LatestSeq      uint64           `json:"latestSeq"`
@@ -80,6 +85,7 @@ type EventRecord struct {
 // Prefer Data + schemaId; legacy top-level fields are still read for old events.
 type EntryPayload struct {
 	SchemaID string            `json:"schemaId,omitempty"`
+	TableID  string            `json:"tableId,omitempty"`
 	Data     map[string]string `json:"data,omitempty"`
 	Date         string `json:"date,omitempty"`
 	Type         string `json:"type,omitempty"`
@@ -125,7 +131,11 @@ func (e *EntryPayload) ForChain(schema EntrySchema) EntryPayload {
 	if sid == "" {
 		sid = TemplateDefault
 	}
-	return EntryPayload{SchemaID: sid, Data: data}
+	out := EntryPayload{SchemaID: sid, Data: data}
+	if strings.TrimSpace(e.TableID) != "" {
+		out.TableID = strings.TrimSpace(e.TableID)
+	}
+	return out
 }
 
 const (
@@ -139,6 +149,10 @@ const (
 	EventLedgerArchived         = "LedgerArchived"
 	EventApprovalPolicyUpdated  = "ApprovalPolicyUpdated"
 	EventEncryptionEnabled      = "EncryptionEnabled"
+	EventMultiTableToggled      = "MultiTableToggled"
+	EventTableCreated           = "TableCreated"
+	EventTableUpdated           = "TableUpdated"
+	EventTableDeleted           = "TableDeleted"
 )
 // Collaboration events: EntryProposed, EntryApproved, EntryRejected,
 // MemberInvited, MemberJoined, GroupKeyRotated — see collaboration.go

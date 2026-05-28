@@ -3,7 +3,6 @@ package importxlsx
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
@@ -44,69 +43,7 @@ func ParseLegacy(data []byte) ([]RowPreview, error) {
 }
 
 func parseWithSchema(data []byte, schema domain.EntrySchema) ([]RowPreview, error) {
-	if len(data) == 0 {
-		return nil, ErrEmptyFile
-	}
-	f, err := excelize.OpenReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, fmt.Errorf("open xlsx: %w", err)
-	}
-	defer f.Close()
-	sheet := f.GetSheetName(0)
-	if sheet == "" {
-		return nil, ErrEmptyFile
-	}
-	rows, err := f.GetRows(sheet)
-	if err != nil {
-		return nil, err
-	}
-	if len(rows) < 2 {
-		return nil, ErrNoDataRows
-	}
-	header := map[string]int{}
-	for i, h := range rows[0] {
-		header[normHeader(h)] = i
-	}
-	labelToKey := map[string]string{}
-	for _, fdef := range schema.Fields {
-		labelToKey[normHeader(fdef.Label)] = fdef.Key
-	}
-	for _, fdef := range schema.Fields {
-		if _, ok := header[normHeader(fdef.Label)]; !ok && fdef.Required {
-			return nil, fmt.Errorf("missing column: %s", fdef.Label)
-		}
-	}
-	var out []RowPreview
-	for line := 1; line < len(rows); line++ {
-		r := rows[line]
-		if rowEmpty(r) {
-			continue
-		}
-		if len(out) >= maxRows {
-			return nil, ErrTooManyRows
-		}
-		cells := map[string]string{}
-		for label, key := range labelToKey {
-			if idx, ok := header[normHeader(label)]; ok {
-				cells[key] = cell(r, idx)
-			}
-		}
-		if schema.TemplateID == domain.TemplateClassic {
-			if cells["type"] != "" {
-				cells["type"] = normType(cells["type"])
-			}
-		}
-		p := RowPreview{Line: line + 1, Cells: cells}
-		fillLegacyFlat(&p)
-		if err := validateRow(schema, &p); err != nil {
-			p.Error = err.Error()
-		}
-		out = append(out, p)
-	}
-	if len(out) == 0 {
-		return nil, ErrNoDataRows
-	}
-	return out, nil
+	return ParseSheet(data, "", schema)
 }
 
 // ToEntry converts valid preview row to domain entry.

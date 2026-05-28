@@ -78,6 +78,7 @@ type proposeBody struct {
 
 type typesEntry struct {
 	SignerId string            `json:"signerId,optional"`
+	TableId  string            `json:"tableId,optional"`
 	SchemaId string            `json:"schemaId,optional"`
 	Data     map[string]string `json:"data,optional"`
 	Date     string            `json:"date,optional"`
@@ -106,6 +107,7 @@ func proposeEntryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		entry := domain.EntryPayload{
 			SchemaID: body.Entry.SchemaId,
+			TableID:  body.Entry.TableId,
 			Data:     body.Entry.Data,
 			Date:     body.Entry.Date,
 			Type:     body.Entry.Type,
