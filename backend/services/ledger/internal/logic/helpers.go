@@ -41,7 +41,10 @@ func ToCodeErr(err error) error {
 		errors.Is(err, accounting.ErrAccountNotFound),
 		errors.Is(err, accounting.ErrPeriodClosed),
 		errors.Is(err, accounting.ErrInvalidPeriod),
-		errors.Is(err, accounting.ErrInvalidBudget):
+		errors.Is(err, accounting.ErrInvalidBudget),
+		errors.Is(err, accounting.ErrInvalidCurrency),
+		errors.Is(err, accounting.ErrInvalidFxRates),
+		errors.Is(err, accounting.ErrInvalidTax):
 		return xerrors.New(400, err.Error())
 	case errors.Is(err, domain.ErrAlreadyMember),
 		errors.Is(err, domain.ErrInviteAlreadyPending):

@@ -49,6 +49,18 @@ export function validateJournalPayload({ date, lines }) {
     const proj = String(ln.project ?? '').trim()
     if (cp) row.counterparty = cp
     if (proj) row.project = proj
+    const cur = String(ln.currency ?? '').trim().toUpperCase()
+    if (cur) row.currency = cur
+    const fx = String(ln.fxRate ?? '').trim()
+    if (fx) row.fxRate = fx
+    const odr = String(ln.originalDebit ?? '').trim()
+    const ocr = String(ln.originalCredit ?? '').trim()
+    if (odr) row.originalDebit = odr
+    if (ocr) row.originalCredit = ocr
+    const taxCat = String(ln.taxCategory ?? '').trim()
+    const taxRate = String(ln.taxRate ?? '').trim()
+    if (taxCat) row.taxCategory = taxCat
+    if (taxRate) row.taxRate = taxRate
     prepared.push(row)
   }
 

@@ -59,13 +59,28 @@
           <label>摘要</label>
           <input v-model="journalForm.description" class="field-sm" placeholder="可选" />
         </div>
-        <div v-for="(ln, i) in journalForm.lines" :key="i" class="journal-line">
-          <AppSelect v-model="ln.accountCode" :options="accountOptions" sm placeholder="科目" />
-          <input v-model="ln.debit" placeholder="借方" class="field-sm amount" />
-          <input v-model="ln.credit" placeholder="贷方" class="field-sm amount" />
-          <input v-model="ln.counterparty" placeholder="往来方" class="field-sm" />
-          <input v-model="ln.project" placeholder="项目" class="field-sm" />
-          <DeleteButton icon-only sm title="删除行" @click="journalForm.lines.splice(i, 1)" />
+        <div v-for="(ln, i) in journalForm.lines" :key="i" class="journal-block">
+          <div class="journal-line">
+            <AppSelect v-model="ln.accountCode" :options="accountOptions" sm placeholder="科目" />
+            <input v-model="ln.debit" placeholder="借方" class="field-sm amount" />
+            <input v-model="ln.credit" placeholder="贷方" class="field-sm amount" />
+            <input v-model="ln.counterparty" placeholder="往来方" class="field-sm" />
+            <input v-model="ln.project" placeholder="项目" class="field-sm" />
+            <DeleteButton icon-only sm title="删除行" @click="journalForm.lines.splice(i, 1)" />
+          </div>
+          <div class="journal-line journal-line--sub">
+            <input v-model="ln.currency" placeholder="币种" class="field-sm mono" />
+            <input v-model="ln.fxRate" placeholder="汇率" class="field-sm" />
+            <input v-model="ln.originalDebit" placeholder="原币借" class="field-sm" />
+            <input v-model="ln.originalCredit" placeholder="原币贷" class="field-sm" />
+            <select v-model="ln.taxCategory" class="field-sm">
+              <option value="">税类—</option>
+              <option value="taxable">应税</option>
+              <option value="exempt">免税</option>
+              <option value="zero">零税率</option>
+            </select>
+            <input v-model="ln.taxRate" placeholder="税率" class="field-sm" />
+          </div>
         </div>
         <button type="button" class="btn-ghost" @click="addJournalLine">+ 分录行</button>
         <div class="modal-actions">
@@ -99,8 +114,32 @@ const journalForm = reactive({
   date: new Date().toISOString().slice(0, 10),
   description: '',
   lines: [
-    { accountCode: '1002', debit: '', credit: '', counterparty: '', project: '' },
-    { accountCode: '6001', debit: '', credit: '', counterparty: '', project: '' },
+    {
+      accountCode: '1002',
+      debit: '',
+      credit: '',
+      counterparty: '',
+      project: '',
+      currency: '',
+      fxRate: '',
+      originalDebit: '',
+      originalCredit: '',
+      taxCategory: '',
+      taxRate: '',
+    },
+    {
+      accountCode: '6001',
+      debit: '',
+      credit: '',
+      counterparty: '',
+      project: '',
+      currency: '',
+      fxRate: '',
+      originalDebit: '',
+      originalCredit: '',
+      taxCategory: '',
+      taxRate: '',
+    },
   ],
 })
 
@@ -130,6 +169,12 @@ function addJournalLine() {
     credit: '',
     counterparty: '',
     project: '',
+    currency: '',
+    fxRate: '',
+    originalDebit: '',
+    originalCredit: '',
+    taxCategory: '',
+    taxRate: '',
   })
 }
 
@@ -251,15 +296,24 @@ async function submitJournal() {
   gap: 0.5rem;
   margin-top: 1rem;
 }
+.journal-block {
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border);
+}
 .journal-line {
   display: grid;
   grid-template-columns: 1fr 4.5rem 4.5rem 5rem 4rem auto;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
   align-items: center;
 }
+.journal-line--sub {
+  margin-top: 0.35rem;
+  grid-template-columns: 3.5rem 4rem 4.5rem 4.5rem 5rem 4rem;
+}
 @media (max-width: 720px) {
-  .journal-line {
+  .journal-line,
+  .journal-line--sub {
     grid-template-columns: 1fr 1fr;
   }
 }

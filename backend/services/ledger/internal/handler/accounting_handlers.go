@@ -39,6 +39,17 @@ func RegisterAccountingHandlers(server *rest.Server, serverCtx *svc.ServiceConte
 		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/budget", Handler: putBudgetHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/budget/analysis", Handler: budgetAnalysisHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/aging", Handler: agingReportHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency", Handler: getCurrencySettingsHandler(serverCtx)},
+		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/currency", Handler: putCurrencySettingsHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency/fx-rates", Handler: getFxRatesHandler(serverCtx)},
+		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/currency/fx-rates", Handler: putFxRatesHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency/balances", Handler: fcBalancesHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency/revaluation", Handler: revaluationHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/tax/presets", Handler: taxPresetsHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/tax", Handler: getTaxTemplateHandler(serverCtx)},
+		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/tax", Handler: putTaxTemplateHandler(serverCtx)},
+		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/tax/apply-preset", Handler: applyTaxPresetHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/tax/report", Handler: taxReportHandler(serverCtx)},
 	}, prefix)
 }
 
@@ -307,6 +318,182 @@ func agingReportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			r.URL.Query().Get("receivableAccounts"),
 			r.URL.Query().Get("payableAccounts"),
 		)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, rep)
+	}
+}
+
+func getCurrencySettingsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		cs, err := svcCtx.Ledger.GetCurrencySettings(r.Context(), id, uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, cs)
+	}
+}
+
+func putCurrencySettingsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		var cs accounting.CurrencySettings
+		if err := json.NewDecoder(r.Body).Decode(&cs); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		out, err := svcCtx.Ledger.PutCurrencySettings(r.Context(), id, uid, cs)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
+}
+
+func getFxRatesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "period required"))
+			return
+		}
+		out, err := svcCtx.Ledger.GetPeriodFxRates(r.Context(), id, uid, period)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
+}
+
+func putFxRatesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		var rates accounting.PeriodFxRates
+		if err := json.NewDecoder(r.Body).Decode(&rates); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		out, err := svcCtx.Ledger.PutPeriodFxRates(r.Context(), id, uid, rates)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
+}
+
+func fcBalancesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		list, err := svcCtx.Ledger.GetFCBalances(r.Context(), id, uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"balances": list})
+	}
+}
+
+func revaluationHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "period required"))
+			return
+		}
+		rep, err := svcCtx.Ledger.GetRevaluationReport(r.Context(), id, uid, period)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, rep)
+	}
+}
+
+func taxPresetsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_ = pathvar.Vars(r)["id"]
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"presets": svcCtx.Ledger.ListTaxPresets()})
+	}
+}
+
+func getTaxTemplateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		t, err := svcCtx.Ledger.GetTaxTemplate(r.Context(), id, uid)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, t)
+	}
+}
+
+func putTaxTemplateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		var t accounting.TaxTemplate
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		out, err := svcCtx.Ledger.PutTaxTemplate(r.Context(), id, uid, t)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
+}
+
+type applyTaxPresetBody struct {
+	PresetID string `json:"presetId"`
+}
+
+func applyTaxPresetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		var body applyTaxPresetBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		out, err := svcCtx.Ledger.ApplyTaxPreset(r.Context(), id, uid, body.PresetID)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
+}
+
+func taxReportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "period required"))
+			return
+		}
+		rep, err := svcCtx.Ledger.GetTaxReport(r.Context(), id, uid, period)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return

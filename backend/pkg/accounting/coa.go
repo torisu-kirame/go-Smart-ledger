@@ -19,6 +19,8 @@ func DefaultChart(ledgerID string) ChartOfAccounts {
 			{Code: "6401", Name: "主营业务成本", Category: CategoryExpense, Active: true},
 			{Code: "6601", Name: "销售费用", Category: CategoryExpense, Active: true},
 			{Code: "6602", Name: "管理费用", Category: CategoryExpense, Active: true},
+			{Code: "6603", Name: "汇兑损益", Category: CategoryExpense, Active: true},
+			{Code: "2221", Name: "应交税费", Category: CategoryLiability, Active: true},
 		},
 		UpdatedAt: time.Now().UTC(),
 	}

@@ -54,6 +54,8 @@ const tabs = [
   { path: 'report', label: '报表' },
   { path: 'budget', label: '预算' },
   { path: 'aging', label: '账龄' },
+  { path: 'currency', label: '外币' },
+  { path: 'tax', label: '税务' },
   { path: 'attach', label: '附件' },
   { path: 'bank', label: '对账' },
 ]

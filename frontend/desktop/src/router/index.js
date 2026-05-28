@@ -80,6 +80,14 @@ const routes = [
                 path: 'aging',
                 component: () => import('../views/ledger/LedgerAccountingAgingView.vue'),
               },
+              {
+                path: 'currency',
+                component: () => import('../views/ledger/LedgerAccountingCurrencyView.vue'),
+              },
+              {
+                path: 'tax',
+                component: () => import('../views/ledger/LedgerAccountingTaxView.vue'),
+              },
             ],
           },
           {

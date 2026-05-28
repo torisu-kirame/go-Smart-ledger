@@ -418,4 +418,30 @@ export const api = {
     const q = params.toString() ? `?${params}` : ''
     return request(`/ledgers/${id}/accounting/aging${q}`)
   },
+  getAccountingCurrency: (id) => request(`/ledgers/${id}/accounting/currency`),
+  putAccountingCurrency: (id, body) =>
+    request(`/ledgers/${id}/accounting/currency`, { method: 'PUT', body: JSON.stringify(body) }),
+  getAccountingFxRates: (id, period) =>
+    request(`/ledgers/${id}/accounting/currency/fx-rates?period=${encodeURIComponent(period)}`),
+  putAccountingFxRates: (id, body) =>
+    request(`/ledgers/${id}/accounting/currency/fx-rates`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  getAccountingFCBalances: (id) => request(`/ledgers/${id}/accounting/currency/balances`),
+  getAccountingRevaluation: (id, period) =>
+    request(
+      `/ledgers/${id}/accounting/currency/revaluation?period=${encodeURIComponent(period)}`
+    ),
+  getAccountingTaxPresets: (id) => request(`/ledgers/${id}/accounting/tax/presets`),
+  getAccountingTax: (id) => request(`/ledgers/${id}/accounting/tax`),
+  putAccountingTax: (id, body) =>
+    request(`/ledgers/${id}/accounting/tax`, { method: 'PUT', body: JSON.stringify(body) }),
+  applyAccountingTaxPreset: (id, presetId) =>
+    request(`/ledgers/${id}/accounting/tax/apply-preset`, {
+      method: 'POST',
+      body: JSON.stringify({ presetId }),
+    }),
+  getAccountingTaxReport: (id, period) =>
+    request(`/ledgers/${id}/accounting/tax/report?period=${encodeURIComponent(period)}`),
 }

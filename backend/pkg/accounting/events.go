@@ -10,4 +10,7 @@ const (
 	EventBankStatementImported = "BankStatementImported"
 	EventReconciliationMatched = "ReconciliationMatched"
 	EventBudgetUpdated         = "BudgetUpdated"
+	EventCurrencySettingsUpdated = "CurrencySettingsUpdated"
+	EventFxRatesUpdated        = "FxRatesUpdated"
+	EventTaxTemplateUpdated    = "TaxTemplateUpdated"
 )

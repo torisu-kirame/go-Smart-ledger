@@ -67,3 +67,15 @@ func LedgerBudgetKey(ledgerID, period string) string {
 func LedgerBudgetPrefix(ledgerID string) string {
 	return fmt.Sprintf("%s:ledger:%s:budget:", keyPrefix, ledgerID)
 }
+
+func LedgerCurrencyKey(ledgerID string) string {
+	return fmt.Sprintf("%s:ledger:%s:currency", keyPrefix, ledgerID)
+}
+
+func LedgerFxRatesKey(ledgerID, period string) string {
+	return fmt.Sprintf("%s:ledger:%s:fx:%s", keyPrefix, ledgerID, period)
+}
+
+func LedgerTaxTemplateKey(ledgerID string) string {
+	return fmt.Sprintf("%s:ledger:%s:tax", keyPrefix, ledgerID)
+}

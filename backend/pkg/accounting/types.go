@@ -18,6 +18,9 @@ var (
 	ErrStmtNotFound     = errors.New("bank statement not found")
 	ErrLineNotFound     = errors.New("statement line not found")
 	ErrInvalidBudget    = errors.New("invalid budget")
+	ErrInvalidCurrency  = errors.New("invalid currency settings")
+	ErrInvalidFxRates   = errors.New("invalid fx rates")
+	ErrInvalidTax       = errors.New("invalid tax template")
 )
 
 // AccountCategory for financial statement grouping.
@@ -54,6 +57,13 @@ type JournalLine struct {
 	Memo         string `json:"memo,omitempty"`
 	Counterparty string `json:"counterparty,omitempty"` // 往来方（F45 账龄）
 	Project      string `json:"project,omitempty"`      // 项目（F43 预算）
+	Currency     string `json:"currency,omitempty"`     // 原币 ISO（F46）
+	FxRate       string `json:"fxRate,omitempty"`       // 1 原币 = ? 本位币
+	OriginalDebit  string `json:"originalDebit,omitempty"`
+	OriginalCredit string `json:"originalCredit,omitempty"`
+	TaxCategory  string `json:"taxCategory,omitempty"` // taxable|exempt|zero|none（F47）
+	TaxRate      string `json:"taxRate,omitempty"`
+	TaxAmount    string `json:"taxAmount,omitempty"`
 }
 
 // JournalEntry is a double-entry voucher.
@@ -201,6 +211,117 @@ type AgingReport struct {
 	PayableAccounts     []string                   `json:"payableAccounts"`
 	Summaries           []AgingCounterpartySummary `json:"summaries"`
 	Items               []AgingOpenItem            `json:"items,omitempty"`
+}
+
+// CurrencySettings per ledger (F46).
+type CurrencySettings struct {
+	LedgerID          string   `json:"ledgerId"`
+	BaseCurrency      string   `json:"baseCurrency"`
+	Currencies        []string `json:"currencies"`
+	GainLossAccount   string   `json:"gainLossAccount"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+}
+
+// FxRateRow is closing rate: 1 unit of Currency = Rate units of base.
+type FxRateRow struct {
+	Currency string `json:"currency"`
+	Rate     string `json:"rate"`
+}
+
+// PeriodFxRates stores month-end rates (F46).
+type PeriodFxRates struct {
+	LedgerID     string      `json:"ledgerId"`
+	Period       string      `json:"period"`
+	BaseCurrency string      `json:"baseCurrency"`
+	Rates        []FxRateRow `json:"rates"`
+	UpdatedAt    time.Time   `json:"updatedAt"`
+}
+
+// FCBalance is foreign-currency balance on a monetary account.
+type FCBalance struct {
+	AccountCode    string `json:"accountCode"`
+	AccountName    string `json:"accountName"`
+	Currency       string `json:"currency"`
+	ForeignBalance string `json:"foreignBalance"`
+	BookBalance    string `json:"bookBalance"`
+	ImpliedRate    string `json:"impliedRate,omitempty"`
+}
+
+// RevaluationLine is one FC position revalued at period end.
+type RevaluationLine struct {
+	AccountCode     string `json:"accountCode"`
+	AccountName     string `json:"accountName"`
+	Currency        string `json:"currency"`
+	ForeignBalance  string `json:"foreignBalance"`
+	BookBalance     string `json:"bookBalance"`
+	ClosingRate     string `json:"closingRate"`
+	RevaluedBalance  string `json:"revaluedBalance"`
+	GainLoss        string `json:"gainLoss"`
+}
+
+// RevaluationReport summarizes FX revaluation (F46).
+type RevaluationReport struct {
+	Period          string            `json:"period"`
+	BaseCurrency    string            `json:"baseCurrency"`
+	Lines           []RevaluationLine `json:"lines"`
+	TotalGainLoss   string            `json:"totalGainLoss"`
+	GainLossAccount string            `json:"gainLossAccount"`
+}
+
+// TaxMode for VAT templates (F47).
+type TaxMode string
+
+const (
+	TaxModeNone    TaxMode = "none"
+	TaxModeGeneral TaxMode = "general"
+	TaxModeSimple  TaxMode = "simple"
+)
+
+// TaxTemplate is ledger tax policy.
+type TaxTemplate struct {
+	LedgerID            string    `json:"ledgerId"`
+	Mode                TaxMode   `json:"mode"`
+	Region              string    `json:"region,omitempty"`
+	DefaultOutputRate   string    `json:"defaultOutputRate,omitempty"`
+	DefaultInputRate    string    `json:"defaultInputRate,omitempty"`
+	SimpleLevyRate      string    `json:"simpleLevyRate,omitempty"`
+	OutputTaxAccount    string    `json:"outputTaxAccount,omitempty"`
+	InputTaxAccount     string    `json:"inputTaxAccount,omitempty"`
+	UpdatedAt           time.Time `json:"updatedAt"`
+}
+
+// BuiltinTaxPreset is a selectable template id + defaults.
+type BuiltinTaxPreset struct {
+	ID                  string  `json:"id"`
+	Name                string  `json:"name"`
+	Mode                TaxMode `json:"mode"`
+	DefaultOutputRate   string  `json:"defaultOutputRate,omitempty"`
+	DefaultInputRate    string  `json:"defaultInputRate,omitempty"`
+	SimpleLevyRate      string  `json:"simpleLevyRate,omitempty"`
+}
+
+// TaxReportLine is one taxable journal line in a period.
+type TaxReportLine struct {
+	JournalID    string `json:"journalId"`
+	Date         string `json:"date"`
+	Description  string `json:"description,omitempty"`
+	AccountCode  string `json:"accountCode"`
+	AccountName  string `json:"accountName"`
+	BaseAmount   string `json:"baseAmount"`
+	TaxCategory  string `json:"taxCategory"`
+	TaxRate      string `json:"taxRate"`
+	TaxAmount    string `json:"taxAmount"`
+	Kind         string `json:"kind"` // output | input | levy
+}
+
+// TaxReport is period VAT / levy summary (F47).
+type TaxReport struct {
+	Period          string          `json:"period"`
+	Mode            TaxMode         `json:"mode"`
+	OutputTaxTotal  string          `json:"outputTaxTotal"`
+	InputTaxTotal   string          `json:"inputTaxTotal"`
+	NetPayable      string          `json:"netPayable"`
+	Lines           []TaxReportLine `json:"lines"`
 }
 
 // BankStatement groups imported lines.
