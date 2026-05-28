@@ -62,6 +62,20 @@ func NormalizeLedgerTables(meta *LedgerMeta) {
 	}
 }
 
+// TableByName finds a table by display name.
+func TableByName(meta *LedgerMeta, name string) *LedgerTable {
+	if meta == nil {
+		return nil
+	}
+	name = strings.TrimSpace(name)
+	for i := range meta.Tables {
+		if meta.Tables[i].Name == name {
+			return &meta.Tables[i]
+		}
+	}
+	return nil
+}
+
 // TableByID finds a table definition.
 func TableByID(meta *LedgerMeta, tableID string) *LedgerTable {
 	if meta == nil {

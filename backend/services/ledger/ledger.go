@@ -40,6 +40,7 @@ func main() {
 	handler.RegisterExtraHandlers(server, ctx)
 	handler.RegisterCollaborationHandlers(server, ctx)
 	handler.RegisterTableHandlers(server, ctx)
+	handler.RegisterImportAdaptiveHandlers(server, ctx)
 	handler.RegisterAccountingHandlers(server, ctx)
 	handler.RegisterChainHandlers(server, ctx)
 

@@ -3,6 +3,7 @@ package importxlsx
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
@@ -115,6 +116,52 @@ func fillLegacyFlat(p *RowPreview) {
 	p.Category = p.Cells["category"]
 	p.Note = p.Cells["note"]
 	p.Counterparty = p.Cells["counterparty"]
+}
+
+// ParseRowsWithSchema maps raw data rows (no header) to previews using schema labels as column index keys.
+func ParseRowsWithSchema(schema domain.EntrySchema, rows [][]string, startLine int) ([]RowPreview, error) {
+	schema = domain.ResolveEntrySchema(schema)
+	if len(schema.Fields) == 0 {
+		return nil, fmt.Errorf("empty schema")
+	}
+	labelToKey := map[string]string{}
+	for _, fdef := range schema.Fields {
+		labelToKey[normHeader(fdef.Label)] = fdef.Key
+	}
+	// Also map by field key for CSV that uses keys as headers
+	for _, fdef := range schema.Fields {
+		labelToKey[normHeader(fdef.Key)] = fdef.Key
+	}
+	var out []RowPreview
+	line := startLine
+	for _, r := range rows {
+		if rowEmpty(r) {
+			continue
+		}
+		if len(out) >= maxRows {
+			return nil, ErrTooManyRows
+		}
+		line++
+		cells := map[string]string{}
+		for i, fdef := range schema.Fields {
+			cells[fdef.Key] = cell(r, i)
+		}
+		if schema.TemplateID == domain.TemplateClassic {
+			if cells["type"] != "" {
+				cells["type"] = normType(cells["type"])
+			}
+		}
+		p := RowPreview{Line: line, Cells: cells}
+		fillLegacyFlat(&p)
+		if err := validateRow(schema, &p); err != nil {
+			p.Error = err.Error()
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		return nil, ErrNoDataRows
+	}
+	return out, nil
 }
 
 func validateRow(schema domain.EntrySchema, p *RowPreview) error {

@@ -40,6 +40,10 @@ const routes = [
             component: () => import('../views/ledger/LedgerContentView.vue'),
           },
           {
+            path: 'import',
+            component: () => import('../views/ledger/LedgerImportView.vue'),
+          },
+          {
             path: 'accounting',
             component: () => import('../views/ledger/LedgerAccountingLayout.vue'),
             children: [

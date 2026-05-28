@@ -26,10 +26,10 @@
               <AppSelect v-model="a.category" :options="categoryOptions" sm />
             </td>
             <td>
-              <label class="check-inline">
-                <input v-model="a.active" type="checkbox" />
-                {{ a.active ? '是' : '否' }}
-              </label>
+              <ToggleSwitch
+                v-model="a.active"
+                :aria-label="`科目 ${a.code} 启用`"
+              />
             </td>
             <td>
               <DeleteButton icon-only sm title="删除科目" @click="removeAccount(i)" />
@@ -57,6 +57,7 @@
 import { reactive } from 'vue'
 import AppSelect from '../../components/AppSelect.vue'
 import DeleteButton from '../../components/DeleteButton.vue'
+import ToggleSwitch from '../../components/ToggleSwitch.vue'
 import { useLedgerAccounting } from '../../composables/provideAccounting'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 import { useNotify } from '../../composables/useNotify'
@@ -146,11 +147,5 @@ async function reset() {
   gap: 0.5rem;
   margin-top: 0.75rem;
   align-items: center;
-}
-.check-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.8125rem;
 }
 </style>

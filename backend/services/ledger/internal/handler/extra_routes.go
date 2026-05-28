@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/importfile"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/importxlsx"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/logic"
@@ -105,7 +106,7 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid multipart form"))
 			return
 		}
-		file, _, err := r.FormFile("file")
+		file, hdr, err := r.FormFile("file")
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "file required"))
 			return
@@ -148,7 +149,7 @@ func importPreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if t := domain.TableByID(meta, tableID); t != nil {
 			sheetName = t.Name
 		}
-		rows, err := importxlsx.ParseSheet(data, sheetName, schema)
+		rows, err := importfile.ParseWithSchema(data, hdr.Filename, sheetName, schema)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
 			return

@@ -280,6 +280,16 @@ export const api = {
       headers: { Authorization: `Bearer ${getToken() || ''}` },
     })
   },
+  importAdaptivePreview: (id, file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request(`/ledgers/${id}/import/adaptive/preview`, { method: 'POST', body: fd })
+  },
+  importAdaptiveCommit: (id, body) =>
+    request(`/ledgers/${id}/import/adaptive/commit`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   importPreview: (id, file, tableId = '') => {
     const fd = new FormData()
     fd.append('file', file)

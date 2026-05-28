@@ -40,6 +40,14 @@
             流水
           </router-link>
           <router-link
+            v-if="isSimpleLedger"
+            :to="`${basePath}/import`"
+            class="ledger-tab"
+            :class="{ active: activeTab === 'import' }"
+          >
+            导入
+          </router-link>
+          <router-link
             v-if="isProfessionalLedger"
             :to="`${basePath}/accounting/view`"
             class="ledger-tab"
@@ -85,6 +93,7 @@ const activeTab = computed(() => {
   const p = route.path
   if (p.endsWith('/settings')) return 'settings'
   if (p.includes('/accounting')) return 'accounting'
+  if (p.endsWith('/import')) return 'import'
   if (p.endsWith('/view') && !p.includes('/accounting')) return 'view'
   return 'overview'
 })
@@ -94,6 +103,7 @@ const crumbs = computed(() => {
   const suffixMap = {
     overview: '详情',
     view: '流水',
+    import: '导入',
     accounting: '财务',
     settings: '设置',
   }

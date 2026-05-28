@@ -102,6 +102,8 @@ func main() {
 		{Method: http.MethodGet, Path: "/api/v1/import/template", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/preview", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/commit", Handler: ledgerProxy},
+		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/adaptive/preview", Handler: ledgerProxy},
+		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/import/adaptive/commit", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/backup", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/restore/preview", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/restore/commit", Handler: ledgerProxy},
