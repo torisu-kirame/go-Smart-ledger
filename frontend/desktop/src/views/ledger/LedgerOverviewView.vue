@@ -67,6 +67,24 @@
           </div>
         </section>
 
+        <section class="detail-card">
+          <h3 class="detail-card__title">审计包导出（F48）</h3>
+          <p class="field-hint">
+            导出含多表流水、凭证附件与辅助核算维度的 Excel / PDF / 完整 ZIP，用于基本合规留档。
+          </p>
+          <div class="actions-row">
+            <button class="btn-primary" :disabled="auditBusy" @click="downloadAudit('zip')">
+              下载完整包（ZIP）
+            </button>
+            <button class="btn-ghost" :disabled="auditBusy" @click="downloadAudit('xlsx')">
+              仅 Excel
+            </button>
+            <button class="btn-ghost" :disabled="auditBusy" @click="downloadAudit('pdf')">
+              摘要 PDF
+            </button>
+          </div>
+        </section>
+
         <section v-if="isSimpleLedger && ledger.approvalPolicy?.enabled" class="detail-card">
           <h3 class="detail-card__title">待审批记账</h3>
           <div v-if="!pending.length" class="muted empty-inline">暂无待审批</div>
@@ -110,6 +128,7 @@ import { useAuthStore } from '../../stores/auth'
 import LedgerInfoPanel from '../../components/ledger/LedgerInfoPanel.vue'
 import MemberAddPanel from '../../components/MemberAddPanel.vue'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
+import { useNotify } from '../../composables/useNotify'
 import { saveLocalGroupKey, unwrapGroupKey } from '../../utils/e2eCrypto'
 
 const router = useRouter()
@@ -126,7 +145,9 @@ const {
   isSimpleLedger,
 } = useLedgerDetail()
 
+const notify = useNotify()
 const busy = ref(false)
+const auditBusy = ref(false)
 const e2ePassphrase = ref('')
 const inviteUserId = ref('')
 const inviteBusy = ref(false)
@@ -207,6 +228,18 @@ async function doVerify() {
 
 function goBackup() {
   router.push({ path: '/backup', query: { ledgerId: ledgerId.value } })
+}
+
+async function downloadAudit(format) {
+  auditBusy.value = true
+  try {
+    const name = await api.downloadAuditExport(ledgerId.value, format)
+    notify.success(`已下载 ${name}`)
+  } catch (e) {
+    notify.error(e instanceof ApiError ? e.message : '审计包导出失败')
+  } finally {
+    auditBusy.value = false
+  }
 }
 
 function formatInviteTime(t) {
@@ -355,6 +388,11 @@ watch(
 .empty-inline {
   font-size: 0.875rem;
   padding: 0.25rem 0;
+}
+.field-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
 }
 @media (max-width: 900px) {
   .overview-layout {

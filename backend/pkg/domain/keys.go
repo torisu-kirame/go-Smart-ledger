@@ -59,3 +59,11 @@ func LedgerAttachmentKey(ledgerID string, entrySeq uint64, attachID string) stri
 func LedgerAttachmentPrefix(ledgerID string) string {
 	return fmt.Sprintf("%s:ledger:%s:attach:", keyPrefix, ledgerID)
 }
+
+func LedgerBudgetKey(ledgerID, period string) string {
+	return fmt.Sprintf("%s:ledger:%s:budget:%s", keyPrefix, ledgerID, period)
+}
+
+func LedgerBudgetPrefix(ledgerID string) string {
+	return fmt.Sprintf("%s:ledger:%s:budget:", keyPrefix, ledgerID)
+}

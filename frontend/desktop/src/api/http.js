@@ -338,12 +338,54 @@ export const api = {
     const q = params.toString() ? `?${params}` : ''
     return request(`/ledgers/${id}/accounting/attachments${q}`)
   },
-  uploadAccountingAttachment: (id, entrySeq, file, tableId = '') => {
+  uploadAccountingAttachment: (id, entrySeq, file, { tableId = '', auxiliary = null } = {}) => {
     const fd = new FormData()
     fd.append('entrySeq', String(entrySeq))
     if (tableId) fd.append('tableId', tableId)
+    if (auxiliary?.department) fd.append('department', auxiliary.department)
+    if (auxiliary?.project) fd.append('project', auxiliary.project)
+    if (auxiliary?.counterparty) fd.append('counterparty', auxiliary.counterparty)
     fd.append('file', file)
     return request(`/ledgers/${id}/accounting/attachments`, { method: 'POST', body: fd })
+  },
+  patchAttachmentAuxiliary: (id, attachId, auxiliary) =>
+    request(`/ledgers/${id}/accounting/attachments/${encodeURIComponent(attachId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(auxiliary),
+    }),
+  downloadAuditExport: async (id, format = 'zip') => {
+    const token = getToken()
+    const q = format ? `?format=${encodeURIComponent(format)}` : ''
+    const res = await fetch(`${BASE}/ledgers/${encodeURIComponent(id)}/audit-export${q}`, {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (res.status === 401 && onRefresh) {
+      const ok = await onRefresh()
+      if (ok) return api.downloadAuditExport(id, format)
+    }
+    if (!res.ok) {
+      const text = await res.text()
+      let msg = res.statusText
+      try {
+        const body = JSON.parse(text)
+        msg = body?.msg || body?.message || msg
+      } catch {
+        if (text) msg = text
+      }
+      throw new ApiError(msg, res.status)
+    }
+    const blob = await res.blob()
+    const disp = res.headers.get('Content-Disposition') || ''
+    const m = /filename="([^"]+)"/.exec(disp)
+    const filename = m ? m[1] : `audit-${id}.${format === 'pdf' ? 'pdf' : format === 'xlsx' ? 'xlsx' : 'zip'}`
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+    return filename
   },
   listBankStatements: (id) => request(`/ledgers/${id}/accounting/bank-statements`),
   importBankStatement: (id, file, accountCode = '1002') => {
@@ -357,4 +399,23 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ lineId, entrySeq }),
     }),
+  getAccountingBudget: (id, period) =>
+    request(`/ledgers/${id}/accounting/budget?period=${encodeURIComponent(period)}`),
+  putAccountingBudget: (id, body) =>
+    request(`/ledgers/${id}/accounting/budget`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  getAccountingBudgetAnalysis: (id, period) =>
+    request(
+      `/ledgers/${id}/accounting/budget/analysis?period=${encodeURIComponent(period)}`
+    ),
+  getAccountingAging: (id, { asOf = '', receivableAccounts = '', payableAccounts = '' } = {}) => {
+    const params = new URLSearchParams()
+    if (asOf) params.set('asOf', asOf)
+    if (receivableAccounts) params.set('receivableAccounts', receivableAccounts)
+    if (payableAccounts) params.set('payableAccounts', payableAccounts)
+    const q = params.toString() ? `?${params}` : ''
+    return request(`/ledgers/${id}/accounting/aging${q}`)
+  },
 }

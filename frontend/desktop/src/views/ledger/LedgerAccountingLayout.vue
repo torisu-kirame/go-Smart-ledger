@@ -52,6 +52,8 @@ const tabs = [
   { path: 'coa', label: '科目' },
   { path: 'period', label: '期间' },
   { path: 'report', label: '报表' },
+  { path: 'budget', label: '预算' },
+  { path: 'aging', label: '账龄' },
   { path: 'attach', label: '附件' },
   { path: 'bank', label: '对账' },
 ]

@@ -31,9 +31,14 @@ func RegisterAccountingHandlers(server *rest.Server, serverCtx *svc.ServiceConte
 		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/reports", Handler: reportsHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/attachments", Handler: listAttachmentsHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/attachments", Handler: uploadAttachmentHandler(serverCtx)},
+		{Method: http.MethodPatch, Path: "/ledgers/:id/accounting/attachments/:attachId", Handler: patchAttachmentAuxHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/bank-statements", Handler: listBankStatementsHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/bank-statements/import", Handler: importBankHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/bank-statements/:stmtId/match", Handler: matchBankHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/budget", Handler: getBudgetHandler(serverCtx)},
+		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/budget", Handler: putBudgetHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/budget/analysis", Handler: budgetAnalysisHandler(serverCtx)},
+		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/aging", Handler: agingReportHandler(serverCtx)},
 	}, prefix)
 }
 
@@ -200,12 +205,113 @@ func uploadAttachmentHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		mime := hdr.Header.Get("Content-Type")
 		tableID := r.FormValue("tableId")
-		att, err := svcCtx.Ledger.LinkAttachment(r.Context(), id, uid, tableID, seq, hdr.Filename, mime, int64(len(body)), body, svcCtx.Backup)
+		aux := &accounting.AuxiliaryDims{
+			Department:   r.FormValue("department"),
+			Project:      r.FormValue("project"),
+			Counterparty: r.FormValue("counterparty"),
+		}
+		att, err := svcCtx.Ledger.LinkAttachment(r.Context(), id, uid, tableID, seq, hdr.Filename, mime, int64(len(body)), body, aux, svcCtx.Backup)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return
 		}
 		httpx.OkJsonCtx(r.Context(), w, att)
+	}
+}
+
+type patchAttachmentAuxBody struct {
+	Department   string `json:"department"`
+	Project      string `json:"project"`
+	Counterparty string `json:"counterparty"`
+}
+
+func patchAttachmentAuxHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := pathvar.Vars(r)
+		uid := userIDFromHeader(r)
+		var body patchAttachmentAuxBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		att, err := svcCtx.Ledger.UpdateAttachmentAuxiliary(r.Context(), vars["id"], uid, vars["attachId"], accounting.AuxiliaryDims(body))
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, att)
+	}
+}
+
+func getBudgetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "period required (YYYY-MM)"))
+			return
+		}
+		b, err := svcCtx.Ledger.GetBudget(r.Context(), id, uid, period)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, b)
+	}
+}
+
+func putBudgetHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		var b accounting.PeriodBudget
+		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		out, err := svcCtx.Ledger.PutBudget(r.Context(), id, uid, b)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, out)
+	}
+}
+
+func budgetAnalysisHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "period required (YYYY-MM)"))
+			return
+		}
+		rep, err := svcCtx.Ledger.GetBudgetAnalysis(r.Context(), id, uid, period)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, rep)
+	}
+}
+
+func agingReportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := pathvar.Vars(r)["id"]
+		uid := userIDFromHeader(r)
+		rep, err := svcCtx.Ledger.GetAgingReport(
+			r.Context(), id, uid,
+			r.URL.Query().Get("asOf"),
+			r.URL.Query().Get("receivableAccounts"),
+			r.URL.Query().Get("payableAccounts"),
+		)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, rep)
 	}
 }
 

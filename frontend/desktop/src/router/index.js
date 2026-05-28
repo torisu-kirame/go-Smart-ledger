@@ -72,6 +72,14 @@ const routes = [
                 path: 'bank',
                 component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
               },
+              {
+                path: 'budget',
+                component: () => import('../views/ledger/LedgerAccountingBudgetView.vue'),
+              },
+              {
+                path: 'aging',
+                component: () => import('../views/ledger/LedgerAccountingAgingView.vue'),
+              },
             ],
           },
           {

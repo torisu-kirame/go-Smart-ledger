@@ -19,6 +19,8 @@
                 <th>科目</th>
                 <th>借方</th>
                 <th>贷方</th>
+                <th>往来方</th>
+                <th>项目</th>
               </tr>
             </thead>
             <tbody>
@@ -26,6 +28,8 @@
                 <td class="mono">{{ accountName(ln.accountCode) }}</td>
                 <td>{{ ln.debit || '—' }}</td>
                 <td>{{ ln.credit || '—' }}</td>
+                <td>{{ ln.counterparty || '—' }}</td>
+                <td>{{ ln.project || '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -59,6 +63,8 @@
           <AppSelect v-model="ln.accountCode" :options="accountOptions" sm placeholder="科目" />
           <input v-model="ln.debit" placeholder="借方" class="field-sm amount" />
           <input v-model="ln.credit" placeholder="贷方" class="field-sm amount" />
+          <input v-model="ln.counterparty" placeholder="往来方" class="field-sm" />
+          <input v-model="ln.project" placeholder="项目" class="field-sm" />
           <DeleteButton icon-only sm title="删除行" @click="journalForm.lines.splice(i, 1)" />
         </div>
         <button type="button" class="btn-ghost" @click="addJournalLine">+ 分录行</button>
@@ -93,8 +99,8 @@ const journalForm = reactive({
   date: new Date().toISOString().slice(0, 10),
   description: '',
   lines: [
-    { accountCode: '1002', debit: '', credit: '' },
-    { accountCode: '6001', debit: '', credit: '' },
+    { accountCode: '1002', debit: '', credit: '', counterparty: '', project: '' },
+    { accountCode: '6001', debit: '', credit: '', counterparty: '', project: '' },
   ],
 })
 
@@ -118,7 +124,13 @@ function accountName(code) {
 }
 
 function addJournalLine() {
-  journalForm.lines.push({ accountCode: '', debit: '', credit: '' })
+  journalForm.lines.push({
+    accountCode: '',
+    debit: '',
+    credit: '',
+    counterparty: '',
+    project: '',
+  })
 }
 
 function closeModal() {
@@ -241,9 +253,14 @@ async function submitJournal() {
 }
 .journal-line {
   display: grid;
-  grid-template-columns: 1fr 5rem 5rem auto;
+  grid-template-columns: 1fr 4.5rem 4.5rem 5rem 4rem auto;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   align-items: center;
+}
+@media (max-width: 720px) {
+  .journal-line {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

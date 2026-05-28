@@ -40,11 +40,16 @@ export function validateJournalPayload({ date, lines }) {
     if (debit <= 0 && credit <= 0) {
       continue
     }
-    prepared.push({
+    const row = {
       accountCode,
       debit: debit > 0 ? String(debitRaw) : '',
       credit: credit > 0 ? String(creditRaw) : '',
-    })
+    }
+    const cp = String(ln.counterparty ?? '').trim()
+    const proj = String(ln.project ?? '').trim()
+    if (cp) row.counterparty = cp
+    if (proj) row.project = proj
+    prepared.push(row)
   }
 
   if (prepared.length < 2) {

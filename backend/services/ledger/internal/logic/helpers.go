@@ -40,12 +40,14 @@ func ToCodeErr(err error) error {
 		errors.Is(err, accounting.ErrInvalidAccount),
 		errors.Is(err, accounting.ErrAccountNotFound),
 		errors.Is(err, accounting.ErrPeriodClosed),
-		errors.Is(err, accounting.ErrInvalidPeriod):
+		errors.Is(err, accounting.ErrInvalidPeriod),
+		errors.Is(err, accounting.ErrInvalidBudget):
 		return xerrors.New(400, err.Error())
 	case errors.Is(err, domain.ErrAlreadyMember),
 		errors.Is(err, domain.ErrInviteAlreadyPending):
 		return xerrors.New(409, err.Error())
-	case errors.Is(err, domain.ErrInviteNotFound):
+	case errors.Is(err, domain.ErrInviteNotFound),
+		errors.Is(err, ledgersvc.ErrAttachmentNotFound):
 		return xerrors.New(404, err.Error())
 	default:
 		return xerrors.New(500, err.Error())

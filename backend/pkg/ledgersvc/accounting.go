@@ -252,6 +252,7 @@ func (s *Service) LinkAttachment(
 	filename, mime string,
 	size int64,
 	body []byte,
+	aux *accounting.AuxiliaryDims,
 	backup *storage.DualBackup,
 ) (*accounting.Attachment, error) {
 	meta, err := s.GetForUser(ctx, ledgerID, userID)
@@ -264,7 +265,7 @@ func (s *Service) LinkAttachment(
 		}
 		tableID = ""
 	}
-	return s.LinkEntryAttachment(ctx, ledgerID, userID, tableID, entrySeq, filename, mime, size, body, backup)
+	return s.LinkEntryAttachment(ctx, ledgerID, userID, tableID, entrySeq, filename, mime, size, body, aux, backup)
 }
 
 // ListAttachments returns attachment metadata (optional tableId / entrySeq filters).

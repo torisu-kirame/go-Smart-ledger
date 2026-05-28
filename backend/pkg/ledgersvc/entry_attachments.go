@@ -3,6 +3,8 @@ package ledgersvc
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/accounting"
@@ -10,6 +12,8 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/storage"
 )
+
+var ErrAttachmentNotFound = errors.New("attachment not found")
 
 // LinkEntryAttachment stores a file linked to a chain event seq (F44, table-aware for F49).
 func (s *Service) LinkEntryAttachment(
@@ -19,6 +23,7 @@ func (s *Service) LinkEntryAttachment(
 	filename, mime string,
 	size int64,
 	body []byte,
+	aux *accounting.AuxiliaryDims,
 	backup *storage.DualBackup,
 ) (*accounting.Attachment, error) {
 	meta, err := s.GetForUser(ctx, ledgerID, userID)
@@ -61,6 +66,7 @@ func (s *Service) LinkEntryAttachment(
 		Size:       size,
 		CID:        cid,
 		Ref:        ref,
+		Auxiliary:  normalizeAux(aux),
 		UploadedBy: userID,
 		CreatedAt:  time.Now().UTC(),
 	}
@@ -114,6 +120,73 @@ func (s *Service) ListEntryAttachments(ctx context.Context, ledgerID, userID, ta
 		out = append(out, att)
 	}
 	return out, nil
+}
+
+// UpdateAttachmentAuxiliary sets department/project/counterparty tags (F41).
+func (s *Service) UpdateAttachmentAuxiliary(
+	ctx context.Context,
+	ledgerID, userID, attachID string,
+	aux accounting.AuxiliaryDims,
+) (*accounting.Attachment, error) {
+	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	if err != nil {
+		return nil, err
+	}
+	att, err := s.loadAttachmentByID(ctx, ledgerID, attachID)
+	if err != nil {
+		return nil, err
+	}
+	att.Auxiliary = normalizeAux(&aux)
+	if err := s.putJSON(ctx, domain.LedgerAttachmentKey(ledgerID, att.EntrySeq, att.ID), ledgerID, att); err != nil {
+		return nil, err
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"attachmentId": att.ID,
+		"entrySeq":     att.EntrySeq,
+		"tableId":      att.TableID,
+		"auxiliary":    att.Auxiliary,
+	})
+	_, _ = s.appendEvent(ctx, meta, userID, accounting.EventAttachmentAuxUpdated, payload)
+	return &att, nil
+}
+
+func (s *Service) loadAttachmentByID(ctx context.Context, ledgerID, attachID string) (accounting.Attachment, error) {
+	attachID = strings.TrimSpace(attachID)
+	if attachID == "" {
+		return accounting.Attachment{}, ErrAttachmentNotFound
+	}
+	prefix := domain.LedgerAttachmentPrefix(ledgerID)
+	rows, err := s.chain.Query(ctx,
+		`SELECT key, value FROM world_state WHERE key LIKE ? ORDER BY key`,
+		prefix+"%")
+	if err != nil {
+		return accounting.Attachment{}, err
+	}
+	for _, row := range rows {
+		var att accounting.Attachment
+		if unmarshalStateValue(row.Value, &att) != nil {
+			continue
+		}
+		if att.ID == attachID {
+			return att, nil
+		}
+	}
+	return accounting.Attachment{}, ErrAttachmentNotFound
+}
+
+func normalizeAux(aux *accounting.AuxiliaryDims) *accounting.AuxiliaryDims {
+	if aux == nil {
+		return nil
+	}
+	out := accounting.AuxiliaryDims{
+		Department:   strings.TrimSpace(aux.Department),
+		Project:      strings.TrimSpace(aux.Project),
+		Counterparty: strings.TrimSpace(aux.Counterparty),
+	}
+	if out.Department == "" && out.Project == "" && out.Counterparty == "" {
+		return nil
+	}
+	return &out
 }
 
 func (s *Service) validateAttachmentTarget(ctx context.Context, meta *domain.LedgerMeta, tableID string, entrySeq uint64) error {

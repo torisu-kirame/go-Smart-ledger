@@ -300,14 +300,14 @@ go-Smart-ledger/
 | F38 | 复式记账与会计科目表 | P2 | ✅ 已完成 |
 | F39 | 会计期间与月结 / 期间锁定 | P2 | ✅ 已完成 |
 | F40 | 三大财务报表（表内汇总） | P2 | ✅ 已完成 |
-| F41 | 辅助核算（部门 / 项目 / 往来） | P3 | ⬜ 未完成 |
+| F41 | 辅助核算（部门 / 项目 / 往来） | P3 | ✅ 已完成 |
 | F42 | 银行对账与未达账项 | P2 | ✅ 已完成 |
-| F43 | 预算编制与执行分析 | P3 | ⬜ 未完成 |
+| F43 | 预算编制与执行分析 | P3 | ✅ 已完成 |
 | F44 | 凭证附件（发票 CID / 文件） | P2 | ✅ 已完成 |
-| F45 | 应收应付账龄 | P3 | ⬜ 未完成 |
+| F45 | 应收应付账龄 | P3 | ✅ 已完成 |
 | F46 | 多币种与期末汇率重估 | P3 | ⬜ 未完成 |
 | F47 | 税务口径模板（增值税等） | P3 | ⬜ 未完成 |
-| F48 | 审计包导出（PDF / Excel） | P2 | ⬜ 未完成 |
+| F48 | 审计包导出（PDF / Excel） | P2 | ✅ 已完成 |
 | F49 | 账本多表（可选开启；开启后可建多表 + Excel 按表导入） | P2 | ✅ 已完成 |
 | F33 | 雪花 ID（用户/账本/团队）+ HD 钱包 BIP44 账本地址 | P1 | ✅ 已完成 |
 | F21 | 自定义账本字段 Schema / 动态模板 | P2 | ✅ 已完成 |
@@ -359,6 +359,10 @@ go-Smart-ledger/
 - [x] **F40 财务报表**：试算平衡、资产负债表 / 利润表 / 现金流量（表内汇总）
 - [x] **F44 凭证附件**：按事件 Seq 上传附件（加密备份 + IPFS CID）；简单流水账本支持 `tableId` 按表过滤与挂载校验（与 F49 联动）
 - [x] **F49 账本多表**：设置页开启多表、添加子表；流水/导入/附件按 `tableId` 隔离；多 sheet Excel 按表名匹配导入
+- [x] **F41 辅助核算**：凭证附件可标注部门 / 项目 / 往来；`PATCH .../attachments/:id` 更新；上传时可一并填写
+- [x] **F48 审计包导出**：`GET .../audit-export?format=xlsx|pdf|zip`；多表流水分 sheet、附件含辅助核算列、专业账本科目/凭证；ZIP 含 manifest + Excel + 摘要 PDF
+- [x] **F43 预算**：按期间编制科目/项目预算；执行分析与超支预警（`GET/PUT .../budget`，`GET .../budget/analysis`）
+- [x] **F45 账龄**：应收/应付按往来方 FIFO 账龄（`GET .../accounting/aging`）；凭证分录支持往来方、项目字段
 - [x] **F42 银行对账**：CSV 导入、与链上 Seq 匹配未达账项
 - [x] 内置记账模板仅保留「标准记账」；「经典记账」已从模板列表移除（旧账本 schema 仍兼容）
 
@@ -391,37 +395,6 @@ go-Smart-ledger/
 - [x] 端口 2xxxx 统一规范
 
 ---
-
-## 未完成 / 进行中
-
-### 高优先级（建议下一步）
-
-| 功能 | 说明 |
-|------|------|
-| **RBAC / 权限** | 角色与细粒度权限（当前仅 JWT 登录用户） |
-
-### 账本多表（F49，已实现）
-
-用户在账本设置中**可选开启「多表」**；**未开启时**保持现状（单表 / 单一流水结构，一条 `EntrySchema` 覆盖全部记账）。**开启后**可在同一账本内创建、命名、管理多张「表」（业务上类似 Excel 多 sheet，链上仍为事件流，按 `tableId` 区分）。
-
-| 维度 | 设计要点 |
-|------|----------|
-| **开关** | 账本 meta：`multiTableEnabled`（默认 `false`）；仅创建者或具备设置权限的成员可改；**开启后不建议关闭**（或关闭前需合并/归档子表，避免历史事件无归属）。 |
-| **单表模式（默认）** | 隐式 `default` 表；流水 / 导入 / 导出与现 F21 + F12 一致。 |
-| **多表模式** | 表清单：`{ id, name, entrySchema, sortOrder, createdAt }`；每张表独立字段 Schema（可共用模板创建）；详情页 Tab 或侧栏切换当前表。 |
-| **记账** | `EntryAdded`（及导入批次）携带 `tableId`；列表、校验、E2E 加密范围按表隔离。 |
-| **Excel 导入** | 下载模板：单表账本 → 一个 sheet；多表账本 → 每表一 sheet（固定 sheet 名 = 表名）或导入向导选择「目标表 / 映射 sheet」。解析层：按账本模式 + 用户选择读对应 sheet，避免误读第一张。 |
-| **与复式关系** | **简单流水账本**适用多表；**专业复式**仍以凭证 / 科目为主数据，不将「多表」与会计凭证混为同一套 Excel 万能模板（见 [金融与会计能力展望](#金融与会计能力展望)）。 |
-| **同步 / 备份** | 恢复与 `sync`、RAG 导出需带 `tableId` 或全表枚举；备份快照含表定义与子表 Schema 版本。 |
-
-**实现顺序建议**：① meta + 设置开关与默认单表兼容 → ② 表 CRUD 与按表记账 UI → ③ 按表 Schema 的模板下载与导入预览 → ④ 多 sheet xlsx 映射与行级校验。
-
-### 中低优先级
-
-- **F41 / F43 / F45–F48**：辅助核算、预算、账龄、多币种、税务模板、审计包导出等（见 [金融与会计能力展望](#金融与会计能力展望)）
-- 真 P2P 节点直连同步（当前为链上邀请 + HTTP 增量同步）
-- 移动端、CI
-- **F34**：控制台内嵌 OpenClaw 对话 UI、自动增量索引账本
 
 ### 已知限制
 
@@ -520,41 +493,6 @@ docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile d
 
 将 `ledger-api` / `gateway-api` 配置换为 `deploy/etc/*.discovery.docker.yaml`（`Discovery.Etcd.Enabled: true`）并重建镜像后，`ledger-api` 会向 etcd 注册 HTTP/gRPC；网关 `GET /api/v1/discovery/services` 可查看注册表。默认单栈已开启 gRPC health（`:28898`），etcd 为可选。
 
----
-
-## 更新记录
-
-| 日期 | 摘要 |
-|------|------|
-| 2026-05-25 | 完成 **F49 账本多表** 与 **F44 按表附件**：`multiTableEnabled`、表 CRUD、流水/导入 `tableId`、附件 `tableId` 校验与列表过滤、多 sheet 模板与预览。 |
-| 2026-05-24 | **F38–F40 / F42 / F44**：复式记账、会计期间、三大报表、银行对账、凭证附件；账本详情「财务」Tab；移除内置「经典记账」模板。 |
-| 2026-05-24 | **F36/F37**：团队多账本关联（`team_ledgers`）、团队详情页 Chat（文字+文件，轮询）；创建团队可多选账本。 |
-| 2026-05-24 | 多人账本支持仅创建者建账 + **邀请加入**；账本管理页发送/接受邀请、待处理列表；修复邀请相关 HTTP 错误码。 |
-| 2026-05-24 | 账本邀请并入**账本管理**；README 补充团队 vs 多人账本概念、F36–F48 财务展望与团队 Chat 规划。 |
-| 2026-05-24 | 设置页主题区增加**界面语言**（中/英）；链浏览器中文为 Smart Ledger 适配版，英文为 MiniLedger 官方 Dashboard。 |
-| 2026-05-24 | 消息队列改用 **NSQ**（nsqd/lookupd/admin）；上链重试经 topic `chain_tx_retry` 异步消费。 |
-| 2026-05-24 | F22/F23/F28：Raft 三节点 Compose；上链重试队列与链浏览器页；etcd + gRPC health 服务发现。 |
-| 2026-05-23 | F14–F16：IPFS Kubo 存储；备份本地+IPFS 双写与链上 CID；`restore/commit` 快照写回账本。 |
-| 2026-05-23 | 记账模板管理页（`/entry-templates`）；MySQL `entry_templates` 表；侧栏「记账模板」。 |
-| 2026-05-23 | F21：账本条目 Schema；默认模板（记账人/收账人/金额/日期/备注）；创建账本可选模板或自定义字段；动态表单与 Excel 按 Schema 导入。 |
-| 2026-05-23 | F32/F33：雪花 ID（用户/账本/团队）；HD 钱包派生账本与成员地址；团队页（多人账本+好友）；README 与 MySQL 表 `teams`/`team_members`。 |
-| 2026-05-23 | 移除 Compose 内置 MySQL；用户数据仅存 `Database.DataSource` 配置库；账号注销（校验用户名+密码）。 |
-| 2026-05-23 | 用户个人中心：昵称修改、头像上传；`users` 表扩展 `nickname`/`avatar_url`。 |
-| 2026-05-24 | F35：本机 SQLite（sql.js）+ 多人账本增量同步 UI；README/docs 本地优先与云端备份说明。 |
-| 2026-05-24 | README：数据私有化落地说明；OpenClaw 离线 RAG 集成（setup 脚本、rag-export API、设置页 AI 配置）。 |
-| 2026-05-23 | 修复概览页 MiniLedger 误显示离线：网关 `/health` 聚合 ledger 链状态。 |
-| 2026-05-22 | 后端 `infra/sql/001_schema.sql` + `pkg/db` 启动时检测并创建库/表/字段/索引/外键。 |
-| 2026-05-22 | Compose `mysql` 不再映射宿主机 3306，避免与本机 MySQL 端口冲突。 |
-| 2026-05-22 | F31：MySQL 用户/好友 API；用户端登录注册与好友页；Compose 增加 `mysql`。 |
-| 2026-05-22 | F24：前端容器化 `web`（`frontend/desktop/Dockerfile` + Nginx 反代）；`make start` 仅 Docker 全栈。 |
-| 2026-05-22 | 前端 npm 改用项目内 `.npm-cache`（`.npmrc` + `scripts/frontend-install.ps1`），规避全局 node_cache EPERM。 |
-| 2026-05-22 | 修复 Docker 健康检查：`wget --spider`（HEAD）改为 GET，避免 go-zero 返回 405 导致 auth/storage 等 unhealthy。 |
-| 2026-05-22 | 快速开始增加一行全栈启动：`make start` / `scripts/start-all.ps1`（Docker 后端 + Vue 开发服）。 |
-| 2026-05-24 | 完成 F17 多人账本审批流、F18 成员邀请/增量同步、F19 客户端组级 E2E 加密；新增协作 API 与「账本邀请」页。 |
-| 2026-05-22 | 初始化项目计划 README；汇总至 F30：私人/多人账本、MiniLedger、go-zero 微服务、JWT+验证码、Vue3 桌面端、Excel 导入、加密备份与封账串联、Docker 与外部编译流程。 |
-| 2026-05-22 | 记录 F12/F13/F11/F10/F08/F09 等为已完成；F14–F29 登记为未完成后续项。 |
-
----
 
 ## 更新规范
 
