@@ -1,7 +1,7 @@
 <template>
   <section class="detail-card attach-panel">
-    <h3 class="detail-card__title">凭证附件（按表）</h3>
-    <p class="field-hint">附件挂载到当前表的流水序号（EntryAdded 事件 Seq）。可标注辅助核算维度（部门 / 项目 / 往来）。</p>
+    <h3 class="detail-card__title">流水附件</h3>
+    <p class="field-hint">为当前表的流水记录（EntryAdded 事件 Seq）上传佐证文件，可标注部门 / 项目 / 往来辅助信息。</p>
     <div class="form-row inline">
       <label>流水 Seq</label>
       <input v-model.number="attachSeq" type="number" min="1" class="field-sm" />

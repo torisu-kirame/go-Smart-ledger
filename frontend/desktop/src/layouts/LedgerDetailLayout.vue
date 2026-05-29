@@ -40,20 +40,19 @@
             流水
           </router-link>
           <router-link
-            v-if="isSimpleLedger"
-            :to="`${basePath}/import`"
-            class="ledger-tab"
-            :class="{ active: activeTab === 'import' }"
-          >
-            导入
-          </router-link>
-          <router-link
             v-if="isProfessionalLedger"
             :to="`${basePath}/accounting/view`"
             class="ledger-tab"
             :class="{ active: activeTab === 'accounting' }"
           >
             财务
+          </router-link>
+          <router-link
+            :to="`${basePath}/import`"
+            class="ledger-tab"
+            :class="{ active: activeTab === 'import' }"
+          >
+            导入
           </router-link>
           <router-link
             :to="`${basePath}/settings`"

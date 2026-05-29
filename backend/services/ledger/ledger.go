@@ -43,6 +43,7 @@ func main() {
 	handler.RegisterImportAdaptiveHandlers(server, ctx)
 	handler.RegisterAccountingHandlers(server, ctx)
 	handler.RegisterAuditExportHandlers(server, ctx)
+	handler.RegisterAIHandlers(server, ctx)
 	handler.RegisterChainHandlers(server, ctx)
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)

@@ -208,10 +208,12 @@ flowchart TB
 | 集成配置 | [`integrations/openclaw/`](integrations/openclaw/) 工作区、`openclaw.docker.json` → `data/openclaw/config/` |
 | 宿主机安装（可选） | `scripts/setup-openclaw.ps1` / `.sh` → 根目录 **`openclaw/`**（gitignore） |
 | 控制台 AI 设置 | **设置 → AI 助手** →「填入 Docker 默认地址」或手动填 Gateway / Ollama |
+| 控制台对话页 | **工作区 → AI 助手**（`/assistant`）：流式对话；可选同步账本 RAG 上下文 |
+| 聊天代理 API | `POST /api/v1/ai/chat`（JWT，服务端转发至本地 OpenAI 兼容端点，避免浏览器 CORS） |
 | RAG 导出 API | `GET /api/v1/ledgers/:id/rag-export`（JWT，仅成员） |
 | 文档 | [`docs/openclaw-integration.md`](docs/openclaw-integration.md) |
 
-流程简述：`make up` 启动账本栈 → `make openclaw-up` 启动 AI 栈 → 打开 http://127.0.0.1:18789 粘贴 token → 控制台设置 AI 地址 → 拉取 `rag-export` 索引 → 本地对话。
+流程简述：`make up` 启动账本栈 → `make openclaw-up` 启动 AI 栈（可选）→ 控制台 **设置 → AI 助手** 启用并填 Ollama 地址 → **AI 助手** 页选择账本并「同步上下文」→ 开始对话（亦可用 OpenClaw Gateway 独立 UI）。
 
 ---
 
@@ -352,7 +354,7 @@ go-Smart-ledger/
 - [x] **链浏览器页**：控制台 `/chain` 内嵌 MiniLedger Dashboard（Nginx `/miniledger/` 反代）
 - [x] **F27 生产加固**：`SL_*` 环境变量注入 JWT/Cookie；网关 IP 限流；`docker-compose.https.yml` + Nginx TLS 示例；见 `docs/production-security.md`
 - [x] **F29 EVM 锚定**：`LedgerAnchor` 合约 + `pkg/evmanchor`；封账时可选上链 Merkle 根；见 `docs/evm-anchor.md`
-- [x] **F34 OpenClaw（基础）**：`setup-openclaw` 脚本、`integrations/openclaw`、`/rag-export` API、设置页 AI 配置
+- [x] **F34 OpenClaw（基础）**：`setup-openclaw` 脚本、`integrations/openclaw`、`/rag-export` API、设置页 AI 配置、控制台 **AI 助手** 对话页与 `POST /api/v1/ai/chat` 代理
 - [x] **F35 本地优先（基础）**：浏览器 SQLite 缓存、`sync` API 对接、详情/列表「同步到本机」；见 `docs/local-first-storage.md`
 - [x] **F38 复式记账**：默认科目表、借贷平衡凭证过账；账本详情「财务」→ 科目 / 凭证
 - [x] **F39 会计期间**：月结锁定与反结账；关闭期间禁止新凭证

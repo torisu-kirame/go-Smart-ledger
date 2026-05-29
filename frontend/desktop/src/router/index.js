@@ -18,6 +18,11 @@ const routes = [
         meta: { titleKey: 'layout.nav.templates', navRoot: '/entry-templates' },
       },
       {
+        path: 'assistant',
+        component: () => import('../views/AiAssistantView.vue'),
+        meta: { titleKey: 'layout.nav.assistant', navRoot: '/assistant' },
+      },
+      {
         path: 'ledgers',
         component: () => import('../views/LedgersView.vue'),
         meta: { titleKey: 'layout.nav.ledgers', navRoot: '/ledgers' },
@@ -95,11 +100,6 @@ const routes = [
             component: () => import('../views/ledger/LedgerSettingsView.vue'),
           },
         ],
-      },
-      {
-        path: 'import',
-        component: () => import('../views/ImportView.vue'),
-        meta: { titleKey: 'layout.nav.import', navRoot: '/import' },
       },
       {
         path: 'backup',

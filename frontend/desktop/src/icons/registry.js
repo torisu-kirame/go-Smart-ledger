@@ -115,6 +115,7 @@ export const ICON_REGISTRY = {
     p('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'),
     p('M14 2v6h6'),
   ],
+  folder: [p('M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z')],
   external: [p('M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'), pl('15 3 21 3 21 9'), l(10, 14, 21, 3)],
   activity: [pl('22 12 18 12 15 21 9 3 6 12 2 12')],
   layers: [p('M12 2 2 7l10 5 10-5-10-5z'), p('M2 17l10 5 10-5'), p('M2 12l10 5 10-5')],
@@ -122,9 +123,9 @@ export const ICON_REGISTRY = {
 
 export const NAV_ICON_BY_ROUTE = {
   '/': 'home',
+  '/assistant': 'sparkles',
   '/ledgers': 'ledger',
   '/entry-templates': 'template',
-  '/import': 'import',
   '/backup': 'backup',
   '/friends': 'friends',
   '/teams': 'teams',

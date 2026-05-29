@@ -96,7 +96,6 @@ const chainFailed = ref(0)
 const quickLinks = computed(() => [
   { to: '/ledgers', label: t('layout.nav.ledgers') },
   { to: '/entry-templates', label: t('layout.nav.templates') },
-  { to: '/import', label: t('layout.nav.import') },
   { to: '/backup', label: t('layout.nav.backup') },
   { to: '/friends', label: t('layout.nav.friends') },
   { to: '/teams', label: t('layout.nav.teams') },

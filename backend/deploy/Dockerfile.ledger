@@ -1,5 +1,5 @@
-# 需先在外部编译: make build-linux 或 make build-linux-ledger
-# 仅复制 Linux 二进制，不在镜像内编译
+# 需先编译: make build-linux-ledger 或 make build-linux（根目录 make up 会自动执行）
+# 多阶段镜像内编译见 Dockerfile.ledger.multistage（需 Docker 可访问 go module 代理）
 FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates wget

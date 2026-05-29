@@ -93,6 +93,7 @@ const navGroups = computed(() => [
     label: t('layout.navGroup.workspace'),
     items: [
       navItem('/', 'layout.nav.home', true),
+      navItem('/assistant', 'layout.nav.assistant', true),
       navItem('/ledgers', 'layout.nav.ledgers', false),
       navItem('/entry-templates', 'layout.nav.templates', true),
     ],
@@ -101,7 +102,6 @@ const navGroups = computed(() => [
     id: 'data',
     label: t('layout.navGroup.data'),
     items: [
-      navItem('/import', 'layout.nav.import', true),
       navItem('/backup', 'layout.nav.backup', true),
     ],
   },

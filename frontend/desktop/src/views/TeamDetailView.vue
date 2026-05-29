@@ -8,50 +8,88 @@
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
-    <div class="layout">
-      <section class="panel chat-panel">
-        <h3>团队聊天</h3>
-        <div ref="chatBox" class="chat-box">
-          <div v-if="!messages.length" class="muted">暂无消息，发一条打个招呼吧</div>
+    <div class="team-layout">
+      <section class="chat-panel">
+        <header class="chat-header">
+          <AppIcon name="teams" size="sm" class="chat-header__icon" />
+          <div class="chat-header__text">
+            <h3 class="chat-header__title">{{ team.name }}</h3>
+            <p class="chat-header__hint">{{ team.members?.length || 0 }} 位成员</p>
+          </div>
+        </header>
+
+        <div ref="chatBox" class="chat-messages">
+          <div v-if="!messages.length" class="chat-empty">
+            <AppIcon name="teams" size="md" />
+            <p>暂无消息，发一条打个招呼吧</p>
+          </div>
           <div
             v-for="m in messages"
             :key="m.id"
             class="msg"
             :class="{ mine: m.senderId === auth.user?.id }"
           >
-            <div class="msg-meta">
-              <span class="sender">{{ m.senderNickname || m.senderUsername || m.senderId }}</span>
-              <span class="time">{{ formatTime(m.createdAt) }}</span>
-            </div>
-            <div v-if="m.type === 'text'" class="msg-body">{{ m.body }}</div>
-            <div v-else class="msg-file">
-              <a v-if="fileLinks[m.id]" :href="fileLinks[m.id]" target="_blank" rel="noopener noreferrer" class="file-link">
-                <AppIcon name="paperclip" size="sm" />
-                <span>{{ m.fileName }} ({{ formatSize(m.fileSize) }})</span>
-              </a>
-              <span v-else class="muted">加载附件…</span>
+            <img
+              v-if="m.senderId"
+              class="msg-avatar"
+              :src="api.userAvatarUrl(m.senderId)"
+              alt=""
+            />
+            <div class="msg-content">
+              <div class="msg-meta">
+                <span class="sender">{{ m.senderNickname || m.senderUsername || m.senderId }}</span>
+                <span class="time">{{ formatTime(m.createdAt) }}</span>
+              </div>
+              <div v-if="m.type === 'text'" class="msg-body">{{ m.body }}</div>
+              <div v-else class="msg-file">
+                <a
+                  v-if="fileLinks[m.id]"
+                  :href="fileLinks[m.id]"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="file-link"
+                >
+                  <AppIcon name="file" size="sm" />
+                  <span>{{ m.fileName }} ({{ formatSize(m.fileSize) }})</span>
+                </a>
+                <span v-else class="muted">加载附件…</span>
+              </div>
             </div>
           </div>
         </div>
-        <FileUploadZone
-          compact
-          block
-          class="chat-upload"
-          :disabled="sending"
-          title="点击或拖拽发送文件"
-          @file="onFilePick"
-        />
+
         <form class="chat-compose" @submit.prevent="sendText">
-          <input v-model="draft" placeholder="输入消息…" maxlength="4000" />
-          <button class="btn-primary chat-send" type="submit" :disabled="sending || !draft.trim()">
+          <div class="chat-input-wrap">
+            <input
+              v-model="draft"
+              class="chat-input"
+              placeholder="在 #{{ team.name }} 中发消息…"
+              maxlength="4000"
+            />
+          </div>
+          <button
+            class="btn-primary chat-send"
+            type="submit"
+            :disabled="sending || !draft.trim()"
+            title="发送"
+          >
             <AppIcon name="send" size="sm" />
-            <span>发送</span>
+            <span class="sr-only">发送</span>
+          </button>
+          <button
+            type="button"
+            class="icon-btn icon-btn--ghost chat-attach"
+            :disabled="sending"
+            title="上传文件"
+            @click="showUploadModal = true"
+          >
+            <AppIcon name="folder" size="sm" />
           </button>
         </form>
       </section>
 
-      <section class="panel ledgers-panel">
-        <h3>关联账本</h3>
+      <aside class="team-rail panel">
+        <h3 class="rail-title">关联账本</h3>
         <ul v-if="ledgerRows.length" class="ledger-list">
           <li v-for="row in ledgerRows" :key="row.id">
             <div>
@@ -76,7 +114,9 @@
         <div v-if="isCreator" class="add-ledger">
           <label>添加多人账本</label>
           <AppSelect v-model="addLedgerId" :options="availableLedgerOptions" placeholder="选择账本" />
-          <button class="btn-ghost" type="button" :disabled="!addLedgerId || busy" @click="linkLedger">关联</button>
+          <button class="btn-ghost" type="button" :disabled="!addLedgerId || busy" @click="linkLedger">
+            关联
+          </button>
         </div>
 
         <h4 class="members-title">成员 ({{ team.members?.length || 0 }})</h4>
@@ -87,7 +127,27 @@
             <span v-if="m.userId === team.creatorId" class="tag">创建者</span>
           </li>
         </ul>
-      </section>
+      </aside>
+    </div>
+
+    <div v-if="showUploadModal" class="modal" @click.self="closeUploadModal">
+      <div class="modal-card upload-modal">
+        <div class="upload-modal__head">
+          <h3>上传文件</h3>
+          <button type="button" class="icon-btn icon-btn--ghost" title="关闭" @click="closeUploadModal">
+            <AppIcon name="x" size="sm" />
+          </button>
+        </div>
+        <p class="upload-modal__hint">支持任意常见文件，单文件不超过 15MB。上传后将出现在聊天记录中。</p>
+        <FileUploadZone
+          ref="uploadZoneRef"
+          block
+          :disabled="sending"
+          title="点击或拖拽文件到此处"
+          hint="选择后自动上传"
+          @file="onFilePick"
+        />
+      </div>
     </div>
   </div>
   <div v-else-if="loading" class="page muted">加载中…</div>
@@ -122,6 +182,8 @@ const loading = ref(true)
 const sending = ref(false)
 const busy = ref(false)
 const chatBox = ref(null)
+const showUploadModal = ref(false)
+const uploadZoneRef = ref(null)
 let pollTimer = null
 const blobUrls = []
 
@@ -159,6 +221,11 @@ function formatSize(n) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function closeUploadModal() {
+  showUploadModal.value = false
+  uploadZoneRef.value?.clear()
+}
+
 async function loadTeam() {
   team.value = await api.getTeam(teamId.value)
 }
@@ -174,6 +241,11 @@ function lastMessageId() {
   return Number(last.id) || 0
 }
 
+async function scrollChatToBottom() {
+  await nextTick()
+  if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+}
+
 async function loadMessages(initial = false) {
   const since = initial ? 0 : lastMessageId()
   const res = await api.listTeamMessages(teamId.value, since, 80)
@@ -187,8 +259,7 @@ async function loadMessages(initial = false) {
     }
   }
   await hydrateFiles()
-  await nextTick()
-  if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+  await scrollChatToBottom()
 }
 
 async function hydrateFiles() {
@@ -231,8 +302,7 @@ async function sendText() {
     const msg = await api.sendTeamMessage(teamId.value, text)
     messages.value.push(msg)
     draft.value = ''
-    await nextTick()
-    if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+    await scrollChatToBottom()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '发送失败'
   } finally {
@@ -248,8 +318,8 @@ async function onFilePick(file) {
     const msg = await api.uploadTeamChatFile(teamId.value, file)
     messages.value.push(msg)
     await hydrateFiles()
-    await nextTick()
-    if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+    closeUploadModal()
+    await scrollChatToBottom()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '上传失败'
   } finally {
@@ -308,7 +378,174 @@ watch(teamId, (id, prev) => {
 </script>
 
 <style scoped>
-.section-hint { font-size: 0.8125rem; color: var(--text-muted); margin: 0.35rem 0 0; }
+.team-detail {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  height: calc(100vh - 5.5rem);
+  min-height: 32rem;
+}
+
+.team-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) min(300px, 28%);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+@media (max-width: 960px) {
+  .team-detail {
+    height: auto;
+    min-height: calc(100vh - 5.5rem);
+  }
+  .team-layout {
+    grid-template-columns: 1fr;
+  }
+  .team-rail {
+    max-height: none;
+  }
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+
+.chat-header__icon {
+  color: var(--text-muted);
+}
+
+.chat-header__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.chat-header__hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.1rem;
+  background: var(--bg);
+}
+
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 12rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.chat-empty p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.msg {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  max-width: min(72rem, 100%);
+}
+
+.msg.mine {
+  flex-direction: row-reverse;
+  margin-left: auto;
+}
+
+.msg.mine .msg-content {
+  align-items: flex-end;
+}
+
+.msg.mine .msg-meta {
+  flex-direction: row-reverse;
+}
+
+.msg-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.msg-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: min(42rem, 85%);
+}
+
+.msg-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.msg-meta .sender {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.msg-body {
+  display: inline-block;
+  padding: 0.55rem 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px 12px 12px 12px;
+  text-align: left;
+  word-break: break-word;
+  line-height: 1.45;
+  font-size: 0.9375rem;
+}
+
+.msg.mine .msg-body {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 12px 4px 12px 12px;
+}
+
+.msg-file {
+  padding: 0.45rem 0.65rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .file-link {
   display: inline-flex;
   align-items: center;
@@ -317,59 +554,89 @@ watch(teamId, (id, prev) => {
   font-size: 0.875rem;
   text-decoration: none;
 }
-.file-link:hover { text-decoration: underline; }
+
+.file-link:hover {
+  text-decoration: underline;
+}
+
+.chat-compose {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+
+.chat-input-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.chat-input:focus {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+}
+
 .chat-send {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
-.chat-upload {
-  margin-top: 0.65rem;
+
+.chat-attach {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
 }
-.layout {
-  display: grid;
-  grid-template-columns: 1fr min(320px, 36%);
-  gap: 1rem;
-  align-items: start;
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
-@media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
-}
-.chat-panel { display: flex; flex-direction: column; min-height: 420px; }
-.chat-box {
-  flex: 1;
-  min-height: 280px;
-  max-height: 52vh;
+
+.team-rail {
   overflow-y: auto;
-  padding: 0.75rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
+  max-height: 100%;
+  align-self: stretch;
 }
-.msg { margin-bottom: 0.85rem; max-width: 85%; }
-.msg.mine { margin-left: auto; text-align: right; }
-.msg-meta { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; }
-.msg-meta .sender { font-weight: 600; color: var(--text); margin-right: 0.5rem; }
-.msg-body {
-  display: inline-block;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  text-align: left;
-  word-break: break-word;
+
+.rail-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
 }
-.msg.mine .msg-body { background: var(--accent-soft); border-color: var(--accent); }
-.msg-file a { color: var(--accent); font-size: 0.875rem; }
-.chat-compose {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
+
+.ledger-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
 }
-.chat-compose input { flex: 1; min-width: 12rem; }
-.ledger-list { list-style: none; padding: 0; margin: 0 0 1rem; }
+
 .ledger-list li {
   padding: 0.65rem 0;
   border-bottom: 1px solid var(--border);
@@ -379,13 +646,87 @@ watch(teamId, (id, prev) => {
   flex-wrap: wrap;
   align-items: center;
 }
-.ledger-list .mono { display: block; font-size: 0.75rem; color: var(--text-muted); }
-.ledger-actions { display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; font-size: 0.875rem; }
-.add-ledger { display: grid; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); }
-.add-ledger label { font-size: 0.8125rem; color: var(--text-muted); }
-.members-title { margin: 1rem 0 0.5rem; font-size: 0.875rem; }
-.member-list { list-style: none; padding: 0; margin: 0; }
-.member-list li { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.875rem; }
-.mini-avatar { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); }
-.tag { font-size: 0.7rem; color: var(--accent); margin-left: auto; }
+
+.ledger-list .mono {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ledger-actions {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+}
+
+.add-ledger {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+}
+
+.add-ledger label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.members-title {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.member-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.member-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.875rem;
+}
+
+.mini-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+.tag {
+  font-size: 0.7rem;
+  color: var(--accent);
+  margin-left: auto;
+}
+
+.upload-modal {
+  width: min(100%, 28rem);
+}
+
+.upload-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.upload-modal__head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.upload-modal__hint {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
 </style>

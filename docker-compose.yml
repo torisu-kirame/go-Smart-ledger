@@ -1,4 +1,6 @@
-# Smart Ledger — 一键启动（先 make build-linux，再 docker compose build）
+# Smart Ledger — 一键启动
+# 重要：请先 make build-linux 再 docker compose build，否则 ledger/gateway 可能是旧二进制（预算/账龄等 API 会 404）
+# 推荐：make up（自动 build-linux + compose up）
 #
 #   make up
 #   make docker-build && docker compose up -d

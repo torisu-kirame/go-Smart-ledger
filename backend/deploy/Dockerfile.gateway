@@ -1,4 +1,4 @@
-# 需先在外部编译: make build-linux 或 make build-linux-gateway
+# 需先编译: make build-linux-gateway 或 make build-linux
 FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates wget

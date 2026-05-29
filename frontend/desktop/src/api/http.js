@@ -8,6 +8,14 @@ export function configureAuth(tokenGetter, refreshFn) {
   onRefresh = refreshFn
 }
 
+/** Headers for fetch calls outside `request()` (e.g. streaming AI chat). */
+export function authHeaders() {
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
 export class ApiError extends Error {
   constructor(message, status) {
     super(message)
