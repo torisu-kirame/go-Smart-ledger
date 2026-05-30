@@ -197,23 +197,26 @@ flowchart TB
 
 ---
 
-## 离线 AI：OpenClaw 与账本 RAG
+## AI 助手与离线 RAG（可选）
 
-在**不出网**前提下，可用 [OpenClaw](https://github.com/openclaw/openclaw) + 本地 Ollama 对**已授权账本**做问答与检索。
+默认使用**云端 API**（DeepSeek、OpenAI 等）：`make up` 启动账本与 Web 后，在 **设置 → AI 助手** 填写 API Key 并启用即可对话。
+
+若需**完全离线**，可选启动 Ollama + OpenClaw（模型占用数 GB 磁盘）：
 
 | 组件 | 路径 / 说明 |
 |------|-------------|
-| **Docker 一键部署** | `make openclaw-up` 或 `scripts/setup-openclaw-docker.ps1` / `.sh` |
-| Compose | [`docker-compose.openclaw.yml`](docker-compose.openclaw.yml)：`ollama` + `openclaw-gateway`（`ghcr.io/openclaw/openclaw:latest`） |
-| 集成配置 | [`integrations/openclaw/`](integrations/openclaw/) 工作区、`openclaw.docker.json` → `data/openclaw/config/` |
-| 宿主机安装（可选） | `scripts/setup-openclaw.ps1` / `.sh` → 根目录 **`openclaw/`**（gitignore） |
-| 控制台 AI 设置 | **设置 → AI 助手** →「填入 Docker 默认地址」或手动填 Gateway / Ollama |
-| 控制台对话页 | **工作区 → AI 助手**（`/assistant`）：流式对话；可选同步账本 RAG 上下文 |
-| 聊天代理 API | `POST /api/v1/ai/chat`（JWT，服务端转发至本地 OpenAI 兼容端点，避免浏览器 CORS） |
+| **默认启动** | `make up` — 账本 + Web，**不含 Ollama** |
+| **离线 AI（可选）** | `make offline-ai-up` — Docker 启动 Ollama + OpenClaw Gateway |
+| Compose profile | `offline-ai`：`ollama`、`ollama-init`、`openclaw-gateway` |
+| 集成配置 | [`integrations/openclaw/`](integrations/openclaw/)；`scripts/init-openclaw-config.*` |
+| 控制台 AI 设置 | **设置 → AI** → 云端填 API Key；离线选 Ollama 并参阅页面提示 |
+| 控制台对话页 | **工作区 → AI 助手**（`/assistant`） |
+| 聊天代理 API | `POST /api/v1/ai/chat`（JWT，网关转发，无需浏览器直连模型） |
+| OpenClaw UI（离线） | http://127.0.0.1:18789 — 需 `make offline-ai-up` |
 | RAG 导出 API | `GET /api/v1/ledgers/:id/rag-export`（JWT，仅成员） |
 | 文档 | [`docs/openclaw-integration.md`](docs/openclaw-integration.md) |
 
-流程简述：`make up` 启动账本栈 → `make openclaw-up` 启动 AI 栈（可选）→ 控制台 **设置 → AI 助手** 启用并填 Ollama 地址 → **AI 助手** 页选择账本并「同步上下文」→ 开始对话（亦可用 OpenClaw Gateway 独立 UI）。
+**云端**：设置 → 选 DeepSeek 等 → 填 API Key → 启用。**离线**：设置 → 选 Ollama → 按页面「离线使用须知」部署；可选 `make offline-ai-up`。
 
 ---
 
@@ -223,8 +226,8 @@ flowchart TB
 go-Smart-ledger/
 ├── README.md                 # 本文件：计划 + 进度
 ├── Makefile                  # 全栈构建入口
-├── docker-compose.yml        # 一键启动后端 + MiniLedger
-├── docker-compose.openclaw.yml  # OpenClaw Gateway + Ollama
+├── docker-compose.yml        # 账本 + Web；profile offline-ai 含 Ollama + OpenClaw
+├── docker-compose.openclaw.yml  # 已废弃，指向主 compose（兼容旧脚本）
 ├── .env.openclaw.example       # OpenClaw Docker 环境变量模板
 ├── integrations/openclaw/    # OpenClaw 工作区与示例配置（不含上游源码）
 ├── openclaw/                 # 由 setup-openclaw 克隆（gitignore）

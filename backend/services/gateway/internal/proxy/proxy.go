@@ -14,6 +14,7 @@ func Handler(target string) http.HandlerFunc {
 		panic(err)
 	}
 	p := httputil.NewSingleHostReverseProxy(remote)
+	p.FlushInterval = -1
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Scheme = remote.Scheme
 		r.URL.Host = remote.Host

@@ -11,7 +11,16 @@ GOOS     ?= linux
 GOARCH   ?= amd64
 CGO      := 0
 LDFLAGS  := -s -w
-GOBUILD  := CGO_ENABLED=$(CGO) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -trimpath -ldflags "$(LDFLAGS)"
+
+ifeq ($(OS),Windows_NT)
+  EXE := .exe
+  GOBUILD = cmd /C "set CGO_ENABLED=$(CGO)&& set GOOS=$(GOOS)&& set GOARCH=$(GOARCH)&& $(GO) build -trimpath -ldflags \"-s -w\""
+  MKDIR_BIN = if not exist $(subst /,\,$1) mkdir $(subst /,\,$1)
+else
+  EXE :=
+  GOBUILD = CGO_ENABLED=$(CGO) GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -trimpath -ldflags "$(LDFLAGS)"
+  MKDIR_BIN = mkdir -p $1
+endif
 
 LEDGER_SRC_DIRS  := pkg/accounting pkg/aiproxy pkg/auditexport pkg/domain pkg/evmanchor pkg/importfile \
 	pkg/importxlsx pkg/ipfsclient pkg/ledgerhd pkg/ledgersvc pkg/miniledgerclient pkg/snowflake \
@@ -35,29 +44,28 @@ test:
 
 build-local: $(BIN_LOCAL)/ledger-api$(EXE) $(BIN_LOCAL)/storage-api$(EXE) $(BIN_LOCAL)/gateway-api$(EXE) $(BIN_LOCAL)/auth-api$(EXE)
 
-ifeq ($(OS),Windows_NT)
-  EXE := .exe
-else
-  EXE :=
-endif
-
 $(BIN_LOCAL)/ledger-api$(EXE):
-	@mkdir -p $(BIN_LOCAL)
+	@$(call MKDIR_BIN,$(BIN_LOCAL))
 	$(GO) build -trimpath -o $@ ./services/ledger
 
 $(BIN_LOCAL)/storage-api$(EXE):
-	@mkdir -p $(BIN_LOCAL)
+	@$(call MKDIR_BIN,$(BIN_LOCAL))
 	$(GO) build -trimpath -o $@ ./services/storage
 
 $(BIN_LOCAL)/gateway-api$(EXE):
-	@mkdir -p $(BIN_LOCAL)
+	@$(call MKDIR_BIN,$(BIN_LOCAL))
 	$(GO) build -trimpath -o $@ ./services/gateway
 
 $(BIN_LOCAL)/auth-api$(EXE):
-	@mkdir -p $(BIN_LOCAL)
+	@$(call MKDIR_BIN,$(BIN_LOCAL))
 	$(GO) build -trimpath -o $@ ./services/auth
 
-build-linux: build-linux-ledger build-linux-storage build-linux-gateway build-linux-auth
+build-linux:
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/build-linux.ps1
+else
+	$(MAKE) build-linux-ledger build-linux-storage build-linux-gateway build-linux-auth
+endif
 
 build-linux-ledger: $(BIN_LINUX)/ledger-api
 build-linux-storage: $(BIN_LINUX)/storage-api
@@ -66,22 +74,22 @@ build-linux-auth: $(BIN_LINUX)/auth-api
 
 $(BIN_LINUX)/ledger-api: $(MOD_DEPS) $(GOFILES_LEDGER)
 	@echo ">> building $@"
-	@mkdir -p $(BIN_LINUX)
+	@$(call MKDIR_BIN,$(BIN_LINUX))
 	$(GOBUILD) -o $@ ./services/ledger
 
 $(BIN_LINUX)/storage-api: $(MOD_DEPS) $(GOFILES_STORAGE)
 	@echo ">> building $@"
-	@mkdir -p $(BIN_LINUX)
+	@$(call MKDIR_BIN,$(BIN_LINUX))
 	$(GOBUILD) -o $@ ./services/storage
 
 $(BIN_LINUX)/gateway-api: $(MOD_DEPS) $(GOFILES_GATEWAY)
 	@echo ">> building $@"
-	@mkdir -p $(BIN_LINUX)
+	@$(call MKDIR_BIN,$(BIN_LINUX))
 	$(GOBUILD) -o $@ ./services/gateway
 
 $(BIN_LINUX)/auth-api: $(MOD_DEPS) $(GOFILES_AUTH)
 	@echo ">> building $@"
-	@mkdir -p $(BIN_LINUX)
+	@$(call MKDIR_BIN,$(BIN_LINUX))
 	$(GOBUILD) -o $@ ./services/auth
 
 check-linux-bins:

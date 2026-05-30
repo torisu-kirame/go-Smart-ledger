@@ -12,11 +12,12 @@ import (
 	xerrors "github.com/zeromicro/x/errors"
 )
 
-// RegisterAIHandlers proxies OpenAI-compatible chat to local LLM (F34 assistant UI).
+// RegisterAIHandlers proxies chat via OpenClaw Gateway (F34 assistant UI).
 func RegisterAIHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	prefix := rest.WithPrefix("/api/v1")
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodPost, Path: "/ai/chat", Handler: aiChatHandler(serverCtx)},
+		{Method: http.MethodPost, Path: "/ai/test", Handler: aiTestHandler(serverCtx)},
 	}, prefix)
 }
 
@@ -26,12 +27,12 @@ func aiChatHandler(_ *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
 			return
 		}
-		var req aiproxy.ChatRequest
+		var req aiproxy.OpenClawRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
 			return
 		}
-		if err := aiproxy.ProxyChat(w, r, req); err != nil {
+		if err := aiproxy.ProxyOpenClawChat(w, r, req); err != nil {
 			if err == aiproxy.ErrInvalidBaseURL {
 				httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
 				return
@@ -39,5 +40,28 @@ func aiChatHandler(_ *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return
 		}
+	}
+}
+
+func aiTestHandler(_ *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if userIDFromHeader(r) == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var req aiproxy.TestOpenClawRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		if err := aiproxy.TestOpenClaw(r, req); err != nil {
+			if err == aiproxy.ErrInvalidBaseURL || err == aiproxy.ErrOpenClawGateway || err == aiproxy.ErrOpenClawTest {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
+				return
+			}
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"ok": true})
 	}
 }

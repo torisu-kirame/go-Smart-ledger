@@ -1,6 +1,8 @@
 Name: ledger-api
 Host: 0.0.0.0
 Port: 28888
+# OpenClaw 流式对话首条回复可能较慢，需放宽 HTTP 超时（毫秒）
+Timeout: 600000
 
 MiniLedger:
   BaseURL: http://miniledger:24441

@@ -139,6 +139,7 @@ func main() {
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/accounting/reports", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/audit-export", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ai/chat", Handler: ledgerProxy},
+		{Method: http.MethodPost, Path: "/api/v1/ai/test", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/accounting/attachments", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/accounting/attachments", Handler: ledgerProxy},
 		{Method: http.MethodPatch, Path: "/api/v1/ledgers/:id/accounting/attachments/:attachId", Handler: ledgerProxy},

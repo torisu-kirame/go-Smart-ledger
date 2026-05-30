@@ -1,6 +1,8 @@
 Name: gateway-api
 Host: 0.0.0.0
 Port: 28080
+# 代理 AI 流式对话时需保持长连接
+Timeout: 600000
 
 Auth:
   AccessSecret: smart-ledger-access-secret-change-me

@@ -10,34 +10,49 @@
         "http://localhost:25173",
         "http://127.0.0.1:25173"
       ]
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    },
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "deepseek": {
+        "baseUrl": "https://api.deepseek.com",
+        "apiKey": "",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "deepseek-chat",
+            "name": "DeepSeek Chat",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 128000,
+            "maxTokens": 8192
+          }
+        ]
+      }
     }
   },
   "agents": {
     "defaults": {
       "workspace": "workspace-smart-ledger",
+      "timeoutSeconds": 180,
       "model": {
-        "provider": "openai",
-        "baseUrl": "http://ollama:11434/v1",
-        "id": "llama3.2",
-        "apiKey": "ollama"
-      }
-    }
-  },
-  "plugins": {
-    "slots": {
-      "memory": "memory-lancedb"
-    },
-    "entries": {
-      "memory-lancedb": {
-        "enabled": true,
-        "config": {
-          "embedding": {
-            "baseUrl": "http://ollama:11434/v1",
-            "model": "nomic-embed-text",
-            "apiKey": "ollama"
-          },
-          "dbPath": "/data/openclaw/lancedb"
-        }
+        "primary": "deepseek/deepseek-chat"
+      },
+      "models": {
+        "deepseek/deepseek-chat": {}
       }
     }
   }

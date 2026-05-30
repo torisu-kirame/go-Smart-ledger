@@ -1,11 +1,13 @@
 import { authHeaders } from './http'
-import { loadAiConfig } from '../utils/aiConfig'
+import {
+  isAiConfigReady,
+  loadAiConfig,
+  markConnectionVerified,
+  openClawConfigObject,
+  saveAiConfig,
+} from '../utils/aiConfig'
 
 const BASE = '/api/v1'
-
-const SYSTEM_PROMPT = `你是 Smart Ledger 智能账本助手。你帮助用户理解账本流水、封账锚定、复式记账与导入数据。
-回答应简洁、准确；涉及金额与日期时引用上下文中的具体数字。若上下文不足，请明确说明并建议用户同步账本或选择其他账本。
-不要编造不存在的交易或链上哈希。默认使用简体中文回答。`
 
 export function buildLedgerContextPrompt(exportData, ledgerName) {
   if (!exportData?.chunks?.length) {
@@ -22,16 +24,76 @@ export function buildLedgerContextPrompt(exportData, ledgerName) {
 }
 
 /**
- * Stream chat completion via gateway proxy (avoids browser CORS to Ollama).
- * @param {object} params
- * @param {Array<{role:string,content:string}>} params.messages
- * @param {AbortSignal} [params.signal]
- * @param {(delta: string) => void} [params.onDelta]
+ * Test OpenClaw Gateway connection; on success marks config as verified.
  */
-export async function streamChat({ messages, signal, onDelta }) {
+export async function testAiConnection(cfg = loadAiConfig()) {
+  let openclawConfig
+  try {
+    openclawConfig = openClawConfigObject(cfg)
+  } catch {
+    throw new Error('OPENCLAW_CONFIG_INVALID')
+  }
+  const res = await fetch(`${BASE}/ai/test`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({
+      gatewayUrl: cfg.openclawGateway,
+      gatewayToken: cfg.openclawGatewayToken,
+      openclawConfig,
+    }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = res.statusText
+    try {
+      const j = JSON.parse(text)
+      msg = j.msg || j.message || msg
+    } catch {
+      if (text) msg = text
+    }
+    throw new Error(msg)
+  }
+  saveAiConfig(markConnectionVerified({ ...cfg, enabled: true }))
+  return true
+}
+
+/**
+ * Parse one SSE data line from OpenClaw / OpenAI-compatible stream.
+ */
+function parseSseDataLine(line, onDelta) {
+  const trimmed = line.trim()
+  if (!trimmed.startsWith('data:')) return { done: false }
+  const payload = trimmed.slice(5).trim()
+  if (payload === '[DONE]') return { done: true }
+  try {
+    const chunk = JSON.parse(payload)
+    if (chunk.error?.message) {
+      throw new Error(chunk.error.message)
+    }
+    const choice = chunk.choices?.[0]
+    const delta = choice?.delta?.content || choice?.message?.content || ''
+    if (delta && onDelta) onDelta(delta)
+    return { done: false, delta }
+  } catch (e) {
+    if (e instanceof Error && e.message && !e.message.includes('JSON')) throw e
+    return { done: false }
+  }
+}
+
+/**
+ * Stream chat via OpenClaw Gateway (backend proxy).
+ */
+export async function streamChat({ messages, signal, onDelta, agentUser }) {
   const cfg = loadAiConfig()
   if (!cfg.enabled) {
     throw new Error('AI_DISABLED')
+  }
+  if (!isAiConfigReady(cfg)) {
+    throw new Error('CONNECTION_NOT_VERIFIED')
   }
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',
@@ -42,9 +104,10 @@ export async function streamChat({ messages, signal, onDelta }) {
       ...authHeaders(),
     },
     body: JSON.stringify({
-      baseUrl: cfg.baseUrl,
-      apiKey: cfg.apiKey || 'ollama',
-      model: cfg.chatModel,
+      gatewayUrl: cfg.openclawGateway,
+      gatewayToken: cfg.openclawGatewayToken,
+      openclawModel: cfg.openclawModel || 'openclaw/default',
+      agentUser: agentUser || 'smart-ledger-default',
       messages,
       stream: true,
     }),
@@ -77,30 +140,23 @@ export async function streamChat({ messages, signal, onDelta }) {
     const parts = buffer.split('\n')
     buffer = parts.pop() || ''
     for (const line of parts) {
-      const trimmed = line.trim()
-      if (!trimmed.startsWith('data:')) continue
-      const payload = trimmed.slice(5).trim()
-      if (payload === '[DONE]') continue
-      try {
-        const chunk = JSON.parse(payload)
-        const delta = chunk.choices?.[0]?.delta?.content || ''
-        if (delta) {
-          full += delta
-          if (onDelta) onDelta(delta)
-        }
-      } catch {
-        /* skip malformed sse line */
-      }
+      const { done } = parseSseDataLine(line, (delta) => {
+        full += delta
+        if (onDelta) onDelta(delta)
+      })
+      if (done) break
     }
+  }
+  if (!full.trim()) {
+    throw new Error('AI_EMPTY_RESPONSE')
   }
   return full
 }
 
-export function defaultSystemMessages(ledgerContext = '') {
+export function defaultSystemMessages(ledgerContext = '', systemPrompt = '') {
+  const base = systemPrompt?.trim() || '你是 Smart Ledger 智能账本助手。'
   const sys = ledgerContext
-    ? `${SYSTEM_PROMPT}\n\n---\n账本上下文\n---\n${ledgerContext}`
-    : SYSTEM_PROMPT
+    ? `${base}\n\n---\n账本上下文\n---\n${ledgerContext}`
+    : base
   return [{ role: 'system', content: sys }]
 }
-
-export { SYSTEM_PROMPT }
