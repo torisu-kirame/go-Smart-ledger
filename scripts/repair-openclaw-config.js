@@ -56,19 +56,13 @@ if (!cfg.gateway?.mode) {
   console.log('>> OpenClaw: added gateway.mode')
 }
 
-if (!cfg.gateway?.auth?.token) {
-  cfg.gateway = {
-    ...(cfg.gateway || {}),
-    auth: {
-      mode: 'token',
-      token: '${OPENCLAW_GATEWAY_TOKEN}',
-      ...(cfg.gateway?.auth || {}),
-    },
+if (cfg.gateway?.auth?.token) {
+  delete cfg.gateway.auth.token
+  if (Object.keys(cfg.gateway.auth).length === 0) {
+    delete cfg.gateway.auth
   }
-  if (!cfg.gateway.auth.mode) cfg.gateway.auth.mode = 'token'
-  if (!cfg.gateway.auth.token) cfg.gateway.auth.token = '${OPENCLAW_GATEWAY_TOKEN}'
   changed = true
-  console.log('>> OpenClaw: added gateway.auth.token')
+  console.log('>> OpenClaw: removed gateway.auth.token (use OPENCLAW_GATEWAY_TOKEN env)')
 }
 
 const model = cfg.agents?.defaults?.model

@@ -17,10 +17,6 @@
           "enabled": true
         }
       }
-    },
-    "auth": {
-      "mode": "token",
-      "token": "${OPENCLAW_GATEWAY_TOKEN}"
     }
   },
   "models": {

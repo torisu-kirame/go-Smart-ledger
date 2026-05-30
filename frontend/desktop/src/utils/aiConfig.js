@@ -404,10 +404,6 @@ export function buildOpenClawConfig(cfg = loadAiConfig()) {
           chatCompletions: { enabled: true },
         },
       },
-      auth: {
-        mode: 'token',
-        token: '${OPENCLAW_GATEWAY_TOKEN}',
-      },
     },
     models: {
       mode: 'merge',

@@ -64,6 +64,25 @@ export async function testAiConnection(cfg = loadAiConfig()) {
 /**
  * Parse one SSE data line from OpenClaw / OpenAI-compatible stream.
  */
+function extractStreamDelta(chunk) {
+  const choice = chunk?.choices?.[0]
+  if (choice) {
+    const fromDelta = choice.delta?.content
+    if (typeof fromDelta === 'string' && fromDelta) return fromDelta
+    const fromMsg = choice.message?.content
+    if (typeof fromMsg === 'string' && fromMsg) return fromMsg
+  }
+  if (typeof chunk?.content === 'string' && chunk.content) return chunk.content
+  if (typeof chunk?.text === 'string' && chunk.text) return chunk.text
+  if (typeof chunk?.delta === 'string' && chunk.delta) return chunk.delta
+  const msg = chunk?.message
+  if (typeof msg?.content === 'string' && msg.content) return msg.content
+  if (Array.isArray(msg?.content)) {
+    return msg.content.map((c) => c?.text || c?.content || '').join('')
+  }
+  return ''
+}
+
 function parseSseDataLine(line, onDelta) {
   const trimmed = line.trim()
   if (!trimmed.startsWith('data:')) return { done: false }
@@ -74,13 +93,21 @@ function parseSseDataLine(line, onDelta) {
     if (chunk.error?.message) {
       throw new Error(chunk.error.message)
     }
-    const choice = chunk.choices?.[0]
-    const delta = choice?.delta?.content || choice?.message?.content || ''
+    const delta = extractStreamDelta(chunk)
     if (delta && onDelta) onDelta(delta)
     return { done: false, delta }
   } catch (e) {
-    if (e instanceof Error && e.message && !e.message.includes('JSON')) throw e
-    return { done: false }
+    if (e instanceof SyntaxError) return { done: false }
+    throw e
+  }
+}
+
+function tryParseJsonCompletion(text) {
+  try {
+    const data = JSON.parse(text)
+    return extractStreamDelta(data) || data?.choices?.[0]?.message?.content || ''
+  } catch {
+    return ''
   }
 }
 
@@ -137,14 +164,38 @@ export async function streamChat({ messages, signal, onDelta, agentUser }) {
     const { done, value } = await reader.read()
     if (done) break
     buffer += decoder.decode(value, { stream: true })
-    const parts = buffer.split('\n')
+    const parts = buffer.split(/\r?\n/)
     buffer = parts.pop() || ''
     for (const line of parts) {
-      const { done } = parseSseDataLine(line, (delta) => {
+      const { done: streamDone } = parseSseDataLine(line, (delta) => {
         full += delta
         if (onDelta) onDelta(delta)
       })
-      if (done) break
+      if (streamDone) break
+    }
+  }
+  if (buffer.trim()) {
+    for (const line of buffer.split(/\r?\n/)) {
+      const { done: streamDone } = parseSseDataLine(line, (delta) => {
+        full += delta
+        if (onDelta) onDelta(delta)
+      })
+      if (streamDone) break
+    }
+    if (!full.trim()) {
+      const fallback =
+        tryParseJsonCompletion(buffer) ||
+        tryParseJsonCompletion(
+          buffer
+            .split(/\r?\n/)
+            .map((line) => line.trim().replace(/^data:\s*/, ''))
+            .filter(Boolean)
+            .join('')
+        )
+      if (fallback) {
+        full = fallback
+        if (onDelta) onDelta(fallback)
+      }
     }
   }
   if (!full.trim()) {

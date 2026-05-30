@@ -258,6 +258,10 @@ export const messages = {
       ledgerModalTitle: '账本上下文',
       forAgent: '当前 Agent',
       clearLedgerContext: '清除上下文',
+      agentPathLabel: 'Agent 目录',
+      chatHistoryPathLabel: '历史记录目录',
+      pathHint: '路径相对于 OpenClaw 配置根目录（如 data/openclaw/config）。历史记录默认保存在 Agent 目录下的 ChatMessages 中；修改后关闭弹窗即保存。',
+      pathResetDefault: '恢复默认路径',
     },
   },
   en: {
@@ -519,6 +523,10 @@ export const messages = {
       ledgerModalTitle: 'Ledger context',
       forAgent: 'Agent',
       clearLedgerContext: 'Clear context',
+      agentPathLabel: 'Agent directory',
+      chatHistoryPathLabel: 'Chat history directory',
+      pathHint: 'Paths are relative to the OpenClaw config root (e.g. data/openclaw/config). History defaults to ChatMessages under the agent folder. Saved when you close this dialog.',
+      pathResetDefault: 'Reset to defaults',
     },
   },
 }

@@ -304,17 +304,10 @@ func ensureGatewayDefaults(cfg map[string]any) {
 	} else if _, ok := chat["enabled"]; !ok {
 		chat["enabled"] = true
 	}
-	if auth, ok := gw["auth"].(map[string]any); !ok || auth == nil {
-		gw["auth"] = map[string]any{
-			"mode":  "token",
-			"token": "${OPENCLAW_GATEWAY_TOKEN}",
-		}
-	} else {
-		if _, ok := auth["mode"]; !ok {
-			auth["mode"] = "token"
-		}
-		if _, ok := auth["token"]; !ok {
-			auth["token"] = "${OPENCLAW_GATEWAY_TOKEN}"
+	if auth, ok := gw["auth"].(map[string]any); ok && auth != nil {
+		delete(auth, "token")
+		if len(auth) == 0 {
+			delete(gw, "auth")
 		}
 	}
 	if _, ok := gw["controlUi"]; !ok {

@@ -96,12 +96,12 @@
           </div>
           <article
             v-for="(msg, i) in messages"
-            :key="i"
+            :key="`${agentsState.activeId}-${i}-${msg.role}`"
             class="chat-bubble"
             :class="msg.role === 'user' ? 'chat-bubble--user' : 'chat-bubble--assistant'"
           >
-            <header class="chat-bubble__role">
-              {{ msg.role === 'user' ? t('assistant.roleUser') : activeAgent?.name || t('assistant.roleAssistant') }}
+            <header v-if="msg.role !== 'user'" class="chat-bubble__role">
+              {{ activeAgent?.name || t('assistant.roleAssistant') }}
             </header>
             <div class="chat-bubble__body">{{ msg.content }}</div>
           </article>
@@ -213,6 +213,36 @@
         <p v-if="activeAgent" class="assistant-modal__agent">
           {{ t('assistant.forAgent') }}：{{ activeAgent.name }}
         </p>
+        <div class="agent-path-settings">
+          <div class="form-row">
+            <label>{{ t('assistant.agentPathLabel') }}</label>
+            <input
+              v-model="agentPathDraft"
+              class="mono path-input"
+              :placeholder="defaultAgentPathPlaceholder"
+              spellcheck="false"
+            />
+          </div>
+          <div class="form-row">
+            <label>{{ t('assistant.chatHistoryPathLabel') }}</label>
+            <input
+              v-model="chatHistoryPathDraft"
+              class="mono path-input"
+              :placeholder="defaultChatPathPlaceholder"
+              spellcheck="false"
+            />
+          </div>
+          <p class="hint-text">{{ t('assistant.pathHint') }}</p>
+          <button
+            type="button"
+            class="icon-btn btn-ghost btn-sm"
+            :title="t('assistant.pathResetDefault')"
+            @click="resetAgentPathsDraft"
+          >
+            <AppIcon name="refresh" size="sm" />
+            <span>{{ t('assistant.pathResetDefault') }}</span>
+          </button>
+        </div>
         <div class="workspace-layout">
           <ul class="workspace-files">
             <li
@@ -278,6 +308,7 @@ import AppIcon from '../components/AppIcon.vue'
 import DeleteButton from '../components/DeleteButton.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { api } from '../api/http'
+import { loadAgentFromDisk, saveAgentToDisk } from '../api/agentStorage'
 import {
   buildLedgerContextPrompt,
   defaultSystemMessages,
@@ -288,13 +319,19 @@ import { WORKSPACE_FILE_NAMES } from '../utils/agentWorkspace'
 import {
   addAgent,
   agentSystemPrompt,
+  agentPathForNewAgent,
+  DEFAULT_AGENT_PATH,
+  defaultChatHistoryPath,
   getActiveAgent,
   loadAgentsState,
   removeAgent,
   resetAgentWorkspaceFiles,
+  resolveAgentPaths,
+  saveAgentMessages,
+  saveAgentsState,
   setActiveAgent,
   updateAgentLedgerContext,
-  updateAgentMessages,
+  updateAgentPaths,
   updateAgentWorkspaceFiles,
 } from '../utils/aiAgents'
 import {
@@ -321,12 +358,16 @@ const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_KEY) === '1')
 
 const agentsState = ref(loadAgentsState())
 const activeAgent = computed(() => getActiveAgent(agentsState.value))
-const messages = computed(() => activeAgent.value?.messages || [])
+const messages = computed(() => activeAgent.value?.messages ?? [])
 const agentContextReady = computed(() => !!activeAgent.value?.ledgerContextText?.trim())
 
 const workspaceFileNames = WORKSPACE_FILE_NAMES
 const selectedWorkspaceFile = ref(WORKSPACE_FILE_NAMES[0])
 const workspaceDraft = ref('')
+const agentPathDraft = ref('')
+const chatHistoryPathDraft = ref('')
+const defaultAgentPathPlaceholder = DEFAULT_AGENT_PATH
+const defaultChatPathPlaceholder = defaultChatHistoryPath(DEFAULT_AGENT_PATH)
 
 const ledgers = ref([])
 const loadingLedgers = ref(false)
@@ -339,6 +380,8 @@ const streaming = ref(false)
 const chatError = ref('')
 const threadEl = ref(null)
 let abortCtrl = null
+let diskSaveTimer = null
+let diskLoadToken = 0
 
 const showAgentModal = ref(false)
 const showLedgerModal = ref(false)
@@ -357,6 +400,88 @@ function loadWorkspaceDraft() {
   workspaceDraft.value = files[selectedWorkspaceFile.value] || ''
 }
 
+function loadAgentPathsDraft() {
+  const agent = activeAgent.value
+  if (!agent) return
+  const { agentPath, chatHistoryPath } = resolveAgentPaths(agent)
+  agentPathDraft.value = agentPath
+  chatHistoryPathDraft.value = chatHistoryPath
+}
+
+function resetAgentPathsDraft() {
+  const agent = activeAgent.value
+  if (!agent) return
+  const isMain =
+    agent.name === '默认助手' ||
+    !agent.agentPath?.trim() ||
+    agent.agentPath === DEFAULT_AGENT_PATH
+  const base = isMain ? DEFAULT_AGENT_PATH : agentPathForNewAgent(agent.name, agent.id)
+  agentPathDraft.value = base
+  chatHistoryPathDraft.value = defaultChatHistoryPath(base)
+}
+
+function persistAgentPathsDraft() {
+  const id = agentsState.value.activeId
+  if (!id) return
+  updateAgentPaths(id, agentPathDraft.value, chatHistoryPathDraft.value)
+  refreshAgents()
+  loadAgentPathsDraft()
+}
+
+function scheduleDiskSave(agentId, messages) {
+  if (!agentId || !messages?.length) return
+  if (diskSaveTimer) clearTimeout(diskSaveTimer)
+  diskSaveTimer = setTimeout(() => {
+    diskSaveTimer = null
+    flushDiskSave(agentId, messages)
+  }, 600)
+}
+
+function flushDiskSave(agentId, messages) {
+  const id = agentId || agentsState.value.activeId
+  if (!id) return
+  const agent = agentsState.value.agents.find((a) => a.id === id)
+  if (!agent) return
+  const payload = messages || agent.messages
+  if (!payload?.length) return
+  saveAgentToDisk(agent, { messages: payload }).catch((err) => {
+    console.warn('[assistant] disk save failed:', err)
+  })
+}
+
+function messageContentLength(list) {
+  return (list || []).reduce((n, m) => n + (m.content?.length || 0), 0)
+}
+
+async function loadAgentDataFromDisk(agentId, { loadWorkspace = false } = {}) {
+  const agent = agentsState.value.agents.find((a) => a.id === agentId)
+  if (!agent) return
+  const token = ++diskLoadToken
+  const localMessages = agent.messages || []
+  try {
+    const data = await loadAgentFromDisk(agent, { loadWorkspace })
+    if (token !== diskLoadToken) return
+    const diskMessages = Array.isArray(data?.messages) ? data.messages : []
+    const pickMessages =
+      messageContentLength(diskMessages) > messageContentLength(localMessages)
+        ? diskMessages
+        : localMessages
+    if (
+      pickMessages.length &&
+      messageContentLength(pickMessages) > messageContentLength(localMessages)
+    ) {
+      applyMessages(agentId, pickMessages, { skipDisk: true })
+    }
+    if (loadWorkspace && data?.workspaceFiles && Object.keys(data.workspaceFiles).length) {
+      updateAgentWorkspaceFiles(agentId, data.workspaceFiles)
+      refreshAgents()
+      loadWorkspaceDraft()
+    }
+  } catch (err) {
+    console.warn('[assistant] disk load failed:', err)
+  }
+}
+
 function selectWorkspaceFile(name) {
   saveWorkspaceDraft()
   selectedWorkspaceFile.value = name
@@ -366,8 +491,15 @@ function selectWorkspaceFile(name) {
 function saveWorkspaceDraft() {
   const id = agentsState.value.activeId
   if (!id) return
+  persistAgentPathsDraft()
   updateAgentWorkspaceFiles(id, { [selectedWorkspaceFile.value]: workspaceDraft.value })
   refreshAgents()
+  const agent = getActiveAgent(agentsState.value)
+  if (agent) {
+    saveAgentToDisk(agent, { workspaceFiles: agent.workspaceFiles }).catch((err) => {
+      console.warn('[assistant] workspace disk save failed:', err)
+    })
+  }
 }
 
 function resetWorkspaceFiles() {
@@ -380,6 +512,28 @@ function resetWorkspaceFiles() {
 
 function refreshAgents() {
   agentsState.value = loadAgentsState()
+}
+
+/** 先更新内存中的消息列表，再写入 localStorage 与磁盘 */
+function applyMessages(agentId, nextMessages, { skipDisk = false } = {}) {
+  if (!agentId) return
+  const snapshot = nextMessages.map((m) => ({
+    role: m.role,
+    content: m.content ?? '',
+  }))
+  const base = agentsState.value
+  const idx = base.agents.findIndex((a) => a.id === agentId)
+  if (idx < 0) return
+
+  agentsState.value = {
+    ...base,
+    agents: base.agents.map((a) =>
+      a.id === agentId ? { ...a, messages: snapshot.map((m) => ({ ...m })) } : a
+    ),
+  }
+  saveAgentMessages(agentId, snapshot)
+  saveAgentsState(agentsState.value)
+  if (!skipDisk) scheduleDiskSave(agentId, snapshot)
 }
 
 function syncAgentLedgerFields() {
@@ -396,6 +550,7 @@ function switchAgent(id) {
   chatError.value = ''
   syncAgentLedgerFields()
   loadWorkspaceDraft()
+  loadAgentPathsDraft()
   showLedgerModal.value = false
   showWorkspaceModal.value = false
   nextTick(() => scrollToBottom())
@@ -439,6 +594,7 @@ function closeLedgerModal() {
 
 function openWorkspaceModal() {
   loadWorkspaceDraft()
+  loadAgentPathsDraft()
   showWorkspaceModal.value = true
 }
 
@@ -496,14 +652,14 @@ function stop() {
 }
 
 function persistMessages(next) {
-  const id = agentsState.value.activeId
-  updateAgentMessages(id, next)
-  refreshAgents()
+  applyMessages(agentsState.value.activeId, next)
 }
 
 async function send() {
+  const agentId = agentsState.value.activeId
+  const agent = activeAgent.value
   const text = input.value.trim()
-  if (!text || streaming.value || !aiEnabled.value || !activeAgent.value) return
+  if (!text || streaming.value || !aiEnabled.value || !agentId || !agent) return
 
   chatError.value = ''
   const next = [...messages.value, { role: 'user', content: text }]
@@ -512,8 +668,8 @@ async function send() {
   await scrollToBottom()
 
   const history = next.map((m) => ({ role: m.role, content: m.content }))
-  const systemPrompt = agentSystemPrompt(activeAgent.value)
-  const ledgerContext = activeAgent.value.ledgerContextText || ''
+  const systemPrompt = agentSystemPrompt(agent)
+  const ledgerContext = agent.ledgerContextText || ''
   const payload = [
     ...defaultSystemMessages(ledgerContext, systemPrompt),
     ...history,
@@ -529,23 +685,23 @@ async function send() {
     await streamChat({
       messages: payload,
       signal: abortCtrl.signal,
-      agentUser: `agent:${activeAgent.value.id}`,
+      agentUser: `agent:${agentId}`,
       onDelta(delta) {
-        const current = loadAgentsState()
-        const agent = current.agents.find((a) => a.id === current.activeId)
-        if (!agent?.messages[assistantIdx]) return
-        agent.messages[assistantIdx].content += delta
-        updateAgentMessages(current.activeId, [...agent.messages])
-        refreshAgents()
+        const current = agentsState.value
+        const live = current.agents.find((a) => a.id === agentId)
+        if (!live?.messages?.[assistantIdx]) return
+        const updated = live.messages.map((m, i) =>
+          i === assistantIdx ? { ...m, content: m.content + delta } : { ...m }
+        )
+        applyMessages(agentId, updated)
         scrollToBottom()
       },
     })
   } catch (e) {
-    const current = loadAgentsState()
-    const agent = current.agents.find((a) => a.id === current.activeId)
-    let msgs = agent?.messages || []
+    const live = agentsState.value.agents.find((a) => a.id === agentId)
+    let msgs = live?.messages ? [...live.messages] : []
     if (e?.name === 'AbortError') {
-      if (!msgs[assistantIdx]?.content) {
+      if (!msgs[assistantIdx]?.content?.trim()) {
         msgs = msgs.slice(0, assistantIdx)
       }
     } else if (e?.message === 'AI_DISABLED') {
@@ -564,8 +720,7 @@ async function send() {
       chatError.value = e?.message || String(e)
       msgs = msgs.slice(0, assistantIdx)
     }
-    updateAgentMessages(current.activeId, msgs)
-    refreshAgents()
+    applyMessages(agentId, msgs)
   } finally {
     streaming.value = false
     abortCtrl = null
@@ -581,21 +736,37 @@ onMounted(() => {
   loadLedgers()
   syncAgentLedgerFields()
   loadWorkspaceDraft()
+  loadAgentPathsDraft()
+  const id = agentsState.value.activeId
+  if (id) loadAgentDataFromDisk(id)
   window.addEventListener(AI_CONFIG_CHANGED_EVENT, refreshAiGate)
+  window.addEventListener('pagehide', onPageHide)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshAiGate()
   })
 })
 
+function onPageHide() {
+  if (diskSaveTimer) {
+    clearTimeout(diskSaveTimer)
+    diskSaveTimer = null
+  }
+  flushDiskSave()
+}
+
 onUnmounted(() => {
   window.removeEventListener(AI_CONFIG_CHANGED_EVENT, refreshAiGate)
+  window.removeEventListener('pagehide', onPageHide)
+  if (diskSaveTimer) clearTimeout(diskSaveTimer)
 })
 
 watch(
   () => agentsState.value.activeId,
-  () => {
+  (id) => {
     syncAgentLedgerFields()
     loadWorkspaceDraft()
+    loadAgentPathsDraft()
+    if (id) loadAgentDataFromDisk(id)
   }
 )
 </script>
@@ -606,8 +777,9 @@ watch(
   flex-direction: column;
   gap: 0.75rem;
   max-width: none;
-  height: calc(100vh - 3rem);
-  min-height: 0;
+  height: calc(100vh - 5rem);
+  min-height: 28rem;
+  overflow: hidden;
 }
 
 .assistant-settings-link {
@@ -623,6 +795,7 @@ watch(
   grid-template-columns: min(220px, 26%) minmax(0, 1fr);
   gap: 0.75rem;
   align-items: stretch;
+  overflow: hidden;
   transition: grid-template-columns 0.2s ease;
 }
 
@@ -742,9 +915,11 @@ watch(
 .assistant-main {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
   min-width: 0;
   gap: 0.5rem;
+  overflow: hidden;
 }
 
 .chat-topbar {
@@ -789,13 +964,14 @@ watch(
 }
 
 .assistant-thread {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 12rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   padding: 1rem;
+  margin-bottom: 0 !important;
 }
 
 .thread-empty {
@@ -880,6 +1056,7 @@ watch(
 .assistant-composer {
   flex-shrink: 0;
   padding: 0.65rem 0.75rem;
+  margin-bottom: 0 !important;
 }
 
 .composer-row {
@@ -993,6 +1170,20 @@ watch(
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--text);
+}
+
+.agent-path-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.path-input {
+  width: 100%;
+  font-size: 0.82rem;
 }
 
 .workspace-layout {
