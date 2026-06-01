@@ -1,9 +1,14 @@
-import { computed, inject, provide, ref, unref, watch } from 'vue'
+import { computed, inject, onUnmounted, provide, ref, unref, watch } from 'vue'
 import { api } from '../api/http'
 import { useNotifyStore } from '../stores/notify'
 import { loadLocalGroupKey } from '../utils/e2eCrypto'
 import { refreshLedgerFromServer } from '../utils/ledgerRefresh'
-import { resolveSchema } from '../utils/entrySchema'
+import { resolveSchemaWithTemplates } from '../utils/entrySchema'
+import {
+  ENTRY_TEMPLATES_CHANGED,
+  loadEntryTemplates,
+  useEntryTemplates,
+} from '../composables/useEntryTemplates'
 import {
   DEFAULT_TABLE_ID,
   isMultiTableLedger,
@@ -52,13 +57,17 @@ export function provideLedgerDetail(ledgerIdSource) {
 
   const activeTableId = ref(DEFAULT_TABLE_ID)
 
-  const tables = computed(() => ledgerTables(ledger.value))
+  const { templates: entryTemplates } = useEntryTemplates()
+  loadEntryTemplates()
+
+  const tables = computed(() => ledgerTables(ledger.value, entryTemplates.value))
   const multiTableEnabled = computed(() => isMultiTableLedger(ledger.value))
-  const schema = computed(() =>
-    multiTableEnabled.value
-      ? resolveSchemaForTable(ledger.value, activeTableId.value)
-      : resolveSchema(ledger.value)
-  )
+  const schema = computed(() => {
+    const list = entryTemplates.value
+    return multiTableEnabled.value
+      ? resolveSchemaForTable(ledger.value, activeTableId.value, list)
+      : resolveSchemaWithTemplates(ledger.value, list)
+  })
 
   watch(
     () => ledger.value?.id,
@@ -142,6 +151,17 @@ export function provideLedgerDetail(ledgerIdSource) {
     notify.error(v)
     error.value = ''
   })
+
+  const onTemplatesChanged = () => {
+    loadEntryTemplates(true)
+    load()
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener(ENTRY_TEMPLATES_CHANGED, onTemplatesChanged)
+    onUnmounted(() => {
+      window.removeEventListener(ENTRY_TEMPLATES_CHANGED, onTemplatesChanged)
+    })
+  }
 
   const ctx = {
     ledgerId,

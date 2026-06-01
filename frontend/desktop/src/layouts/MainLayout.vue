@@ -95,7 +95,6 @@ const navGroups = computed(() => [
       navItem('/', 'layout.nav.home', true),
       navItem('/assistant', 'layout.nav.assistant', true),
       navItem('/ledgers', 'layout.nav.ledgers', false),
-      navItem('/entry-templates', 'layout.nav.templates', true),
     ],
   },
   {

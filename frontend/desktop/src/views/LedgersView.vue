@@ -127,6 +127,10 @@ import AppSelect from '../components/AppSelect.vue'
 import DeleteButton from '../components/DeleteButton.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
+import {
+  loadEntryTemplates,
+  useEntryTemplates,
+} from '../composables/useEntryTemplates'
 import { buildEncryptionForCreate, saveLocalGroupKey, saveLocalPassphrase } from '../utils/e2eCrypto'
 import { DEFAULT_STORAGE_LOCATION, storageLocationLabel } from '../utils/ledgerStorage'
 import {
@@ -148,7 +152,7 @@ const error = ref('')
 const success = ref('')
 const show = ref(false)
 const saving = ref(false)
-const templates = ref([DEFAULT_ENTRY_SCHEMA])
+const { templates } = useEntryTemplates()
 const bookkeepingModeOptions = [
   { value: BOOKKEEPING_SIMPLE, label: '简单流水（模板字段）' },
   { value: BOOKKEEPING_PROFESSIONAL, label: '专业复式（科目与凭证）' },
@@ -296,8 +300,10 @@ async function sendInvitesToUsers(ledgerId, userIds) {
 
 onMounted(async () => {
   try {
-    const res = await api.listEntryTemplates()
-    if (res.templates?.length) templates.value = res.templates
+    await loadEntryTemplates()
+    if (!templates.value.length) {
+      templates.value = [DEFAULT_ENTRY_SCHEMA]
+    }
   } catch {
     templates.value = [DEFAULT_ENTRY_SCHEMA]
   }

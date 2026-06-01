@@ -9,6 +9,7 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/mapper"
 	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/svc"
+	"github.com/smart-ledger/go-smart-ledger/backend/services/ledger/internal/types"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
@@ -19,6 +20,7 @@ import (
 func RegisterCollaborationHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	prefix := rest.WithPrefix("/api/v1")
 	server.AddRoutes([]rest.Route{
+		{Method: http.MethodPost, Path: "/ledgers/sync-entry-template", Handler: syncEntryTemplateHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/invites/mine", Handler: myInvitesHandler(serverCtx)},
 		{Method: http.MethodGet, Path: "/ledgers/:id/pending", Handler: listPendingHandler(serverCtx)},
 		{Method: http.MethodPost, Path: "/ledgers/:id/entries/propose", Handler: proposeEntryHandler(serverCtx)},
@@ -467,4 +469,44 @@ func eventToMap(ev *domain.EventRecord) map[string]any {
 		}
 	}
 	return out
+}
+
+type syncEntryTemplateBody struct {
+	TemplateId string              `json:"templateId"`
+	Fields     []types.EntryFieldDef `json:"fields"`
+}
+
+func syncEntryTemplateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid := userIDFromHeader(r)
+		if uid == "" {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(401, "unauthorized"))
+			return
+		}
+		var body syncEntryTemplateBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json"))
+			return
+		}
+		fields := make([]domain.EntryFieldDef, len(body.Fields))
+		for i, f := range body.Fields {
+			fields[i] = domain.EntryFieldDef{
+				Key:      f.Key,
+				Label:    f.Label,
+				Type:     domain.FieldType(f.Type),
+				Required: f.Required,
+			}
+		}
+		schema := domain.EntrySchema{TemplateID: body.TemplateId, Fields: fields}
+		n, err := svcCtx.Ledger.SyncEntryTemplateSchema(r.Context(), uid, body.TemplateId, schema)
+		if err != nil {
+			if err == domain.ErrInvalidSchema {
+				httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))
+				return
+			}
+			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
+			return
+		}
+		httpx.OkJsonCtx(r.Context(), w, map[string]any{"updatedLedgers": n})
+	}
 }

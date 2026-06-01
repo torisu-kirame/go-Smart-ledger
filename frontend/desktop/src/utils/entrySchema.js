@@ -19,8 +19,30 @@ export const DEFAULT_ENTRY_SCHEMA = {
   ],
 }
 
-export function resolveSchema(ledger) {
-  if (ledger?.entrySchema?.fields?.length) return ledger.entrySchema
+export function resolveSchema(ledger, templates) {
+  return resolveSchemaWithTemplates(ledger, templates)
+}
+
+/** 按 templateId 从账户通用模板库解析最新字段（跨账本同步） */
+export function resolveSchemaWithTemplates(ledger, templates = []) {
+  const ledgerSchema = ledger?.entrySchema
+  const tid = ledgerSchema?.templateId
+  if (tid && tid !== 'custom') {
+    const global = templates.find((t) => t.templateId === tid)
+    if (global?.fields?.length) {
+      return {
+        templateId: tid,
+        fields: global.fields.map((f) => ({ ...f })),
+      }
+    }
+  }
+  if (ledgerSchema?.fields?.length) {
+    return ledgerSchema
+  }
+  const builtin = templates.find((t) => t.templateId === DEFAULT_TEMPLATE_ID)
+  if (builtin?.fields?.length) {
+    return { templateId: builtin.templateId, fields: builtin.fields.map((f) => ({ ...f })) }
+  }
   return DEFAULT_ENTRY_SCHEMA
 }
 

@@ -55,6 +55,14 @@
             导入
           </router-link>
           <router-link
+            v-if="isSimpleLedger"
+            :to="`${basePath}/templates`"
+            class="ledger-tab"
+            :class="{ active: activeTab === 'templates' }"
+          >
+            模板
+          </router-link>
+          <router-link
             :to="`${basePath}/settings`"
             class="ledger-tab"
             :class="{ active: activeTab === 'settings' }"
@@ -91,6 +99,7 @@ const { ledger, loading, bookkeepingMode, isSimpleLedger, isProfessionalLedger }
 const activeTab = computed(() => {
   const p = route.path
   if (p.endsWith('/settings')) return 'settings'
+  if (p.endsWith('/templates')) return 'templates'
   if (p.includes('/accounting')) return 'accounting'
   if (p.endsWith('/import')) return 'import'
   if (p.endsWith('/view') && !p.includes('/accounting')) return 'view'
@@ -103,6 +112,7 @@ const crumbs = computed(() => {
     overview: '详情',
     view: '流水',
     import: '导入',
+    templates: '模板',
     accounting: '财务',
     settings: '设置',
   }
@@ -129,6 +139,8 @@ watch(
       router.replace(`${base}/accounting/view`)
     } else if (isSimpleLedger.value && p.includes('/accounting')) {
       router.replace(`${base}/view`)
+    } else if (isProfessionalLedger.value && p.endsWith('/templates')) {
+      router.replace(`${base}/settings`)
     } else if (isProfessionalLedger.value && (p.endsWith('/accounting') || p.endsWith('/accounting/'))) {
       router.replace(`${base}/accounting/view`)
     }

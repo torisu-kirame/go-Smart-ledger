@@ -171,6 +171,8 @@ export const api = {
     request(`/entry-templates/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteEntryTemplate: (id) =>
     request(`/entry-templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  syncEntryTemplate: (body) =>
+    request('/ledgers/sync-entry-template', { method: 'POST', body: JSON.stringify(body) }),
   listLedgers: () => request('/ledgers'),
   getLedger: (id) => request(`/ledgers/${id}`),
   ragExport: (id) => request(`/ledgers/${encodeURIComponent(id)}/rag-export`),

@@ -92,6 +92,7 @@ func main() {
 	// 需 JWT 短期令牌
 	server.AddRoutes([]rest.Route{
 		{Method: http.MethodGet, Path: "/api/v1/ledgers", Handler: ledgerProxy},
+		{Method: http.MethodPost, Path: "/api/v1/ledgers/sync-entry-template", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/entries", Handler: ledgerProxy},

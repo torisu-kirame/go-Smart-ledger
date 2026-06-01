@@ -1,15 +1,18 @@
 <template>
-  <div class="page">
-    <PageHeader :crumbs="crumbs">
+  <div class="page" :class="{ 'page--embedded': embedded }">
+    <PageHeader v-if="!embedded" :crumbs="crumbs">
       <template #actions>
         <button class="btn-primary" @click="openCreate">新建模板</button>
       </template>
     </PageHeader>
+    <div v-else class="embedded-toolbar">
+      <button class="btn-primary" @click="openCreate">新建模板</button>
+    </div>
     <div v-if="error" class="alert alert-error">{{ error }}</div>
     <div v-if="msg" class="alert alert-success">{{ msg }}</div>
 
     <p class="section-hint panel-hint">
-      流水模板仅用于<strong>简单流水</strong>账本（创建时选择「简单流水」）。专业复式账本使用科目表与凭证，无需此处模板。
+      <strong>账户通用模板</strong>：在此创建或修改后，将自动同步到所有使用相同模板的简单流水账本；任意账本内的「模板」页看到的列表一致。
     </p>
 
     <div class="panel">
@@ -61,16 +64,25 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import AppSelect from '../components/AppSelect.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { usePageCrumbs } from '../composables/usePageCrumbs'
+import {
+  loadEntryTemplates,
+  notifyEntryTemplatesChanged,
+  syncEntryTemplateToLedgers,
+  useEntryTemplates,
+} from '../composables/useEntryTemplates'
 import DeleteButton from '../components/DeleteButton.vue'
 import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
 
+const route = useRoute()
+const embedded = computed(() => Boolean(route.params.id))
 const { crumbs } = usePageCrumbs()
-const templates = ref([])
+const { templates, refreshEntryTemplates } = useEntryTemplates()
 const error = ref('')
 const msg = ref('')
 const showModal = ref(false)
@@ -89,10 +101,21 @@ function typeLabel(t) {
 async function load() {
   error.value = ''
   try {
-    const res = await api.listEntryTemplates()
-    templates.value = res.templates || []
+    await refreshEntryTemplates()
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : '加载失败'
+  }
+}
+
+async function afterTemplateMutation(templateId, fields) {
+  notifyEntryTemplatesChanged()
+  try {
+    const res = await syncEntryTemplateToLedgers(templateId, fields)
+    if (res?.updatedLedgers > 0) {
+      msg.value = `已同步到 ${res.updatedLedgers} 个账本`
+    }
+  } catch {
+    /* 模板已保存，账本同步失败不阻断 */
   }
 }
 
@@ -131,9 +154,11 @@ async function save() {
     if (editing.value) {
       await api.updateEntryTemplate(editing.value.templateId, body)
       msg.value = '模板已更新'
+      await afterTemplateMutation(editing.value.templateId, body.fields)
     } else {
-      await api.createEntryTemplate(body)
+      const created = await api.createEntryTemplate(body)
       msg.value = '模板已创建'
+      await afterTemplateMutation(created.templateId, body.fields)
     }
     showModal.value = false
     await load()
@@ -157,6 +182,7 @@ async function remove(t) {
 }
 
 onMounted(load)
+watch(() => route.params.id, load)
 </script>
 
 <style scoped>
@@ -188,4 +214,6 @@ onMounted(load)
 .check { font-size: 0.75rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
 .foot-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 .alert-success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 0.75rem; }
+.page--embedded { max-width: none; }
+.embedded-toolbar { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
 </style>

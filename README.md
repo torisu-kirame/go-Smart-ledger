@@ -325,53 +325,12 @@ go-Smart-ledger/
 | F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
 | F29 | 公链 / L2 合约锚定（替代仅 MiniLedger 状态） | P3 | ✅ 已完成 |
 | F30 | 项目根 README 计划与进度维护 | P0 | ✅ 已完成 |
-| F34 | OpenClaw 离线 RAG + 可配置本地 AI | P2 | 🟡 进行中 |
+| F34 | OpenClaw + 可配置本地 AI | P2 | ✅ 已完成 |
 | F35 | 本机 SQLite 副本 + 多人账本增量同步 | P1 | 🟡 进行中 |
 
 **状态图例**：✅ 已完成 · 🟡 进行中 · ⬜ 未完成
 
 ---
-
-## 已完成
-
-### 产品与业务
-
-- [x] 私人账本、多人账本（创建者 + 邀请加入）；账本 ID 雪花生成，主地址与成员地址由 HD 钱包（BIP44）派生
-- [x] 账本记账字段 Schema：默认模板（记账人/收账人/金额/日期/备注），创建时可选自 built-in 或自定义列；Excel 导入按 Schema 生成模板
-- [x] 记账模板管理页：内置 + 用户自定义模板 CRUD（`/entry-templates`）
-- [x] **F36 团队多账本**：`team_ledgers` N:M；创建可多选账本；详情页关联/移除（创建者）
-- [x] **F37 团队 Chat**：`/teams/:id/messages` 文字消息；`/messages/file` 上传附件（≤15MB）；成员轮询拉取
-- [x] 团队：成员集合（类群聊）；邀请好友入团队（**不替代**账本成员邀请）
-- [x] 账本邀请：在 **账本管理** 发送邀请、接受邀请；仅成员可访问账本 API
-- [x] 记账、事件流水、完整性校验、封账锚定（写入 MiniLedger）
-- [x] Excel 导入全流程（模板 → 预览 → 批量入账 → 可选自动封账）
-- [x] 账本加密备份：本地 + IPFS 双写、Pin；`BackupAnchored` 事件记录 ref/CID 上链
-- [x] 恢复：预览解密快照；`restore/commit` 写回账本（可选覆盖模式）；IPFS CID 回源
-- [x] 导入/详情页与封账、备份流程串联
-- [x] **F17 多签审批**：多人账本默认需 2 人批准；`propose` / `approve` / `reject`；详情页待审批列表
-- [x] **F18 成员同步与加入**：账本管理页邀请/接受、链上 `MemberJoined`；`GET /ledgers/:id/sync` 增量同步；账本列表按成员过滤
-- [x] **F19 组级 E2E 加密**：创建多人账本可选加密口令；客户端 AES-GCM 加密 `entry.data`；`user_public_keys` 表与密钥轮换 API
-- [x] **F22 Raft 集群**：`docker-compose.raft.yml` 三节点编排 + `docs/miniledger-raft.md`
-- [x] **F23 上链重试**：`pkg/txqueue` + **NSQ** 异步重试；本地 JSON 状态 + topic `chain_tx_retry`；`/api/v1/chain/queue`；概览与链浏览器页展示待上链
-- [x] **F28 服务发现**：etcd 注册/发现；ledger gRPC health（:28898）；`docker-compose.discovery.yml`；`GET /api/v1/discovery/services`
-- [x] **链浏览器页**：控制台 `/chain` 内嵌 MiniLedger Dashboard（Nginx `/miniledger/` 反代）
-- [x] **F27 生产加固**：`SL_*` 环境变量注入 JWT/Cookie；网关 IP 限流；`docker-compose.https.yml` + Nginx TLS 示例；见 `docs/production-security.md`
-- [x] **F29 EVM 锚定**：`LedgerAnchor` 合约 + `pkg/evmanchor`；封账时可选上链 Merkle 根；见 `docs/evm-anchor.md`
-- [x] **F34 OpenClaw（基础）**：`setup-openclaw` 脚本、`integrations/openclaw`、`/rag-export` API、设置页 AI 配置、控制台 **AI 助手** 对话页与 `POST /api/v1/ai/chat` 代理
-- [x] **F35 本地优先（基础）**：浏览器 SQLite 缓存、`sync` API 对接、详情/列表「同步到本机」；见 `docs/local-first-storage.md`
-- [x] **F38 复式记账**：默认科目表、借贷平衡凭证过账；账本详情「财务」→ 科目 / 凭证
-- [x] **F39 会计期间**：月结锁定与反结账；关闭期间禁止新凭证
-- [x] **F40 财务报表**：试算平衡、资产负债表 / 利润表 / 现金流量（表内汇总）
-- [x] **F44 凭证附件**：按事件 Seq 上传附件（加密备份 + IPFS CID）；简单流水账本支持 `tableId` 按表过滤与挂载校验（与 F49 联动）
-- [x] **F49 账本多表**：设置页开启多表、添加子表；流水/导入/附件按 `tableId` 隔离；多 sheet Excel 按表名匹配导入
-- [x] **F41 辅助核算**：凭证附件可标注部门 / 项目 / 往来；`PATCH .../attachments/:id` 更新；上传时可一并填写
-- [x] **F48 审计包导出**：`GET .../audit-export?format=xlsx|pdf|zip`；多表流水分 sheet、附件含辅助核算列、专业账本科目/凭证；ZIP 含 manifest + Excel + 摘要 PDF
-- [x] **F43 预算**：按期间编制科目/项目预算；执行分析与超支预警（`GET/PUT .../budget`，`GET .../budget/analysis`）
-- [x] **F45 账龄**：应收/应付按往来方 FIFO 账龄（`GET .../accounting/aging`）；凭证分录支持往来方、项目字段
-- [x] **F46 多币种**：本位币/期末汇率/外币余额/汇兑重估（`.../accounting/currency/*`）；分录原币与汇率
-- [x] **F47 税务模板**：一般纳税人/简易计税等内置模板、期间税务报表（`.../accounting/tax/*`）
-- [x] **F42 银行对账**：CSV 导入、与链上 Seq 匹配未达账项
-- [x] 内置记账模板仅保留「标准记账」；「经典记账」已从模板列表移除（旧账本 schema 仍兼容）
 
 ### 后端
 

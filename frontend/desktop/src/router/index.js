@@ -14,8 +14,7 @@ const routes = [
       },
       {
         path: 'entry-templates',
-        component: () => import('../views/EntryTemplatesView.vue'),
-        meta: { titleKey: 'layout.nav.templates', navRoot: '/entry-templates' },
+        redirect: '/ledgers',
       },
       {
         path: 'assistant',
@@ -94,6 +93,10 @@ const routes = [
                 component: () => import('../views/ledger/LedgerAccountingTaxView.vue'),
               },
             ],
+          },
+          {
+            path: 'templates',
+            component: () => import('../views/EntryTemplatesView.vue'),
           },
           {
             path: 'settings',

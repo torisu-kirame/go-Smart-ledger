@@ -1,14 +1,14 @@
-import { DEFAULT_ENTRY_SCHEMA, resolveSchema } from './entrySchema'
+import { resolveSchemaWithTemplates } from './entrySchema'
 
 export const DEFAULT_TABLE_ID = 'default'
 
-export function ledgerTables(ledger) {
+export function ledgerTables(ledger, templates = []) {
   if (ledger?.tables?.length) return ledger.tables
   return [
     {
       id: DEFAULT_TABLE_ID,
       name: '默认',
-      entrySchema: resolveSchema(ledger),
+      entrySchema: resolveSchemaWithTemplates(ledger, templates),
       sortOrder: 0,
     },
   ]
@@ -23,9 +23,14 @@ export function tableById(ledger, tableId) {
   return ledgerTables(ledger).find((t) => t.id === id) || ledgerTables(ledger)[0]
 }
 
-export function resolveSchemaForTable(ledger, tableId) {
+export function resolveSchemaForTable(ledger, tableId, templates) {
   const t = tableById(ledger, tableId)
-  return t?.entrySchema?.fields?.length ? t.entrySchema : resolveSchema(ledger)
+  const tableSchema = t?.entrySchema
+  if (tableSchema?.templateId && tableSchema.templateId !== 'custom') {
+    return resolveSchemaWithTemplates({ entrySchema: tableSchema }, templates)
+  }
+  if (tableSchema?.fields?.length) return tableSchema
+  return resolveSchemaWithTemplates(ledger, templates)
 }
 
 export function entryTableIdFromPayload(payload) {

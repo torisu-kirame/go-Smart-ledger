@@ -38,7 +38,7 @@ export const messages = {
         home: '概览',
         assistant: 'AI 助手',
         ledgers: '账本管理',
-        templates: '记账模板',
+        templates: '模板',
         import: 'Excel 导入',
         backup: '备份 / 恢复',
         friends: '好友',

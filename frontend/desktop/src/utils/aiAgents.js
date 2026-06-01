@@ -1,4 +1,5 @@
 import {
+  AUTO_GENERATED_WORKSPACE_FILES,
   buildSystemPromptFromWorkspace,
   defaultWorkspaceFiles,
 } from './agentWorkspace'
@@ -183,10 +184,14 @@ function migrateAgent(agent) {
     }
     agent.workspaceFiles = files
   }
-  for (const name of Object.keys(defaultWorkspaceFiles())) {
+  const defaults = defaultWorkspaceFiles()
+  for (const name of Object.keys(defaults)) {
     if (agent.workspaceFiles[name] == null) {
-      agent.workspaceFiles[name] = defaultWorkspaceFiles()[name]
+      agent.workspaceFiles[name] = defaults[name]
     }
+  }
+  for (const name of AUTO_GENERATED_WORKSPACE_FILES) {
+    agent.workspaceFiles[name] = defaults[name]
   }
   delete agent.systemPrompt
   if (agent.ledgerId == null) agent.ledgerId = ''
