@@ -9,7 +9,7 @@ import (
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/accounting"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/storage"
 )
@@ -380,7 +380,7 @@ func (s *Service) putJSON(ctx context.Context, key, ledgerID string, v interface
 	if err != nil {
 		return err
 	}
-	return s.submitOne(ctx, "state:"+key, ledgerID, miniledgerclient.TxRequest{Key: key, Value: raw})
+	return s.submitOne(ctx, "state:"+key, ledgerID, chainstore.TxRequest{Key: key, Value: raw})
 }
 
 // ImportBankStatementFromBytes helper for handlers.

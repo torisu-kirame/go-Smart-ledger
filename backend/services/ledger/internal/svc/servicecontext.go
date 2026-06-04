@@ -1,11 +1,11 @@
 package svc
 
 import (
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/evmanchor"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ipfsclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgersvc"
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/storage"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/txqueue"
@@ -16,7 +16,7 @@ import (
 type ServiceContext struct {
 	Config    config.Config
 	Ledger    *ledgersvc.Service
-	Chain     *miniledgerclient.Client
+	Chain     chainstore.Store
 	Backup    *storage.DualBackup
 	IPFS      *ipfsclient.Client
 	Queue     *txqueue.Queue
@@ -27,7 +27,10 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 	if err := snowflake.Init(c.Snowflake.NodeID); err != nil {
 		return nil, err
 	}
-	chain := miniledgerclient.New(c.MiniLedger.BaseURL)
+	chain, err := chainstore.New(c.ChainStoreConfig())
+	if err != nil {
+		return nil, err
+	}
 	disk, err := storage.NewDiskBackup(c.BackupDir)
 	if err != nil {
 		return nil, err

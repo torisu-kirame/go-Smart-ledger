@@ -23,6 +23,7 @@ else
 endif
 
 LEDGER_SRC_DIRS  := pkg/accounting pkg/aiproxy pkg/auditexport pkg/domain pkg/evmanchor pkg/importfile \
+	pkg/chainstore \
 	pkg/importxlsx pkg/ipfsclient pkg/ledgerhd pkg/ledgersvc pkg/miniledgerclient pkg/snowflake \
 	pkg/storage pkg/mq pkg/txqueue pkg/registry pkg/grpchsrv services/ledger
 STORAGE_SRC_DIRS := pkg/storage services/storage

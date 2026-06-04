@@ -1,4 +1,4 @@
-// Package txqueue persists failed MiniLedger submissions and retries them via NSQ.
+# Package txqueue persists failed chain submissions and retries them via NSQ.
 package txqueue
 
 import (
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/mq/nsq"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 )
@@ -28,7 +28,7 @@ type Item struct {
 	ID        string                       `json:"id"`
 	Label     string                       `json:"label"`
 	LedgerID  string                       `json:"ledgerId,omitempty"`
-	Steps     []miniledgerclient.TxRequest `json:"steps"`
+	Steps     []chainstore.TxRequest `json:"steps"`
 	Status    string                       `json:"status"`
 	Attempts  int                          `json:"attempts"`
 	LastError string                       `json:"lastError,omitempty"`
@@ -41,7 +41,7 @@ type messageBody struct {
 }
 
 // SubmitFunc submits a single transaction to MiniLedger.
-type SubmitFunc func(ctx context.Context, tx miniledgerclient.TxRequest) error
+type SubmitFunc func(ctx context.Context, tx chainstore.TxRequest) error
 
 // Queue stores pending chain writes; NSQ delivers retry work to consumers.
 type Queue struct {
@@ -155,7 +155,7 @@ func (q *Queue) republishPending() error {
 }
 
 // Enqueue adds remaining steps after a partial failure and publishes to NSQ.
-func (q *Queue) Enqueue(label, ledgerID string, steps []miniledgerclient.TxRequest, cause string) (*Item, error) {
+func (q *Queue) Enqueue(label, ledgerID string, steps []chainstore.TxRequest, cause string) (*Item, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("txqueue: empty steps")
 	}

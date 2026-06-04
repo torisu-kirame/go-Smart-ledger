@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 )
 
 var ErrRestoreConflict = errors.New("target ledger is not empty; use overwrite mode")
@@ -48,7 +48,7 @@ func (s *Service) RestoreSnapshot(ctx context.Context, targetLedgerID string, sn
 			continue
 		}
 		key := domain.LedgerEventKey(targetLedgerID, ev.Seq)
-		if err := s.submitOne(ctx, "restore:"+key, targetLedgerID, miniledgerclient.TxRequest{
+		if err := s.submitOne(ctx, "restore:"+key, targetLedgerID, chainstore.TxRequest{
 			Key:   key,
 			Value: raw,
 		}); err != nil {

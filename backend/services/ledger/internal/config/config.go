@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/mq/nsq"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/registry"
 	"github.com/zeromicro/go-zero/rest"
@@ -8,6 +9,11 @@ import (
 
 type Config struct {
 	rest.RestConf
+	// Chain selects authoritative ledger backend: miniledger (default) | fisco
+	Chain struct {
+		Backend string `json:",default=miniledger,options=miniledger|fisco"`
+		FISCO   chainstore.FISCOConfig `json:"FISCO,optional"`
+	} `json:"Chain,optional"`
 	MiniLedger struct {
 		BaseURL string `json:",default=http://127.0.0.1:24441"`
 	} `json:"MiniLedger"`
@@ -46,4 +52,14 @@ type Config struct {
 		PrivateKeyHex       string `json:",optional"`
 		ExplorerURLTemplate string `json:",optional"`
 	} `json:"ExternalAnchor"`
+}
+
+// ChainStoreConfig maps service config to pkg/chainstore.
+func (c Config) ChainStoreConfig() chainstore.Config {
+	cfg := chainstore.Config{
+		Backend: c.Chain.Backend,
+		FISCO:   c.Chain.FISCO,
+	}
+	cfg.MiniLedger.BaseURL = c.MiniLedger.BaseURL
+	return cfg
 }

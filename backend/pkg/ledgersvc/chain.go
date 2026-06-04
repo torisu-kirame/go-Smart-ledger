@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/txqueue"
 )
 
 // submitSteps sends transactions in order; on failure enqueues remaining steps for retry.
-func (s *Service) submitSteps(ctx context.Context, label, ledgerID string, steps []miniledgerclient.TxRequest) error {
+func (s *Service) submitSteps(ctx context.Context, label, ledgerID string, steps []chainstore.TxRequest) error {
 	for i, tx := range steps {
 		if err := s.chain.Submit(ctx, tx); err != nil {
 			if s.queue != nil {
-				remaining := append([]miniledgerclient.TxRequest{}, steps[i:]...)
+				remaining := append([]chainstore.TxRequest{}, steps[i:]...)
 				_, _ = s.queue.Enqueue(label, ledgerID, remaining, err.Error())
 			}
 			return fmt.Errorf("miniledger submit: %w", err)
@@ -23,8 +23,8 @@ func (s *Service) submitSteps(ctx context.Context, label, ledgerID string, steps
 }
 
 // submitOne is a convenience for single-tx writes with queue support.
-func (s *Service) submitOne(ctx context.Context, label, ledgerID string, tx miniledgerclient.TxRequest) error {
-	return s.submitSteps(ctx, label, ledgerID, []miniledgerclient.TxRequest{tx})
+func (s *Service) submitOne(ctx context.Context, label, ledgerID string, tx chainstore.TxRequest) error {
+	return s.submitSteps(ctx, label, ledgerID, []chainstore.TxRequest{tx})
 }
 
 // ChainQueue exposes pending chain submissions (F23).

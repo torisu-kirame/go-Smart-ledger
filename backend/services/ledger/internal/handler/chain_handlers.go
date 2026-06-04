@@ -32,6 +32,7 @@ func chainStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		pending, failed := svcCtx.Ledger.ChainQueueStats()
 		out := map[string]any{
 			"online":         err == nil,
+			"backend":        string(svcCtx.Chain.Backend()),
 			"baseUrl":        svcCtx.Chain.BaseURL(),
 			"queuePending":   pending,
 			"queueFailed":    failed,
@@ -42,6 +43,9 @@ func chainStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			out["height"] = st.Height
 			out["uptime"] = st.Uptime
 			out["role"] = st.Role
+			if st.ExplorerURL != "" {
+				out["explorerUrl"] = st.ExplorerURL
+			}
 		} else if err != nil {
 			out["error"] = err.Error()
 		}

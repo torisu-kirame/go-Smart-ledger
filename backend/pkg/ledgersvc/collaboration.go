@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 )
 
@@ -382,7 +382,7 @@ func (s *Service) putPending(ctx context.Context, p *domain.PendingEntry) error 
 	if err != nil {
 		return err
 	}
-	return s.submitOne(ctx, "pending:"+p.ID, p.LedgerID, miniledgerclient.TxRequest{
+	return s.submitOne(ctx, "pending:"+p.ID, p.LedgerID, chainstore.TxRequest{
 		Key:   domain.LedgerPendingKey(p.LedgerID, p.ID),
 		Value: raw,
 	})
@@ -410,7 +410,7 @@ func (s *Service) putInvite(ctx context.Context, inv *domain.MemberInvite) error
 	if err != nil {
 		return err
 	}
-	return s.submitOne(ctx, "invite:"+inv.InviteeID, inv.LedgerID, miniledgerclient.TxRequest{
+	return s.submitOne(ctx, "invite:"+inv.InviteeID, inv.LedgerID, chainstore.TxRequest{
 		Key:   domain.LedgerInviteKey(inv.LedgerID, inv.InviteeID),
 		Value: raw,
 	})
@@ -434,5 +434,5 @@ func (s *Service) loadInvite(ctx context.Context, ledgerID, inviteeID string) (*
 }
 
 func (s *Service) deleteKey(ctx context.Context, key string) error {
-	return s.submitOne(ctx, "delete:"+key, "", miniledgerclient.TxRequest{Key: key, Value: json.RawMessage(`null`)})
+	return s.submitOne(ctx, "delete:"+key, "", chainstore.TxRequest{Key: key, Value: json.RawMessage(`null`)})
 }

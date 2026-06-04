@@ -12,20 +12,20 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/evmanchor"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/ledgerhd"
-	"github.com/smart-ledger/go-smart-ledger/backend/pkg/miniledgerclient"
+	"github.com/smart-ledger/go-smart-ledger/backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/backend/pkg/txqueue"
 )
 
 // Service implements ledger business rules on top of Chainscore MiniLedger.
 type Service struct {
-	chain    *miniledgerclient.Client
+	chain    chainstore.Store
 	hd       *ledgerhd.Deriver
 	queue    *txqueue.Queue
 	external evmanchor.Anchorer
 }
 
-func New(chain *miniledgerclient.Client, hd *ledgerhd.Deriver, queue *txqueue.Queue, external evmanchor.Anchorer) *Service {
+func New(chain chainstore.Store, hd *ledgerhd.Deriver, queue *txqueue.Queue, external evmanchor.Anchorer) *Service {
 	if external == nil {
 		external = evmanchor.Noop()
 	}
@@ -251,7 +251,7 @@ func (s *Service) appendEvent(ctx context.Context, meta *domain.LedgerMeta, sign
 		CreatedAt: time.Now().UTC(),
 	}
 	raw, _ := json.Marshal(ev)
-	eventTx := miniledgerclient.TxRequest{
+	eventTx := chainstore.TxRequest{
 		Key:   domain.LedgerEventKey(meta.ID, seq),
 		Value: raw,
 	}
@@ -281,7 +281,7 @@ func (s *Service) putMeta(ctx context.Context, meta *domain.LedgerMeta) error {
 	if err != nil {
 		return err
 	}
-	return s.submitOne(ctx, "meta:"+meta.ID, meta.ID, miniledgerclient.TxRequest{
+	return s.submitOne(ctx, "meta:"+meta.ID, meta.ID, chainstore.TxRequest{
 		Key:   domain.LedgerMetaKey(meta.ID),
 		Value: raw,
 	})
