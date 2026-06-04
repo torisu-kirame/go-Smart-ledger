@@ -1,6 +1,8 @@
 # Smart Ledger 全栈构建与启动（含 OpenClaw Gateway；Ollama 离线可选）
 .PHONY: help build build-linux docker-build init-openclaw-config up down logs clean \
-        frontend-install frontend-dev frontend-build dev-all start \
+        frontend-install frontend-dev frontend-build \
+        mobile-install mobile-dev mobile-build mobile-apk \
+        dev-all start \
         offline-ai-up offline-ai-down offline-ai-logs \
         openclaw-gateway-up openclaw-logs openclaw-up openclaw-down
 
@@ -14,6 +16,8 @@ help:
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
 	@echo "  make build-linux       - 交叉编译全部 Go 服务"
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
+	@echo "  make mobile-dev        - 移动端 Vite 开发服 :25175"
+	@echo "  make mobile-apk        - 构建 Android Debug APK"
 
 build:
 	$(MAKE) -C backend build-local
@@ -41,6 +45,22 @@ frontend-dev: frontend-install
 frontend-build: frontend-install
 	cd frontend/desktop && npm run build
 
+mobile-install:
+	cd frontend/mobile && npm install --cache .npm-cache
+
+mobile-dev: mobile-install
+	cd frontend/mobile && npm run dev
+
+mobile-build: mobile-install
+	cd frontend/mobile && npm run build
+
+mobile-apk: mobile-install
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/mobile-apk.ps1
+else
+	chmod +x scripts/mobile-apk.sh && ./scripts/mobile-apk.sh
+endif
+
 docker-build: build-linux
 	$(COMPOSE) build
 
@@ -51,6 +71,7 @@ ifeq ($(OS),Windows_NT)
 else
 	@echo ""
 	@echo "Web UI:     http://localhost:25173"
+	@echo "Mobile Web: http://localhost:25175"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
 	@echo "OpenClaw:   http://localhost:18789  (token: .env.openclaw)"
 	@echo "MiniLedger: http://localhost:24441/dashboard"
