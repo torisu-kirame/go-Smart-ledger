@@ -19,6 +19,9 @@ help:
 	@echo "  make mobile-dev        - 移动端 Vite 开发服 :25175"
 	@echo "  make mobile-apk        - 构建 Android Debug APK"
 
+fisco-up:
+	@echo "See docs/fisco-bcos-migration.md and backend/infra/fisco/README.md"
+
 build:
 	$(MAKE) -C backend build-local
 
