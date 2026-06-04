@@ -1,6 +1,8 @@
 # Smart Ledger（go-Smart-ledger）
 
-去中心化区块链自定义账本系统：支持私人账本与多人账本，底层基于 [Chainscore MiniLedger](https://github.com/Chainscore/miniledger) 许可链，后端采用 **Go + go-zero 微服务**，前端采用 **Vue 3 桌面控制台**。
+去中心化区块链自定义账本系统：支持私人账本与多人账本。  
+**当前发布线（v0.13.0-miniledger）** 权威链为 [Chainscore MiniLedger](https://github.com/Chainscore/miniledger)；**v0.14+** 正在迁移至 **FISCO BCOS**（见 [FISCO 迁移](#fisco-bcos-迁移-v014)）。  
+后端 **Go + go-zero 微服务**，前端 **Vue 3** 桌面 + 移动 Web/APK。
 
 > **维护说明**：每次新增功能或变更规划时，请同步更新本文档——在「项目计划」中登记 idea，并在「已完成 / 未完成」中勾选状态。文末「更新记录」追加一条摘要。
 
@@ -43,6 +45,9 @@
 - [已完成](#已完成)
 - [未完成 / 进行中](#未完成--进行中)
 - [快速开始](#快速开始)
+- [移动端与 APK 打包](#移动端与-apk-打包)
+- [版本标签](#版本标签)
+- [FISCO BCOS 迁移（v0.14+）](#fisco-bcos-迁移-v014)
 - [更新记录](#更新记录)
 
 ---
@@ -53,6 +58,7 @@
 flowchart TB
     subgraph client [客户端]
         Desktop[frontend/desktop Vue3]
+        Mobile[frontend/mobile Vue3 + Vant]
     end
 
     subgraph gateway_layer [网关 :28080]
@@ -65,23 +71,28 @@ flowchart TB
         STORAGE[storage-api :28890]
     end
 
-    subgraph chain [链层]
-        ML[MiniLedger Node :24441 Raft]
+    subgraph chain [链层 — 可切换]
+        ML[MiniLedger :24441 legacy]
+        FISCO[FISCO BCOS JSON-RPC v0.14+]
     end
 
     Desktop --> GW
+    Mobile --> GW
     GW --> AUTH
     GW --> LEDGER
     GW --> STORAGE
     LEDGER --> ML
+    LEDGER -.-> FISCO
 ```
 
 | 层级 | 技术 |
 |------|------|
-| 链 | Chainscore MiniLedger（Node.js，REST + SQLite 世界状态） |
-| 后端 | go-zero REST 微服务，外部交叉编译后 COPY 进 Docker |
-| 前端 | Vue 3 + Vite + Pinia（`frontend/desktop`） |
-| 部署 | 根目录 `docker-compose.yml` |
+| 链（legacy） | Chainscore MiniLedger（REST + SQLite 世界状态） |
+| 链（目标） | FISCO BCOS 联盟链 + `LedgerRegistry` 合约（[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)） |
+| 链抽象 | `backend/pkg/chainstore`（`miniledger` / `fisco` 后端） |
+| 后端 | go-zero REST 微服务 |
+| 前端 | Vue 3 桌面（`frontend/desktop`）+ 移动 Web/APK（`frontend/mobile`） |
+| 部署 | 根目录 `docker-compose.yml` + 可选 `docker-compose.fisco.yml` |
 
 ---
 
@@ -243,7 +254,7 @@ go-Smart-ledger/
 │   └── deploy/               # Dockerfile、docker 专用配置
 ├── frontend/
 │   ├── desktop/              # Vue3 桌面端（当前使用）
-│   └── mobile/               # 移动端预留
+│   └── mobile/               # Vue3 + Vant 移动 Web / Capacitor APK
 └── scripts/                  # build-linux.ps1、docker-up.ps1
 ```
 
@@ -268,7 +279,8 @@ go-Smart-ledger/
 | NSQ nsqd HTTP | **24151** | nsqd 管理 / ping |
 | NSQ lookupd | **24161** / **24162** | 服务发现 |
 | NSQ admin | **24171** | 队列监控 UI |
-| 前端 web / Vite | **25173** | 控制台（Docker Nginx 或本地 dev） |
+| 前端 web 桌面 / Vite | **25173** | 桌面控制台（Docker Nginx 或本地 dev） |
+| 前端 web 移动 / Vite | **25175** | 移动 Web（Docker `web-mobile` 或本地 dev） |
 
 ---
 
@@ -319,7 +331,8 @@ go-Smart-ledger/
 | F22 | MiniLedger 多节点 Raft 集群部署文档与 Compose | P1 | ✅ 已完成 |
 | F23 | 上链失败重试队列、待上链状态 UI | P1 | ✅ 已完成 |
 | F24 | 前端纳入 Docker（Nginx 托管 dist） | P1 | ✅ 已完成 |
-| F25 | 移动端 Vue3 / Uni-app | P2 | ⬜ 未完成 |
+| F25 | 移动端 Vue3 + Vant + Capacitor APK | P2 | ✅ 已完成 |
+| F50 | FISCO BCOS 权威链迁移（合约/表、迁移、浏览器、Compose） | P1 | 🟡 进行中（v0.14.1–v0.14.2 基础已合入） |
 | F26 | 集成测试 / CI（GitHub Actions） | P2 | ⬜ 未完成 |
 | F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ✅ 已完成 |
 | F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
@@ -364,9 +377,9 @@ go-Smart-ledger/
 
 ### 已知限制
 
-- 移动端目录仅为占位，无实现。
+- **默认 Compose 仍启动 MiniLedger**；FISCO 为 overlay + 配置切换，完整业务写入待 v0.15+。
+- 移动端 APK 打包需本机 **JDK 17+** 与 **Android SDK**（见 [移动端与 APK 打包](#移动端与-apk-打包)）。
 - 默认 JWT/Cookie 密钥仅供开发，生产必须更换。
-- 根目录 `data/miniledger.db` 等为早期残留，与当前架构无关，可清理。
 
 ---
 
@@ -397,9 +410,10 @@ Windows PowerShell：
 
 | 服务 | 容器名 | 端口 |
 |------|--------|------|
-| 控制台 | `smart-ledger-web` | 25173 |
+| 控制台（桌面） | `smart-ledger-web` | 25173 |
+| 控制台（移动） | `smart-ledger-web-mobile` | 25175 |
 | 网关 | `smart-ledger-gateway` | 28080 |
-| MiniLedger | `smart-ledger-miniledger` | 24441 |
+| MiniLedger（legacy） | `smart-ledger-miniledger` | 24441 |
 
 ### 本地前端热更新（可选）
 
@@ -439,17 +453,19 @@ make help            # 查看 Makefile 目标
 make start           # 全栈（后端 + 前端开发服）
 make logs            # Docker 日志
 make down            # 停止栈
-make frontend-build  # 构建前端静态资源
+make frontend-build  # 构建桌面静态资源
+make mobile-dev      # 移动 Web 开发服 :25175
+make mobile-apk      # Android Debug APK（需 JDK + SDK）
 ```
 
-### Raft 集群（F22，可选）
+### Raft 集群（F22，可选 · MiniLedger legacy）
 
 ```bash
 docker compose stop miniledger
 docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d miniledger-1 miniledger-2 miniledger-3
 ```
 
-详见 [docs/miniledger-raft.md](docs/miniledger-raft.md)。`ledger-api` 的 `MiniLedger.BaseURL` 应指向 leader（通常为 node1 `:24441`）。
+详见 [docs/miniledger-raft.md](docs/miniledger-raft.md)。
 
 ### etcd 服务发现（F28，可选）
 
@@ -457,8 +473,98 @@ docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft u
 docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile discovery up -d
 ```
 
-将 `ledger-api` / `gateway-api` 配置换为 `deploy/etc/*.discovery.docker.yaml`（`Discovery.Etcd.Enabled: true`）并重建镜像后，`ledger-api` 会向 etcd 注册 HTTP/gRPC；网关 `GET /api/v1/discovery/services` 可查看注册表。默认单栈已开启 gRPC health（`:28898`），etcd 为可选。
+将 `ledger-api` / `gateway-api` 配置换为 `deploy/etc/*.discovery.docker.yaml` 并重建镜像。
 
+---
+
+## 移动端与 APK 打包
+
+| 形态 | 地址 / 产物 | 说明 |
+|------|-------------|------|
+| 移动 Web（Docker） | http://localhost:25175 | 服务 `web-mobile`，`/api` 反代网关 |
+| 移动 Web（本地） | `make mobile-dev` | Vite :25175，代理 `/api` → :28080 |
+| Android APK | `frontend/mobile/android/app/build/outputs/apk/debug/app-debug.apk` | Capacitor 7 壳 + 同上 Vue 构建产物 |
+
+### 环境
+
+- Node.js 22+
+- **JDK 17+**（推荐 Android Studio 自带 JBR）
+- **Android SDK**（Platform + Build-Tools）
+
+### 一键打包（Windows）
+
+```powershell
+# 若系统 JAVA_HOME 损坏，先指定 Android Studio JBR：
+$env:JAVA_HOME = 'D:\work\API\Android\Android studio\jbr'
+$env:ANDROID_HOME = 'D:\work\API\Android\Sdk'
+
+.\scripts\mobile-apk.ps1
+# 或 make mobile-apk
+```
+
+脚本会：`npm install` → `vite build` → `cap sync android` → 检测 JDK/SDK → `gradlew assembleDebug`。
+
+### APK 连接后端
+
+安装后在 App **我的 → 服务器** 填写 API 基址，例如：
+
+- 局域网 Docker：`http://192.168.x.x:25175/api/v1`
+- 模拟器访问本机：`http://10.0.2.2:25175/api/v1`
+
+### 常见问题
+
+| 错误 | 处理 |
+|------|------|
+| `系统无法执行指定的程序` (9020) | `JAVA_HOME` 指向的 `java.exe` 无法运行；改用 Android Studio `jbr` |
+| Gradle 下载超时 | 配置代理或 Gradle 镜像；脚本已将 wrapper 超时设为 120s |
+| 找不到 SDK | Android Studio → SDK Manager；或设置 `ANDROID_HOME` |
+
+详见 [`frontend/mobile/README.md`](frontend/mobile/README.md)。
+
+---
+
+## 版本标签
+
+Git annotated tags 标记里程碑；**MiniLedger 时代线** 止于 `v0.13.0-miniledger` / `miniledger-era`。
+
+| 标签 | 说明 |
+|------|------|
+| `v0.1.0` … `v0.12.0` | 自初始骨架至 OpenAPI / 模板同步 |
+| `v0.13.0-miniledger` | 移动 Web + APK；**MiniLedger 顶层链最后稳定线** |
+| `miniledger-era` | 同上（快速引用） |
+| `v0.14.x-fisco.*` | FISCO BCOS 迁移各阶段（见下） |
+
+查看：`git tag -l --sort=v:refname`
+
+---
+
+## FISCO BCOS 迁移（v0.14+）
+
+目标：**完全以 FISCO BCOS 为权威账本**——合约/表重做账本创建、事件、成员、审批、复式状态；迁移历史数据；链浏览器、重试队列、Compose 文档换一套。
+
+| 已完成 | 进行中 / 待办 |
+|--------|----------------|
+| `pkg/chainstore` 链抽象 | go-sdk 对接 `LedgerRegistry` |
+| MiniLedger 适配器（默认不变） | 成员 / 审批 / 复式上链 |
+| `LedgerRegistry.sol` 骨架 | 历史数据迁移工具 |
+| `docker-compose.fisco.yml` | 默认 Compose 切 FISCO |
+| FISCO Store 桩 + 配置项 | 前端链浏览器改 FISCO |
+
+**文档**：[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)  
+**建链**：[`backend/infra/fisco/README.md`](backend/infra/fisco/README.md)  
+**配置示例**：[`backend/deploy/etc/ledger-api.fisco.docker.yaml`](backend/deploy/etc/ledger-api.fisco.docker.yaml)
+
+```bash
+# 启用 FISCO profile（节点需先在宿主机 build_chain）
+docker compose -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d
+```
+
+---
+
+## 更新记录
+
+- 2026-06-04：**v0.14.2-fisco.2** — FISCO 合约骨架、chainstore、fisco compose；README 增补 APK 与迁移路线图。
+- 2026-06-04：**v0.13.0-miniledger** — 移动端 Web/APK；Git 标签标记 MiniLedger 顶层链时代线。
 
 ## 更新规范
 

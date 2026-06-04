@@ -33,28 +33,27 @@ make up   # 含 web-mobile 服务
 
 ## 打包 APK
 
-**环境：** Node.js 22+、Android Studio（含 SDK）、JDK 17+
+**环境：** Node.js 22+、**JDK 17+**（可用 Android Studio 自带 JBR）、Android SDK
 
 ```powershell
 # Windows
 .\scripts\mobile-apk.ps1
 ```
 
-```bash
-# Linux / macOS
-./scripts/mobile-apk.sh
+脚本会自动检测 JDK / SDK；若系统 `JAVA_HOME` 指向损坏的 JDK，会尝试 Android Studio 的 `jbr` 目录。
+
+**常见问题：`系统无法执行指定的程序`（Gradle 9020）**
+
+- 原因：PATH 中 `java.exe` 无法运行（JDK 安装损坏或 `JAVA_HOME` 错误）
+- 处理：在 PowerShell 中临时指定 Android Studio JBR 后再构建：
+
+```powershell
+$env:JAVA_HOME = 'D:\work\API\Android\Android studio\jbr'
+$env:ANDROID_HOME = 'D:\work\API\Android\Sdk'
+.\scripts\mobile-apk.ps1
 ```
 
-或手动：
-
-```bash
-cd frontend/mobile
-npm install
-npm run cap:sync
-cd android && ./gradlew assembleDebug
-```
-
-APK 输出：`frontend/mobile/android/app/build/outputs/apk/debug/app-debug.apk`
+或在 Android Studio 打开 `frontend/mobile/android` → **Build → Build Bundle(s) / APK(s) → Build APK(s)**。
 
 ### APK 连接服务器
 
