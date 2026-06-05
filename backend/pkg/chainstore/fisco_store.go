@@ -1,124 +1,85 @@
 package chainstore
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"time"
 )
 
-// FISCOStore implements Store against FISCO BCOS (JSON-RPC + LedgerRegistry contract).
-// v0.14.2: RPC ping + status; Submit/Query via contract (see docs/fisco-bcos-migration.md).
+// FISCOStore implements Store against FISCO BCOS 3.x JSON-RPC + LedgerRegistry putState/getState.
 type FISCOStore struct {
 	cfg        FISCOConfig
-	httpClient *http.Client
+	http       *fiscoHTTPClient
+	registry   *fiscoRegistryClient
 }
 
 func NewFISCO(cfg FISCOConfig) (*FISCOStore, error) {
+	cfg, err := loadFISCOConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
 	if cfg.JSONRPCURL == "" {
 		return nil, fmt.Errorf("fisco: JSONRPCURL required")
 	}
-	return &FISCOStore{
-		cfg: cfg,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-	}, nil
+	st := &FISCOStore{
+		cfg:  cfg,
+		http: newFiscoHTTPClient(cfg),
+	}
+	if cfg.RegistryContract != "" {
+		rc, err := newFiscoRegistryClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		st.registry = rc
+	}
+	return st, nil
 }
 
 func (s *FISCOStore) Backend() Backend { return BackendFISCO }
 
 func (s *FISCOStore) Ping(ctx context.Context) error {
-	_, err := s.fiscoRPC(ctx, "getBlockNumber", []interface{}{s.cfg.GroupID})
+	_, err := s.http.getBlockNumber(ctx)
 	return err
 }
 
 func (s *FISCOStore) Status(ctx context.Context) (*Status, error) {
-	raw, err := s.fiscoRPC(ctx, "getBlockNumber", []interface{}{s.cfg.GroupID})
+	height, err := s.http.getBlockNumber(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &Status{
-		Height:      parseFiscoBlockNumber(raw),
+		Height:      height,
 		Backend:     string(BackendFISCO),
 		ExplorerURL: s.cfg.ExplorerURL,
-		Role:        "fisco-bcos",
+		Role:        "fisco-bcos-3",
 	}, nil
 }
 
 func (s *FISCOStore) Submit(ctx context.Context, tx TxRequest) error {
-	if s.cfg.RegistryContract == "" {
-		return fmt.Errorf("fisco: RegistryContract not deployed (see backend/contracts/fisco and docs/fisco-bcos-migration.md)")
+	if s.registry == nil {
+		return fmt.Errorf("fisco: RegistryContract and PrivateKeyHex required (see docs/fisco-bcos-migration.md)")
 	}
-	_ = ctx
-	_ = tx
-	return fmt.Errorf("fisco: Submit not implemented yet (migration v0.15.0-fisco.3)")
+	delete := txValueIsDelete(tx.Value)
+	var value []byte
+	if !delete {
+		value = append([]byte(nil), tx.Value...)
+	}
+	ledgerID := ledgerIDFromStateKey(tx.Key)
+	if err := s.registry.putState(ctx, ledgerID, tx.Key, value); err != nil {
+		return err
+	}
+	return s.syncIndexes(ctx, tx.Key, value, delete)
 }
 
 func (s *FISCOStore) Query(ctx context.Context, sql string, params ...interface{}) ([]StateRow, error) {
-	_ = ctx
-	_ = sql
-	_ = params
-	return nil, fmt.Errorf("fisco: Query not implemented yet (migration v0.15+)")
+	q, err := parseFiscoQuery(sql, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.runQuery(ctx, q)
 }
 
 func (s *FISCOStore) GetRaw(ctx context.Context, path string) ([]byte, error) {
-	st, err := s.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(map[string]interface{}{
-		"backend": "fisco",
-		"path":    path,
-		"height":  st.Height,
-		"hint":    "Use FISCO block explorer or WeBASE",
-	})
+	return s.http.explorerGet(ctx, path)
 }
 
 func (s *FISCOStore) BaseURL() string { return s.cfg.JSONRPCURL }
-
-func (s *FISCOStore) fiscoRPC(ctx context.Context, method string, params []interface{}) (json.RawMessage, error) {
-	body, _ := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"id":      1,
-		"params":  params,
-	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.JSONRPCURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var out struct {
-		Result json.RawMessage `json:"result"`
-		Error  *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
-	}
-	if out.Error != nil {
-		return nil, fmt.Errorf("fisco rpc %s: %s", method, out.Error.Message)
-	}
-	return out.Result, nil
-}
-
-func parseFiscoBlockNumber(raw json.RawMessage) uint64 {
-	var hex string
-	if json.Unmarshal(raw, &hex) == nil && len(hex) > 2 && hex[:2] == "0x" {
-		var n uint64
-		_, _ = fmt.Sscanf(hex, "0x%x", &n)
-		return n
-	}
-	var n uint64
-	_ = json.Unmarshal(raw, &n)
-	return n
-}

@@ -10,7 +10,7 @@
 
 name: smart-ledger
 
-# 启动前请停止单节点： docker compose stop miniledger
+# 启动前请确保未运行 legacy 单节点；Raft 与 legacy 单节点互斥
 services:
   miniledger-1:
     profiles: ["raft"]

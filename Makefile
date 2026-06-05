@@ -2,7 +2,7 @@
 .PHONY: help build build-linux docker-build init-openclaw-config up down logs clean \
         frontend-install frontend-dev frontend-build \
         mobile-install mobile-dev mobile-build mobile-apk \
-        dev-all start \
+        dev-all start legacy-up \
         offline-ai-up offline-ai-down offline-ai-logs \
         openclaw-gateway-up openclaw-logs openclaw-up openclaw-down
 
@@ -12,7 +12,8 @@ COMPOSE_OFFLINE = docker compose $(COMPOSE_ENV) --profile offline-ai
 
 help:
 	@echo "Targets:"
-	@echo "  make up                - 账本 + Web + OpenClaw Gateway"
+	@echo "  make up                - 账本 + Web + OpenClaw（默认 FISCO 链，需宿主机 build_chain）"
+	@echo "  make legacy-up         - MiniLedger 回退（profile legacy + legacy overlay）"
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
 	@echo "  make build-linux       - 交叉编译全部 Go 服务"
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
@@ -20,7 +21,18 @@ help:
 	@echo "  make mobile-apk        - 构建 Android Debug APK"
 
 fisco-up:
-	@echo "See docs/fisco-bcos-migration.md and backend/infra/fisco/README.md"
+	@echo "FISCO 已是 make up 默认链。请先按 backend/infra/fisco/README.md 在宿主机 build_chain。"
+	@echo "部署 LedgerRegistry 后，在 .env 设置 SL_FISCO_REGISTRY 与 SL_FISCO_PRIVATE_KEY。"
+
+legacy-up: docker-build init-openclaw-config
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.legacy.yml --profile legacy up -d
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Legacy
+else
+	@echo ""
+	@echo "Legacy MiniLedger: http://localhost:24441/dashboard"
+	@echo "Web UI:            http://localhost:25173"
+endif
 
 build:
 	$(MAKE) -C backend build-local
@@ -77,7 +89,7 @@ else
 	@echo "Mobile Web: http://localhost:25175"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
 	@echo "OpenClaw:   http://localhost:18789  (token: .env.openclaw)"
-	@echo "MiniLedger: http://localhost:24441/dashboard"
+	@echo "FISCO RPC:  http://127.0.0.1:20200  (宿主机节点，见 backend/infra/fisco/README.md)"
 	@echo "Login:      admin / admin123"
 	@echo ""
 	@echo "AI：设置 → AI → API Key + Token → 测试连接（Gateway 可填 http://127.0.0.1:18789）"

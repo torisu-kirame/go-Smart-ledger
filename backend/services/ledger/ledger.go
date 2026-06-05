@@ -22,6 +22,7 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
+	c.ApplyChainEnv()
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()

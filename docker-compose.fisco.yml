@@ -1,27 +1,12 @@
-# FISCO BCOS overlay — 与主 compose 联用
+# DEPRECATED（v0.18+）：FISCO 已是 docker-compose.yml 默认，无需本 overlay。
 #
-# 前置：在宿主机或本目录按 backend/infra/fisco/README.md 建链，
-#       JSON-RPC 默认 http://host.docker.internal:8545
+# 旧命令（仍可用，等价于 make up）：
+#   docker compose -f docker-compose.yml -f docker-compose.fisco.yml up -d
 #
-#   docker compose -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d
-#
-# ledger-api 使用 deploy/etc/ledger-api.fisco.docker.yaml 中 Chain.Backend: fisco
+# MiniLedger 回退：docker-compose.legacy.yml + --profile legacy
+# 详见 docs/fisco-bcos-migration.md
 
 name: smart-ledger
 
-services:
-  # 占位：指向宿主机 FISCO JSON-RPC（节点由 build_chain.sh 启动）
-  fisco-bcos-proxy:
-    image: alpine:3.20
-    container_name: smart-ledger-fisco-proxy
-    profiles: [fisco]
-    command: ["sleep", "infinity"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  ledger-api:
-    profiles: [fisco]
-    environment:
-      SL_CHAIN_BACKEND: fisco
-      SL_FISCO_JSONRPC: http://host.docker.internal:8545
-      SL_FISCO_GROUP_ID: "1"
+# 保留空 services 块以兼容仍引用本文件的脚本；合并后无额外变更。
+services: {}

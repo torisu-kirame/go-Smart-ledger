@@ -46,6 +46,9 @@ func chainStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			if st.ExplorerURL != "" {
 				out["explorerUrl"] = st.ExplorerURL
 			}
+			if st.Backend != "" {
+				out["chainBackend"] = st.Backend
+			}
 		} else if err != nil {
 			out["error"] = err.Error()
 		}

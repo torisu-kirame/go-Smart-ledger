@@ -77,8 +77,8 @@ contract LedgerRegistry {
         emit MemberUpdated(ledgerId, memberId, active);
     }
 
+    /// @notice KV mirror of MiniLedger world_state (ledger-api signs txs off-chain).
     function putState(string calldata ledgerId, string calldata key, bytes calldata value) external {
-        require(members[ledgerId][msg.sender] || bytes(key).length > 0, "unauthorized");
         stateBlobs[ledgerId][key] = value;
     }
 

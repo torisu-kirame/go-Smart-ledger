@@ -1,3 +1,4 @@
+# 与 deploy/etc/ledger-api.docker.yaml 内容等价（v0.18+ 已合并入主配置，本文件仅作参考）
 Name: ledger-api
 Host: 0.0.0.0
 Port: 28888
@@ -7,10 +8,12 @@ Timeout: 600000
 Chain:
   Backend: fisco
   FISCO:
-    JSONRPCURL: http://host.docker.internal:8545
-    GroupID: 1
-    ChainID: 1
+    JSONRPCURL: http://host.docker.internal:20200
+    GroupID: group0
+    ChainID: chain0
+    DisableSsl: true       # 本地 disable_ssl 建链；生产改用 TLS + 证书路径
     RegistryContract: ""   # 部署 LedgerRegistry.sol 后填写
+    PrivateKeyHex: ""      # 链上写操作签名密钥；也可用 SL_FISCO_PRIVATE_KEY 环境变量
     ExplorerURL: http://127.0.0.1:25002
 
 # legacy：MiniLedger profile 仍可使用
