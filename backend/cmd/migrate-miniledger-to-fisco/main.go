@@ -20,7 +20,7 @@ func main() {
 	chainID := flag.String("chain-id", "chain0", "FISCO chain ID")
 	privateKey := flag.String("private-key", "", "hex private key for FISCO writes")
 	privateKeyFile := flag.String("private-key-file", "", "file containing FISCO private key hex")
-	disableSsl := flag.Bool("disable-ssl", false, "FISCO node disable_ssl=true")
+	disableSsl := flag.Bool("disable-ssl", false, "deprecated: set disable_ssl on FISCO node config.ini instead")
 	dryRun := flag.Bool("dry-run", false, "scan source only, do not write")
 	verify := flag.Bool("verify", false, "after write, compare each key on FISCO")
 	limit := flag.Int("limit", 0, "max keys to migrate (0 = all)")
@@ -56,6 +56,9 @@ func main() {
 
 	var dst chainstore.Store
 	if !*dryRun {
+		if *disableSsl {
+			log.Println("note: -disable-ssl is ignored; use node config.ini disable_ssl=true")
+		}
 		dst, err = chainstore.New(chainstore.Config{
 			Backend: string(chainstore.BackendFISCO),
 			FISCO: chainstore.FISCOConfig{
@@ -64,7 +67,6 @@ func main() {
 				ChainID:          *chainID,
 				RegistryContract: *registry,
 				PrivateKeyHex:    *privateKey,
-				DisableSsl:       *disableSsl,
 			},
 		})
 		if err != nil {

@@ -14,9 +14,9 @@ func (s *Service) submitSteps(ctx context.Context, label, ledgerID string, steps
 		if err := s.chain.Submit(ctx, tx); err != nil {
 			if s.queue != nil {
 				remaining := append([]chainstore.TxRequest{}, steps[i:]...)
-				_, _ = s.queue.Enqueue(label, ledgerID, string(s.chain.Backend()), remaining, err.Error())
+				_, _ = s.queue.Enqueue(label, ledgerID, remaining, err.Error())
 			}
-			return fmt.Errorf("chain submit: %w", err)
+			return fmt.Errorf("miniledger submit: %w", err)
 		}
 	}
 	return nil

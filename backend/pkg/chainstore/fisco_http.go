@@ -85,12 +85,17 @@ func (c *fiscoHTTPClient) getBlockNumber(ctx context.Context) (uint64, error) {
 
 func (c *fiscoHTTPClient) callContract(ctx context.Context, contract common.Address, data []byte) ([]byte, error) {
 	callArg := map[string]interface{}{
-		"to":   strings.ToLower(contract.Hex()[2:]),
-		"data": hex.EncodeToString(data),
+		"to":   contract.Hex(),
+		"data": "0x" + hex.EncodeToString(data),
 	}
-	raw, err := c.rpc(ctx, "call", []interface{}{callArg})
+	raw, err := c.rpc(ctx, "call", []interface{}{c.cfg.GroupID, callArg})
 	if err != nil {
-		return nil, err
+		// fallback: some nodes accept callArg only
+		callArg["to"] = strings.ToLower(contract.Hex()[2:])
+		raw, err = c.rpc(ctx, "call", []interface{}{callArg})
+		if err != nil {
+			return nil, err
+		}
 	}
 	var cr fiscoCallResult
 	if err := json.Unmarshal(raw, &cr); err != nil {
@@ -102,7 +107,11 @@ func (c *fiscoHTTPClient) callContract(ctx context.Context, contract common.Addr
 	if cr.Output == "" || cr.Output == "0x" {
 		return nil, nil
 	}
-	return common.FromHex(cr.Output), nil
+	out := cr.Output
+	if !strings.HasPrefix(out, "0x") {
+		out = "0x" + out
+	}
+	return common.FromHex(out), nil
 }
 
 func (c *fiscoHTTPClient) sendSignedTransaction(ctx context.Context, signedHex string) (*fiscoReceipt, error) {

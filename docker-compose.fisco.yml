@@ -1,12 +1,59 @@
-# DEPRECATED（v0.18+）：FISCO 已是 docker-compose.yml 默认，无需本 overlay。
+# FISCO BCOS 3.x — Compose overlay（内置 fisco-node 容器）
 #
-# 旧命令（仍可用，等价于 make up）：
-#   docker compose -f docker-compose.yml -f docker-compose.fisco.yml up -d
+# 启动 FISCO 链 + ledger-api（FISCO 后端）：
+#   docker compose -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d
+# 或：make fisco-up
 #
-# MiniLedger 回退：docker-compose.legacy.yml + --profile legacy
-# 详见 docs/fisco-bcos-migration.md
+# 仅启动链节点：
+#   docker compose -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d fisco-node
+#
+# RPC: http://localhost:20200  （容器内 ledger-api → http://fisco-node:20200）
 
 name: smart-ledger
 
-# 保留空 services 块以兼容仍引用本文件的脚本；合并后无额外变更。
-services: {}
+services:
+  fisco-node:
+    build:
+      context: ./backend/infra/fisco
+      dockerfile: Dockerfile
+    image: smart-ledger/fisco-node:3.6.0
+    container_name: smart-ledger-fisco-node
+    profiles: [fisco]
+    ports:
+      - "20200:20200"
+      - "30300:30300"
+    volumes:
+      - fisco-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sf",
+          "-X",
+          "POST",
+          "http://127.0.0.1:20200",
+          "-H",
+          "Content-Type: application/json",
+          "-d",
+          '{"jsonrpc":"2.0","method":"getBlockNumber","params":[],"id":1}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 300s
+    restart: unless-stopped
+
+  ledger-api:
+    profiles: [fisco]
+    # !override：FISCO 模式不依赖 miniledger（Compose 合并语义；勿重复声明 volumes，避免与主 compose 键冲突）
+    depends_on: !override
+      fisco-node:
+        condition: service_healthy
+      nsqd:
+        condition: service_healthy
+    environment:
+      SL_CHAIN_BACKEND: fisco
+      SL_FISCO_JSONRPC: http://fisco-node:20200
+      SL_FISCO_GROUP_ID: group0
+      SL_FISCO_CHAIN_ID: chain0

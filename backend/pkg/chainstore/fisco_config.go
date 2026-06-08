@@ -12,24 +12,35 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func loadFISCOConfig(cfg FISCOConfig) (FISCOConfig, error) {
-	if v := strings.TrimSpace(os.Getenv("SL_FISCO_PRIVATE_KEY")); v != "" {
-		cfg.PrivateKeyHex = v
+func (c FISCOConfig) withDefaults() FISCOConfig {
+	if strings.TrimSpace(c.GroupID) == "" {
+		c.GroupID = "group0"
 	}
+	if strings.TrimSpace(c.ChainID) == "" {
+		c.ChainID = "chain0"
+	}
+	if strings.TrimSpace(c.JSONRPCURL) == "" {
+		c.JSONRPCURL = "http://127.0.0.1:20200"
+	}
+	return c
+}
+
+func loadFISCOConfig(cfg FISCOConfig) (FISCOConfig, error) {
+	cfg = cfg.withDefaults()
 	if v := strings.TrimSpace(os.Getenv("SL_FISCO_JSONRPC")); v != "" {
 		cfg.JSONRPCURL = v
 	}
 	if v := strings.TrimSpace(os.Getenv("SL_FISCO_GROUP_ID")); v != "" {
 		cfg.GroupID = v
 	}
-	if v := strings.TrimSpace(os.Getenv("SL_FISCO_REGISTRY")); v != "" {
-		cfg.RegistryContract = v
-	}
 	if v := strings.TrimSpace(os.Getenv("SL_FISCO_CHAIN_ID")); v != "" {
 		cfg.ChainID = v
 	}
-	if v := strings.TrimSpace(os.Getenv("SL_FISCO_DISABLE_SSL")); v != "" {
-		cfg.DisableSsl = strings.EqualFold(v, "1") || strings.EqualFold(v, "true")
+	if v := strings.TrimSpace(os.Getenv("SL_FISCO_REGISTRY_CONTRACT")); v != "" {
+		cfg.RegistryContract = v
+	}
+	if v := strings.TrimSpace(os.Getenv("SL_FISCO_PRIVATE_KEY")); v != "" {
+		cfg.PrivateKeyHex = v
 	}
 	if cfg.PrivateKeyHex == "" && cfg.PrivateKeyPath != "" {
 		raw, err := os.ReadFile(cfg.PrivateKeyPath)
@@ -38,36 +49,7 @@ func loadFISCOConfig(cfg FISCOConfig) (FISCOConfig, error) {
 		}
 		cfg.PrivateKeyHex = strings.TrimSpace(string(raw))
 	}
-	return cfg.withDefaults(), nil
-}
-
-func (c FISCOConfig) withDefaults() FISCOConfig {
-	if c.GroupID == "" {
-		c.GroupID = "group0"
-	}
-	if c.JSONRPCURL == "" {
-		c.JSONRPCURL = "http://127.0.0.1:20200"
-	}
-	return c
-}
-
-func (c FISCOConfig) rpcHostPort() (string, int, error) {
-	u, err := url.Parse(c.JSONRPCURL)
-	if err != nil {
-		return "", 0, fmt.Errorf("fisco: invalid JSONRPCURL: %w", err)
-	}
-	host := u.Hostname()
-	if host == "" {
-		return "", 0, fmt.Errorf("fisco: JSONRPCURL missing host")
-	}
-	port := 20200
-	if p := u.Port(); p != "" {
-		port, err = strconv.Atoi(p)
-		if err != nil {
-			return "", 0, fmt.Errorf("fisco: invalid port in JSONRPCURL: %w", err)
-		}
-	}
-	return host, port, nil
+	return cfg, nil
 }
 
 func (c FISCOConfig) registryAddr() (common.Address, error) {
@@ -88,7 +70,31 @@ func (c FISCOConfig) privateKey() (*ecdsa.PrivateKey, error) {
 	return crypto.HexToECDSA(hexKey)
 }
 
-func parseHostPortForTest(raw string) (string, int, error) {
-	cfg := FISCOConfig{JSONRPCURL: raw}.withDefaults()
-	return cfg.rpcHostPort()
+func parseHostPort(rawURL string) (host string, port int, err error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", 0, err
+	}
+	host = u.Hostname()
+	if host == "" {
+		return "", 0, fmt.Errorf("fisco: invalid JSONRPCURL %q", rawURL)
+	}
+	portStr := u.Port()
+	if portStr == "" {
+		if u.Scheme == "https" {
+			port = 443
+		} else {
+			port = 20200
+		}
+	} else {
+		port, err = strconv.Atoi(portStr)
+		if err != nil {
+			return "", 0, err
+		}
+	}
+	return host, port, nil
+}
+
+func parseHostPortForTest(rawURL string) (string, int, error) {
+	return parseHostPort(rawURL)
 }

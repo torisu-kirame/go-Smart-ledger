@@ -2,16 +2,13 @@
 # 重要：请先 make build-linux 再 docker compose build，否则 ledger/gateway 可能是旧二进制
 # 推荐：make up（账本 + Web + OpenClaw Gateway）
 #
-# 链（v0.18+）：默认 FISCO BCOS 3.0 — 请先在宿主机 build_chain（见 backend/infra/fisco/README.md）
-# MiniLedger 回退：docker compose -f docker-compose.yml -f docker-compose.legacy.yml --profile legacy up -d
-#
 #   make up
 #
 # 控制台:     http://localhost:25173
 # 网关:       http://localhost:28080
 # OpenClaw:   http://localhost:18789  (token 见 .env.openclaw)
-# FISCO RPC:  http://127.0.0.1:20200  (宿主机节点)
 # 离线 Ollama: make offline-ai-up
+# 链浏览器:   http://localhost:24441/dashboard
 # 默认账号:   admin / admin123
 
 name: smart-ledger
@@ -53,7 +50,6 @@ services:
     restart: unless-stopped
 
   miniledger:
-    profiles: ["legacy"]
     image: node:22-alpine
     container_name: smart-ledger-miniledger
     working_dir: /app
@@ -70,15 +66,6 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
-    restart: unless-stopped
-
-  # 占位：Compose 默认链为宿主机 FISCO JSON-RPC（节点由 build_chain.sh 启动）
-  fisco-bcos-proxy:
-    image: alpine:3.20
-    container_name: smart-ledger-fisco-proxy
-    command: ["sleep", "infinity"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   auth-api:
@@ -137,15 +124,12 @@ services:
     environment:
       OPENCLAW_CONFIG_PATH: /data/openclaw/config/openclaw.json
       OPENCLAW_GATEWAY_INTERNAL: http://openclaw-gateway:18789
-      SL_FISCO_JSONRPC: http://host.docker.internal:20200
-      SL_FISCO_GROUP_ID: group0
-      SL_FISCO_DISABLE_SSL: "true"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "28888:28888"
       - "28898:28898"
     depends_on:
+      miniledger:
+        condition: service_healthy
       nsqd:
         condition: service_healthy
     healthcheck:
@@ -361,3 +345,4 @@ volumes:
   storage-backups:
   ipfs-data:
   ollama-models:
+  fisco-data:

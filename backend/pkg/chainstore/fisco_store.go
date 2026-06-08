@@ -5,20 +5,17 @@ import (
 	"fmt"
 )
 
-// FISCOStore implements Store against FISCO BCOS 3.x JSON-RPC + LedgerRegistry putState/getState.
+// FISCOStore implements Store against FISCO BCOS 3.x (native JSON-RPC + LedgerRegistry putState/getState).
 type FISCOStore struct {
-	cfg        FISCOConfig
-	http       *fiscoHTTPClient
-	registry   *fiscoRegistryClient
+	cfg  FISCOConfig
+	http *fiscoHTTPClient
+	registry *fiscoRegistryClient
 }
 
 func NewFISCO(cfg FISCOConfig) (*FISCOStore, error) {
 	cfg, err := loadFISCOConfig(cfg)
 	if err != nil {
 		return nil, err
-	}
-	if cfg.JSONRPCURL == "" {
-		return nil, fmt.Errorf("fisco: JSONRPCURL required")
 	}
 	st := &FISCOStore{
 		cfg:  cfg,
@@ -50,13 +47,13 @@ func (s *FISCOStore) Status(ctx context.Context) (*Status, error) {
 		Height:      height,
 		Backend:     string(BackendFISCO),
 		ExplorerURL: s.cfg.ExplorerURL,
-		Role:        "fisco-bcos-3",
+		Role:        "fisco-bcos-3.x",
 	}, nil
 }
 
 func (s *FISCOStore) Submit(ctx context.Context, tx TxRequest) error {
 	if s.registry == nil {
-		return fmt.Errorf("fisco: RegistryContract and PrivateKeyHex required (see docs/fisco-bcos-migration.md)")
+		return fmt.Errorf("fisco: RegistryContract not deployed (see backend/contracts/fisco and docs/fisco-bcos-migration.md)")
 	}
 	delete := txValueIsDelete(tx.Value)
 	var value []byte
@@ -83,3 +80,6 @@ func (s *FISCOStore) GetRaw(ctx context.Context, path string) ([]byte, error) {
 }
 
 func (s *FISCOStore) BaseURL() string { return s.cfg.JSONRPCURL }
+
+// HTTP returns the underlying FISCO 3.x JSON-RPC client (for tests / diagnostics).
+func (s *FISCOStore) HTTP() *fiscoHTTPClient { return s.http }

@@ -1,7 +1,7 @@
 # Smart Ledger（go-Smart-ledger）
 
 去中心化区块链自定义账本系统：支持私人账本与多人账本。  
-**v0.18+** 默认权威链为 **FISCO BCOS 3.0**；MiniLedger 保留为 `legacy` profile（见 [FISCO 迁移](#fisco-bcos-迁移-v014)）。  
+**当前发布线（v0.13.0-miniledger）** 权威链为 [Chainscore MiniLedger](https://github.com/Chainscore/miniledger)；**v0.14+** 正在迁移至 **FISCO BCOS**（见 [FISCO 迁移](#fisco-bcos-迁移-v014)）。  
 后端 **Go + go-zero 微服务**，前端 **Vue 3** 桌面 + 移动 Web/APK。
 
 > **维护说明**：每次新增功能或变更规划时，请同步更新本文档——在「项目计划」中登记 idea，并在「已完成 / 未完成」中勾选状态。文末「更新记录」追加一条摘要。
@@ -71,9 +71,9 @@ flowchart TB
         STORAGE[storage-api :28890]
     end
 
-    subgraph chain [链层 — 默认 FISCO]
-        FISCO[FISCO BCOS 3.0 :20200]
-        ML[MiniLedger :24441 legacy profile]
+    subgraph chain [链层 — 可切换]
+        ML[MiniLedger :24441 legacy]
+        FISCO[FISCO BCOS JSON-RPC v0.14+]
     end
 
     Desktop --> GW
@@ -88,12 +88,11 @@ flowchart TB
 | 层级 | 技术 |
 |------|------|
 | 链（legacy） | Chainscore MiniLedger（REST + SQLite 世界状态） |
-| 链（默认） | FISCO BCOS 3.0 + `LedgerRegistry` 合约（[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)） |
-| 链（legacy） | [Chainscore MiniLedger](https://github.com/Chainscore/miniledger) — `--profile legacy` |
+| 链（目标） | FISCO BCOS 联盟链 + `LedgerRegistry` 合约（[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)） |
 | 链抽象 | `backend/pkg/chainstore`（`miniledger` / `fisco` 后端） |
 | 后端 | go-zero REST 微服务 |
 | 前端 | Vue 3 桌面（`frontend/desktop`）+ 移动 Web/APK（`frontend/mobile`） |
-| 部署 | 根目录 `docker-compose.yml`（默认 FISCO）；`docker-compose.legacy.yml` 回退 MiniLedger |
+| 部署 | 根目录 `docker-compose.yml` + 可选 `docker-compose.fisco.yml` |
 
 ---
 
@@ -238,9 +237,8 @@ flowchart TB
 go-Smart-ledger/
 ├── README.md                 # 本文件：计划 + 进度
 ├── Makefile                  # 全栈构建入口
-├── docker-compose.yml        # 账本 + Web；默认 FISCO；profile legacy = MiniLedger
-├── docker-compose.legacy.yml # MiniLedger 回退 overlay
-├── docker-compose.fisco.yml  # 已废弃（v0.18+ FISCO 已合并入主 compose）
+├── docker-compose.yml        # 账本 + Web；profile offline-ai 含 Ollama + OpenClaw
+├── docker-compose.openclaw.yml  # 已废弃，指向主 compose（兼容旧脚本）
 ├── .env.openclaw.example       # OpenClaw Docker 环境变量模板
 ├── integrations/openclaw/    # OpenClaw 工作区与示例配置（不含上游源码）
 ├── openclaw/                 # 由 setup-openclaw 克隆（gitignore）
@@ -273,8 +271,7 @@ go-Smart-ledger/
 | storage-api | **28890** | 存储/备份 |
 | auth-api | **28887** | 认证 / 用户 / 好友 / 团队 |
 | MySQL（外部，配置） | **3306** | 用户/好友/团队/资料；`auth-api` 的 `Database.DataSource` |
-| MiniLedger API | **24441** | legacy profile 链 HTTP / 浏览器 |
-| FISCO JSON-RPC | **20200** | 宿主机 FISCO BCOS 3.0 节点（默认链） |
+| MiniLedger API | **24441** | 链 HTTP / 区块浏览器 |
 | MiniLedger P2P | **24440** | 链 P2P |
 | IPFS Kubo API | **25001** | 备份内容 Pin（容器内 5001） |
 | IPFS Gateway | **28090** | 可选网关访问 CID |
@@ -335,7 +332,7 @@ go-Smart-ledger/
 | F23 | 上链失败重试队列、待上链状态 UI | P1 | ✅ 已完成 |
 | F24 | 前端纳入 Docker（Nginx 托管 dist） | P1 | ✅ 已完成 |
 | F25 | 移动端 Vue3 + Vant + Capacitor APK | P2 | ✅ 已完成 |
-| F50 | FISCO BCOS 权威链迁移（合约/表、迁移、浏览器、Compose） | P1 | ✅ 已完成（v0.18 默认 Compose 切 FISCO） |
+| F50 | FISCO BCOS 权威链迁移（合约/表、迁移、浏览器、Compose） | P1 | 🟡 进行中（v0.15.1 FISCO 3.x RPC 已合入） |
 | F26 | 集成测试 / CI（GitHub Actions） | P2 | ⬜ 未完成 |
 | F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ✅ 已完成 |
 | F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
@@ -380,8 +377,7 @@ go-Smart-ledger/
 
 ### 已知限制
 
-- **默认 Compose 使用 FISCO BCOS 3.0**（宿主机需先 `build_chain` 并部署 `LedgerRegistry`）；MiniLedger 见 `make legacy-up`（v0.18.0-fisco.8）。
-- 未配置 `SL_FISCO_REGISTRY` / `SL_FISCO_PRIVATE_KEY` 时，链上写入会失败；开发环境请在 `.env` 填写合约地址与私钥。
+- **默认 Compose 仍启动 MiniLedger**；FISCO 为 overlay + 配置切换；`Chain.Backend: fisco` 且部署合约后可 KV 读写（v0.15.0-fisco.3）。
 - 移动端 APK 打包需本机 **JDK 17+** 与 **Android SDK**（见 [移动端与 APK 打包](#移动端与-apk-打包)）。
 - 默认 JWT/Cookie 密钥仅供开发，生产必须更换。
 
@@ -392,8 +388,6 @@ go-Smart-ledger/
 ### 环境要求
 
 - Go 1.22+、Docker Desktop（运行中）
-- **FISCO BCOS 3.0 本地链**（`make up` 前须在宿主机 `build_chain`，见 [`backend/infra/fisco/README.md`](backend/infra/fisco/README.md)）
-- 部署 `LedgerRegistry.sol` 后，将合约地址与写账户私钥写入 `.env`（`SL_FISCO_REGISTRY`、`SL_FISCO_PRIVATE_KEY`）
 - **外部 MySQL 8**（须自行安装；默认 `root`/`123456`，库 `smart_ledger`；配置见 `auth-api` 的 `Database.DataSource`；Compose **不**内置 MySQL）
 - Node.js 22+（仅 `make frontend-dev` 时需要；容器化前端不需要）
 - Make（推荐）；Windows 无 Make 时可用 `scripts/*.ps1`
@@ -419,8 +413,7 @@ Windows PowerShell：
 | 控制台（桌面） | `smart-ledger-web` | 25173 |
 | 控制台（移动） | `smart-ledger-web-mobile` | 25175 |
 | 网关 | `smart-ledger-gateway` | 28080 |
-| FISCO JSON-RPC（宿主机） | — | 20200 |
-| MiniLedger（legacy，`make legacy-up`） | `smart-ledger-miniledger` | 24441 |
+| MiniLedger（legacy） | `smart-ledger-miniledger` | 24441 |
 
 ### 本地前端热更新（可选）
 
@@ -437,8 +430,8 @@ make frontend-dev
 | http://localhost:25173 | Vue 控制台 |
 | http://localhost:28080/api/v1/health | 网关健康检查 |
 | http://localhost:24171 | NSQ Admin（上链重试队列监控） |
-| http://localhost:25173/chain | 控制台链浏览器（FISCO 3.0 RPC 代理） |
-| http://localhost:24441/dashboard | MiniLedger 原生浏览器（仅 legacy profile） |
+| http://localhost:25173/chain | 控制台内嵌链浏览器（中文 `/explorer-zh/`，英文 `/dashboard/`） |
+| http://localhost:24441/dashboard | MiniLedger 原生浏览器（直连节点） |
 | 默认账号 | `admin` / `admin123` |
 
 ### ID 与链上地址（开发说明）
@@ -463,13 +456,12 @@ make down            # 停止栈
 make frontend-build  # 构建桌面静态资源
 make mobile-dev      # 移动 Web 开发服 :25175
 make mobile-apk      # Android Debug APK（需 JDK + SDK）
-make legacy-up       # MiniLedger 回退（profile legacy）
 ```
 
 ### Raft 集群（F22，可选 · MiniLedger legacy）
 
 ```bash
-make legacy-up
+docker compose stop miniledger
 docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d miniledger-1 miniledger-2 miniledger-3
 ```
 
@@ -548,39 +540,31 @@ Git annotated tags 标记里程碑；**MiniLedger 时代线** 止于 `v0.13.0-mi
 
 ## FISCO BCOS 迁移（v0.14+）
 
-目标：**完全以 FISCO BCOS 为权威账本**——v0.18 起 `make up` 默认对接 FISCO；MiniLedger 保留为 legacy 回退。
+目标：**完全以 FISCO BCOS 为权威账本**——合约/表重做账本创建、事件、成员、审批、复式状态；迁移历史数据；链浏览器、重试队列、Compose 文档换一套。
 
-| 已完成 |
-|--------|
-| `pkg/chainstore` + KV + FISCO 3.0 RPC + 迁移工具 |
-| `/chain/*` 浏览器 + `txqueue` 重试 |
-| 默认 Compose 切 FISCO；MiniLedger → `legacy` profile |
+| 已完成 | 进行中 / 待办 |
+|--------|----------------|
+| `putState`/`getState` KV（v0.15.0-fisco.3） | `txqueue` FISCO 重试语义 |
+| FISCO BCOS **3.x 原生 RPC**（v0.15.1-fisco.4） | 默认 Compose 切 FISCO |
+| MiniLedger 适配器（默认不变） | 前端链浏览器 UI 优化 |
+| 迁移工具 `migrate-miniledger-to-fisco` | |
 
 **文档**：[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)  
 **建链**：[`backend/infra/fisco/README.md`](backend/infra/fisco/README.md)  
-**Docker 配置**：[`backend/deploy/etc/ledger-api.docker.yaml`](backend/deploy/etc/ledger-api.docker.yaml)
+**配置示例**：[`backend/deploy/etc/ledger-api.fisco.docker.yaml`](backend/deploy/etc/ledger-api.fisco.docker.yaml)
 
 ```bash
-# 1. 宿主机 build_chain + 部署 LedgerRegistry（见 infra/fisco/README.md）
-# 2. .env 填写 SL_FISCO_REGISTRY / SL_FISCO_PRIVATE_KEY
-make up
-
-# MiniLedger 回退
-make legacy-up
-
-# 历史 KV 迁移（v0.17）
-cd backend && go run ./cmd/migrate-miniledger-to-fisco -dry-run -verbose
+# 启用 FISCO profile（内置 fisco-node 容器，见 backend/infra/fisco/）
+make fisco-dev-up
+# 或仅链：make fisco-up
 ```
 
 ---
 
 ## 更新记录
 
-- 2026-05-24：**v0.18.0-fisco.8** — 默认 Compose 切 FISCO BCOS 3.0；MiniLedger 移入 `legacy` profile；`docker-compose.legacy.yml` 回退 overlay。
-- 2026-05-24：**v0.17.0-fisco.7** — `migrate-miniledger-to-fisco` 批量 KV 迁移与 `-verify` 校验。
-- 2026-05-24：**v0.16.1-fisco.6** — FISCO `/chain/blocks|consensus|peers|tx/recent` 对接 3.0 RPC。
-- 2026-05-24：**v0.16.0-fisco.5** — `txqueue` 可重试错误分类；队列记录 `backend`。
-- 2026-05-24：**v0.15.1-fisco.4** — FISCO BCOS 3.0 原生 JSON-RPC（`group0`/20200）；纯 Go 客户端替换 ethclient。
+- 2026-05-24：**FISCO 3.x 容器化** — `fisco-node` 镜像 + Compose overlay；`make fisco-up` / `make fisco-dev-up`。
+- 2026-05-24：**v0.15.1-fisco.4** — FISCO BCOS 3.x 原生 JSON-RPC；纯 Go 交易签名；`/chain` GetRaw 区块/节点查询。
 - 2026-05-24：**v0.15.0-fisco.3** — FISCO `putState`/`getState` 对接 ledgersvc KV；链上键索引；`PrivateKeyHex` / `SL_FISCO_PRIVATE_KEY`。
 - 2026-06-04：**v0.14.2-fisco.2** — FISCO 合约骨架、chainstore、fisco compose；README 增补 APK 与迁移路线图。
 - 2026-06-04：**v0.13.0-miniledger** — 移动端 Web/APK；Git 标签标记 MiniLedger 顶层链时代线。

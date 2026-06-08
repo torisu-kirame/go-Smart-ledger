@@ -25,23 +25,22 @@ const (
 
 // Item is a multi-step chain submission that failed mid-flight.
 type Item struct {
-	ID        string                 `json:"id"`
-	Label     string                 `json:"label"`
-	LedgerID  string                 `json:"ledgerId,omitempty"`
-	Backend   string                 `json:"backend,omitempty"`
+	ID        string                       `json:"id"`
+	Label     string                       `json:"label"`
+	LedgerID  string                       `json:"ledgerId,omitempty"`
 	Steps     []chainstore.TxRequest `json:"steps"`
-	Status    string                 `json:"status"`
-	Attempts  int                    `json:"attempts"`
-	LastError string                 `json:"lastError,omitempty"`
-	CreatedAt time.Time              `json:"createdAt"`
-	UpdatedAt time.Time              `json:"updatedAt"`
+	Status    string                       `json:"status"`
+	Attempts  int                          `json:"attempts"`
+	LastError string                       `json:"lastError,omitempty"`
+	CreatedAt time.Time                    `json:"createdAt"`
+	UpdatedAt time.Time                    `json:"updatedAt"`
 }
 
 type messageBody struct {
 	ID string `json:"id"`
 }
 
-// SubmitFunc submits a single transaction to the configured chain backend.
+// SubmitFunc submits a single transaction to MiniLedger.
 type SubmitFunc func(ctx context.Context, tx chainstore.TxRequest) error
 
 // Queue stores pending chain writes; NSQ delivers retry work to consumers.
@@ -156,7 +155,7 @@ func (q *Queue) republishPending() error {
 }
 
 // Enqueue adds remaining steps after a partial failure and publishes to NSQ.
-func (q *Queue) Enqueue(label, ledgerID, backend string, steps []chainstore.TxRequest, cause string) (*Item, error) {
+func (q *Queue) Enqueue(label, ledgerID string, steps []chainstore.TxRequest, cause string) (*Item, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("txqueue: empty steps")
 	}
@@ -169,7 +168,6 @@ func (q *Queue) Enqueue(label, ledgerID, backend string, steps []chainstore.TxRe
 		ID:        id,
 		Label:     label,
 		LedgerID:  ledgerID,
-		Backend:   backend,
 		Steps:     steps,
 		Status:    StatusPending,
 		LastError: cause,
@@ -265,7 +263,7 @@ func (q *Queue) flushOne(ctx context.Context, it *Item) error {
 			q.mu.Lock()
 			it.LastError = err.Error()
 			it.UpdatedAt = time.Now().UTC()
-			if !chainstore.IsRetryable(err) || it.Attempts >= q.maxAttempts {
+			if it.Attempts >= q.maxAttempts {
 				it.Status = StatusFailed
 			} else {
 				it.Status = StatusPending
