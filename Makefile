@@ -20,17 +20,19 @@ help:
 	@echo "  make fisco-up            - 仅启动 FISCO BCOS 3.x 链容器 (:20200)"
 	@echo "  make fisco-dev-up        - FISCO 链 + ledger-api（FISCO 后端）"
 
+COMPOSE_FISCO = docker compose $(COMPOSE_ENV) --env-file .env.fisco -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco
+
 fisco-up:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d --build fisco-node
+	$(COMPOSE_FISCO) up -d --build fisco-node
 
 fisco-dev-up:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d --build
+	$(COMPOSE_FISCO) up -d --build
 
 fisco-logs:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco logs -f fisco-node
+	$(COMPOSE_FISCO) logs -f fisco-node
 
 fisco-down:
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco down
+	$(COMPOSE_FISCO) down
 
 build:
 	$(MAKE) -C backend build-local

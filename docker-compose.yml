@@ -1,12 +1,11 @@
-# Smart Ledger — 一键启动（含 OpenClaw Gateway；Ollama 离线可选 profile offline-ai）
+# Smart Ledger — 一键启动（ledger-api 内置 LangChain Agent；Ollama 离线可选 profile offline-ai）
 # 重要：请先 make build-linux 再 docker compose build，否则 ledger/gateway 可能是旧二进制
-# 推荐：make up（账本 + Web + OpenClaw Gateway）
+# 推荐：make up（账本 + Web）
 #
 #   make up
 #
 # 控制台:     http://localhost:25173
 # 网关:       http://localhost:28080
-# OpenClaw:   http://localhost:18789  (token 见 .env.openclaw)
 # 离线 Ollama: make offline-ai-up
 # 链浏览器:   http://localhost:24441/dashboard
 # 默认账号:   admin / admin123
@@ -121,15 +120,21 @@ services:
     volumes:
       - ledger-data:/data
       - ./data/openclaw/config:/data/openclaw/config
+      - ./data/agent/config:/data/agent/config
     environment:
       OPENCLAW_CONFIG_PATH: /data/openclaw/config/openclaw.json
-      OPENCLAW_GATEWAY_INTERNAL: http://openclaw-gateway:18789
+      AGENT_CONFIG_PATH: /data/agent/config
+      SL_CHAIN_BACKEND: ${SL_CHAIN_BACKEND:-miniledger}
+      SL_FISCO_JSONRPC: ${SL_FISCO_JSONRPC:-http://fisco-node:20200}
+      SL_FISCO_GROUP_ID: ${SL_FISCO_GROUP_ID:-group0}
+      SL_FISCO_CHAIN_ID: ${SL_FISCO_CHAIN_ID:-chain0}
     ports:
       - "28888:28888"
       - "28898:28898"
     depends_on:
       miniledger:
         condition: service_healthy
+        required: false
       nsqd:
         condition: service_healthy
     healthcheck:
@@ -182,7 +187,7 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # --- OpenClaw Gateway（make up 默认启动；Ollama 离线见 profile offline-ai）---
+  # --- 旧版 OpenClaw Gateway（已弃用；LangChain Agent 见 ledger-api；profile openclaw-legacy）---
   ollama:
     profiles: ["offline-ai"]
     image: ollama/ollama:latest
@@ -221,6 +226,7 @@ services:
     restart: "no"
 
   openclaw-gateway:
+    profiles: ["openclaw-legacy"]
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: smart-ledger-openclaw-gateway
     env_file:
@@ -273,9 +279,9 @@ services:
       start_period: 40s
 
   openclaw-cli:
+    profiles: ["openclaw-legacy", "cli"]
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: smart-ledger-openclaw-cli
-    profiles: ["cli"]
     network_mode: service:openclaw-gateway
     env_file:
       - path: .env.openclaw

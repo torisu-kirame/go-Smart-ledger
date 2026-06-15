@@ -685,7 +685,8 @@ async function send() {
     await streamChat({
       messages: payload,
       signal: abortCtrl.signal,
-      agentUser: `agent:${agentId}`,
+      useTools: !!(agent.ledgerId?.trim()),
+      boundLedgerId: agent.ledgerId || '',
       onDelta(delta) {
         const current = agentsState.value
         const live = current.agents.find((a) => a.id === agentId)

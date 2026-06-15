@@ -91,24 +91,6 @@
       <p class="field-hint">{{ t('settings.ai.apiKeyHint') }}</p>
     </div>
 
-    <div class="form-row">
-      <label>{{ t('settings.ai.gateway') }}</label>
-      <input v-model="ai.openclawGateway" type="url" @change="onConnectionFieldChange" />
-      <p class="field-hint">{{ t('settings.ai.gatewayHint') }}</p>
-    </div>
-
-    <div class="form-row">
-      <label>{{ t('settings.ai.gatewayToken') }}</label>
-      <input
-        v-model="ai.openclawGatewayToken"
-        type="password"
-        autocomplete="off"
-        :placeholder="t('settings.ai.gatewayTokenPh')"
-        @change="onConnectionFieldChange"
-      />
-      <p class="field-hint">{{ t('settings.ai.gatewayTokenHint') }}</p>
-    </div>
-
     <div class="test-row panel">
       <button
         type="button"
@@ -127,44 +109,7 @@
       <p v-if="testError" class="err-line">{{ testError }}</p>
     </div>
 
-    <div class="openclaw-block panel">
-      <div class="openclaw-block__head">
-        <p class="hint-title">{{ t('settings.ai.openclawTitle') }}</p>
-        <button type="button" class="btn-ghost btn-sm" @click="toggleAdvanced">
-          {{ showAdvanced ? t('settings.ai.advancedHide') : t('settings.ai.advancedShow') }}
-        </button>
-      </div>
-      <p class="hint-text">{{ t('settings.ai.openclawHint') }}</p>
-
-      <div v-if="showAdvanced" class="advanced-panel">
-        <textarea
-          v-model="jsonDraft"
-          class="json-editor mono"
-          rows="16"
-          spellcheck="false"
-          :placeholder="t('settings.ai.jsonPh')"
-        />
-        <p v-if="jsonError" class="err-line">{{ jsonError }}</p>
-        <div class="actions-row">
-          <button type="button" class="btn-primary btn-sm" @click="saveAdvancedJson">
-            {{ t('settings.ai.saveJson') }}
-          </button>
-          <button type="button" class="btn-ghost btn-sm" @click="resetAdvancedJson">
-            {{ t('settings.ai.resetJson') }}
-          </button>
-          <button type="button" class="btn-ghost btn-sm" @click="copyOpenClawConfig">
-            {{ t('settings.ai.copyConfig') }}
-          </button>
-        </div>
-      </div>
-      <div v-else class="actions-row">
-        <button type="button" class="btn-ghost btn-sm" @click="copyOpenClawConfig">
-          {{ t('settings.ai.copyConfig') }}
-        </button>
-      </div>
-      <p v-if="aiCopied" class="ok-line">{{ t('settings.ai.copied') }}</p>
-      <p v-if="copyError" class="err-line">{{ copyError }}</p>
-    </div>
+    <p class="hint-text agent-hint">{{ t('settings.ai.agentBackendHint') }}</p>
 
     <div v-if="showProfileModal" class="modal">
       <form class="modal-card profile-modal" @submit.prevent="submitProfileModal">
@@ -205,7 +150,6 @@ import {
   applyProfile,
   applyProviderDefaults,
   deleteProfile,
-  exportOpenClawSnippet,
   getActiveProfile,
   isOfflineProvider,
   loadAiConfig,
@@ -213,30 +157,23 @@ import {
   markConnectionUnverified,
   needsApiKey,
   offlineDockerConfig,
-  parseOpenClawJson,
   providerModelOptions,
   renameProfile,
   saveAiConfig,
   saveProfileAs,
-  syncOpenClawJsonFromFields,
 } from '../../utils/aiConfig'
 
 const { t } = useI18n()
 const profilesState = ref(loadProfilesState())
 const activeProfileId = ref(profilesState.value.activeProfileId)
 const ai = ref(loadAiConfig())
-const aiCopied = ref(false)
-const copyError = ref('')
-const showAdvanced = ref(false)
-const jsonDraft = ref('')
-const jsonError = ref('')
 const modelPick = ref(ai.value.chatModel)
 const testingConnection = ref(false)
 const testError = ref('')
 
 const canTestConnection = computed(() => {
   if (needsApiKey(ai.value) && !ai.value.apiKey?.trim()) return false
-  if (!ai.value.openclawGateway?.trim() || !ai.value.openclawGatewayToken?.trim()) return false
+  if (!ai.value.baseUrl?.trim()) return false
   if (!ai.value.chatModel?.trim()) return false
   return true
 })
@@ -287,9 +224,6 @@ function refreshProfiles() {
 function loadActiveConfig() {
   ai.value = loadAiConfig()
   modelPick.value = ai.value.chatModel
-  if (showAdvanced.value) {
-    jsonDraft.value = ai.value.openclawJson?.trim() || syncOpenClawJsonFromFields(ai.value)
-  }
 }
 
 function onEnabledChange() {
@@ -302,9 +236,6 @@ function onEnabledChange() {
 function applyOfflineDockerPreset() {
   ai.value = { ...ai.value, ...offlineDockerConfig() }
   modelPick.value = ai.value.chatModel
-  if (showAdvanced.value) {
-    jsonDraft.value = syncOpenClawJsonFromFields(ai.value)
-  }
   persistAi()
 }
 
@@ -315,12 +246,6 @@ function persistAi(clearVerified = true) {
   }
   saveAiConfig(ai.value)
   refreshProfiles()
-  aiCopied.value = false
-  copyError.value = ''
-}
-
-function onConnectionFieldChange() {
-  persistAi(true)
 }
 
 async function runTestConnection() {
@@ -332,11 +257,7 @@ async function runTestConnection() {
     refreshProfiles()
     loadActiveConfig()
   } catch (e) {
-    if (e?.message === 'OPENCLAW_CONFIG_INVALID') {
-      testError.value = t('settings.ai.jsonInvalid')
-    } else {
-      testError.value = e?.message || t('settings.ai.testFail')
-    }
+    testError.value = e?.message || t('settings.ai.testFail')
   } finally {
     testingConnection.value = false
   }
@@ -346,62 +267,18 @@ function onProfileSelect() {
   applyProfile(activeProfileId.value)
   refreshProfiles()
   loadActiveConfig()
-  aiCopied.value = false
-  copyError.value = ''
 }
 
 function onProviderChange() {
   ai.value = applyProviderDefaults(ai.value, ai.value.provider)
   modelPick.value = ai.value.chatModel
   persistAi()
-  if (showAdvanced.value && !ai.value.openclawJson?.trim()) {
-    jsonDraft.value = syncOpenClawJsonFromFields(ai.value)
-  }
 }
 
 function onModelPick() {
   if (modelPick.value) {
     ai.value.chatModel = modelPick.value
     persistAi()
-  }
-}
-
-function toggleAdvanced() {
-  showAdvanced.value = !showAdvanced.value
-  if (showAdvanced.value) {
-    jsonError.value = ''
-    jsonDraft.value = ai.value.openclawJson?.trim() || syncOpenClawJsonFromFields(ai.value)
-  }
-}
-
-function saveAdvancedJson() {
-  jsonError.value = ''
-  try {
-    parseOpenClawJson(jsonDraft.value)
-    ai.value.openclawJson = jsonDraft.value.trim()
-    persistAi()
-    jsonError.value = ''
-  } catch {
-    jsonError.value = t('settings.ai.jsonInvalid')
-  }
-}
-
-function resetAdvancedJson() {
-  ai.value.openclawJson = ''
-  jsonDraft.value = syncOpenClawJsonFromFields(ai.value)
-  jsonError.value = ''
-  persistAi()
-}
-
-async function copyOpenClawConfig() {
-  persistAi()
-  const text = exportOpenClawSnippet(ai.value)
-  try {
-    await navigator.clipboard.writeText(text)
-    aiCopied.value = true
-    copyError.value = ''
-  } catch {
-    copyError.value = t('settings.ai.copyFail')
   }
 }
 
@@ -541,35 +418,10 @@ function confirmDeleteProfile() {
   color: var(--text-muted);
 }
 
-.openclaw-block {
-  margin-top: 1rem;
-  padding: 0.85rem 1rem;
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg-card));
-}
-
-.openclaw-block__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.advanced-panel {
+.agent-hint {
   margin-top: 0.75rem;
-}
-
-.json-editor {
-  width: 100%;
-  min-height: 14rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 0.78rem;
-  line-height: 1.45;
-  resize: vertical;
+  color: var(--text-muted, #64748b);
+  font-size: 0.875rem;
 }
 
 .ok-line {

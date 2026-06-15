@@ -27,7 +27,7 @@ var allowedWorkspaceFiles = map[string]bool{
 	"USER.md":      true,
 }
 
-// AgentStoragePaths locates agent data on disk (relative to OpenClaw config root).
+// AgentStoragePaths locates agent data on disk (relative to agent config root).
 type AgentStoragePaths struct {
 	AgentPath       string `json:"agentPath"`
 	ChatHistoryPath string `json:"chatHistoryPath"`
@@ -59,12 +59,20 @@ type AgentStorageSaveRequest struct {
 	WorkspaceFiles map[string]string  `json:"workspaceFiles,omitempty"`
 }
 
-func openClawConfigRoot() string {
-	path := strings.TrimSpace(os.Getenv("OPENCLAW_CONFIG_PATH"))
-	if path == "" {
-		path = filepath.Join("data", "openclaw", "config", "openclaw.json")
+func agentConfigRoot() string {
+	path := strings.TrimSpace(os.Getenv("AGENT_CONFIG_PATH"))
+	if path != "" {
+		return path
 	}
-	return filepath.Dir(path)
+	path = strings.TrimSpace(os.Getenv("OPENCLAW_CONFIG_PATH"))
+	if path != "" {
+		return filepath.Dir(path)
+	}
+	return filepath.Join("data", "agent", "config")
+}
+
+func openClawConfigRoot() string {
+	return agentConfigRoot()
 }
 
 func resolveSafeRelPath(baseDir, relPath string) (string, error) {
@@ -98,6 +106,7 @@ func workspaceDirForAgent(configRoot, agentPath string) string {
 		if st, err := os.Stat(legacy); err == nil && st.IsDir() {
 			return legacy
 		}
+		// Bundled defaults are embedded; editable copies live under agents/*/workspace.
 	}
 	return filepath.Join(configRoot, normalized, "workspace")
 }

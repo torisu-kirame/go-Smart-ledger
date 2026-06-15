@@ -1,4 +1,7 @@
-# OpenClaw 离线 AI 与账本 RAG（F34，可选）
+# OpenClaw 离线 AI 与账本 RAG（F34，可选 · 已弃用）
+
+> **v0.19+**：AI 助手已迁移至 **ledger-api 内置 LangChainGo Agent**（`POST /api/v1/ai/chat`），默认 `make up` **不再**启动 OpenClaw Gateway。  
+> 旧栈：`docker compose --profile openclaw-legacy up -d openclaw-gateway`
 
 默认 AI 助手使用**云端 API**（DeepSeek 等），`make up` **不会**启动 Ollama。
 

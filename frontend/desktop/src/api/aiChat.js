@@ -3,7 +3,6 @@ import {
   isAiConfigReady,
   loadAiConfig,
   markConnectionVerified,
-  openClawConfigObject,
   saveAiConfig,
 } from '../utils/aiConfig'
 
@@ -23,16 +22,8 @@ export function buildLedgerContextPrompt(exportData, ledgerName) {
   return `${header}\n\n${lines.join('\n')}`
 }
 
-/**
- * Test OpenClaw Gateway connection; on success marks config as verified.
- */
+/** Test LangChain LLM connection via ledger-api. */
 export async function testAiConnection(cfg = loadAiConfig()) {
-  let openclawConfig
-  try {
-    openclawConfig = openClawConfigObject(cfg)
-  } catch {
-    throw new Error('OPENCLAW_CONFIG_INVALID')
-  }
   const res = await fetch(`${BASE}/ai/test`, {
     method: 'POST',
     credentials: 'include',
@@ -41,29 +32,19 @@ export async function testAiConnection(cfg = loadAiConfig()) {
       ...authHeaders(),
     },
     body: JSON.stringify({
-      gatewayUrl: cfg.openclawGateway,
-      gatewayToken: cfg.openclawGatewayToken,
-      openclawConfig,
+      baseUrl: cfg.baseUrl,
+      apiKey: cfg.apiKey,
+      model: cfg.chatModel,
     }),
   })
   if (!res.ok) {
     const text = await res.text()
-    let msg = res.statusText
-    try {
-      const j = JSON.parse(text)
-      msg = j.msg || j.message || msg
-    } catch {
-      if (text) msg = text
-    }
-    throw new Error(msg)
+    throw new Error(parseApiError(text, res.statusText))
   }
   saveAiConfig(markConnectionVerified({ ...cfg, enabled: true }))
   return true
 }
 
-/**
- * Parse one SSE data line from OpenClaw / OpenAI-compatible stream.
- */
 function extractStreamDelta(chunk) {
   const choice = chunk?.choices?.[0]
   if (choice) {
@@ -102,6 +83,18 @@ function parseSseDataLine(line, onDelta) {
   }
 }
 
+function parseApiError(text, fallback = '') {
+  if (!text?.trim()) return fallback
+  try {
+    const j = JSON.parse(text)
+    return j.msg || j.message || fallback
+  } catch {
+    const m = text.match(/msg:\s*(.+)/s)
+    if (m?.[1]) return m[1].trim()
+    return text.trim() || fallback
+  }
+}
+
 function tryParseJsonCompletion(text) {
   try {
     const data = JSON.parse(text)
@@ -111,10 +104,8 @@ function tryParseJsonCompletion(text) {
   }
 }
 
-/**
- * Stream chat via OpenClaw Gateway (backend proxy).
- */
-export async function streamChat({ messages, signal, onDelta, agentUser }) {
+/** Stream chat via LangChain Agent backend (ledger-api). */
+export async function streamChat({ messages, signal, onDelta, useTools = false, boundLedgerId = '' }) {
   const cfg = loadAiConfig()
   if (!cfg.enabled) {
     throw new Error('AI_DISABLED')
@@ -131,24 +122,18 @@ export async function streamChat({ messages, signal, onDelta, agentUser }) {
       ...authHeaders(),
     },
     body: JSON.stringify({
-      gatewayUrl: cfg.openclawGateway,
-      gatewayToken: cfg.openclawGatewayToken,
-      openclawModel: cfg.openclawModel || 'openclaw/default',
-      agentUser: agentUser || 'smart-ledger-default',
+      baseUrl: cfg.baseUrl,
+      apiKey: cfg.apiKey,
+      model: cfg.chatModel,
       messages,
       stream: true,
+      useTools: !!useTools,
+      boundLedgerId: boundLedgerId || '',
     }),
   })
   if (!res.ok) {
     const text = await res.text()
-    let msg = res.statusText
-    try {
-      const j = JSON.parse(text)
-      msg = j.msg || j.message || msg
-    } catch {
-      if (text) msg = text
-    }
-    throw new Error(msg)
+    throw new Error(parseApiError(text, res.statusText))
   }
   const reader = res.body?.getReader()
   if (!reader) {
@@ -199,6 +184,8 @@ export async function streamChat({ messages, signal, onDelta, agentUser }) {
     }
   }
   if (!full.trim()) {
+    const plainErr = parseApiError(buffer, '')
+    if (plainErr) throw new Error(plainErr)
     throw new Error('AI_EMPTY_RESPONSE')
   }
   return full

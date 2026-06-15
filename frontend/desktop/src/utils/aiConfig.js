@@ -72,13 +72,9 @@ const defaults = {
   baseUrl: AI_PROVIDERS.deepseek.baseUrl,
   chatModel: AI_PROVIDERS.deepseek.models[0],
   apiKey: '',
-  openclawGateway: 'http://127.0.0.1:18789',
-  openclawGatewayToken: '',
-  openclawModel: 'openclaw/default',
   connectionVerified: false,
   connectionVerifiedAt: '',
-  workspacePath: 'integrations/openclaw/workspace-smart-ledger',
-  openclawJson: '',
+  workspacePath: 'agents/main/workspace',
 }
 
 function newProfileId() {
@@ -88,6 +84,10 @@ function newProfileId() {
 function normalizeConfig(raw) {
   const merged = { ...defaults, ...raw }
   delete merged.embedModel
+  delete merged.openclawGateway
+  delete merged.openclawGatewayToken
+  delete merged.openclawModel
+  delete merged.openclawJson
   if (merged.connectionVerified) {
     merged.enabled = true
   }
@@ -120,17 +120,17 @@ export function isAiConfigReady(cfg) {
   if (!cfg.connectionVerified) return false
   if (!cfg.enabled) return false
   if (needsApiKey(cfg) && !cfg.apiKey?.trim()) return false
-  if (!cfg.openclawGateway?.trim() || !cfg.openclawGatewayToken?.trim()) return false
+  if (!cfg.baseUrl?.trim()) return false
   if (!cfg.chatModel?.trim()) return false
   return true
 }
 
-/** @returns {'connectionNotVerified'|'notEnabled'|'apiKeyRequired'|'gatewayRequired'|'disabledHint'|null} */
+/** @returns {'connectionNotVerified'|'notEnabled'|'apiKeyRequired'|'baseUrlRequired'|'disabledHint'|null} */
 export function aiConfigBlockReason(cfg) {
   if (!cfg.connectionVerified) return 'connectionNotVerified'
   if (!cfg.enabled) return 'notEnabled'
   if (needsApiKey(cfg) && !cfg.apiKey?.trim()) return 'apiKeyRequired'
-  if (!cfg.openclawGateway?.trim() || !cfg.openclawGatewayToken?.trim()) return 'gatewayRequired'
+  if (!cfg.baseUrl?.trim()) return 'baseUrlRequired'
   if (!cfg.chatModel?.trim()) return 'disabledHint'
   return null
 }
@@ -147,20 +147,12 @@ export function markConnectionVerified(cfg) {
   }
 }
 
-export function openClawConfigObject(cfg = loadAiConfig()) {
-  const custom = (cfg.openclawJson || '').trim()
-  if (custom) {
-    return JSON.parse(custom)
-  }
-  return buildOpenClawConfig(cfg)
-}
-
 export function offlineDockerConfig() {
   return normalizeConfig(
     applyProviderDefaults(
       {
         enabled: true,
-        openclawGateway: 'http://127.0.0.1:18789',
+        baseUrl: 'http://host.docker.internal:11434/v1',
       },
       'ollama'
     )

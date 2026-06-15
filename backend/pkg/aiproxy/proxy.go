@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -102,24 +101,5 @@ func ProxyChat(w http.ResponseWriter, r *http.Request, req ChatRequest) error {
 }
 
 func normalizeBaseURL(raw string) (string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return "", ErrInvalidBaseURL
-	}
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "http" && u.Scheme != "https" {
-		return "", ErrInvalidBaseURL
-	}
-	host := strings.ToLower(u.Hostname())
-	allowed := map[string]bool{
-		"127.0.0.1": true, "localhost": true, "::1": true,
-		"ollama": true, "host.docker.internal": true,
-	}
-	if !allowed[host] {
-		return "", ErrInvalidBaseURL
-	}
-	if !strings.HasSuffix(strings.TrimSuffix(raw, "/"), "/v1") {
-		raw = strings.TrimSuffix(raw, "/") + "/v1"
-	}
-	return raw, nil
+	return normalizeLLMBaseURL(raw)
 }

@@ -1,6 +1,6 @@
 # FISCO BCOS 3.x — Compose overlay（内置 fisco-node 容器）
 #
-# 启动 FISCO 链 + ledger-api（FISCO 后端）：
+# 启动 FISCO 链 + ledger-api（FISCO 后端，经 .env.fisco 切换链后端）：
 #   docker compose -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco up -d
 # 或：make fisco-up
 #
@@ -44,16 +44,12 @@ services:
       start_period: 300s
     restart: unless-stopped
 
+  # FISCO 模式停用 miniledger（ledger-api 链配置见主 compose + .env.fisco，避免重复声明 ledger-api 服务键）
+  miniledger:
+    profiles: !override
+      - miniledger-standalone
+
   ledger-api:
-    profiles: [fisco]
-    # !override：FISCO 模式不依赖 miniledger（Compose 合并语义；勿重复声明 volumes，避免与主 compose 键冲突）
-    depends_on: !override
+    depends_on:
       fisco-node:
         condition: service_healthy
-      nsqd:
-        condition: service_healthy
-    environment:
-      SL_CHAIN_BACKEND: fisco
-      SL_FISCO_JSONRPC: http://fisco-node:20200
-      SL_FISCO_GROUP_ID: group0
-      SL_FISCO_CHAIN_ID: chain0
