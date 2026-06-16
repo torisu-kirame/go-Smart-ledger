@@ -1,24 +1,28 @@
-# Smart Ledger 全栈构建与启动（含 OpenClaw Gateway；Ollama 离线可选）
-.PHONY: help build build-linux docker-build init-openclaw-config up down logs clean \
+# Smart Ledger 全栈构建与启动（Go / Java 双后端可选）
+.PHONY: help build build-linux build-java docker-build docker-build-go docker-build-java \
+        init-openclaw-config up up-go up-java down logs clean \
         frontend-install frontend-dev frontend-build \
         mobile-install mobile-dev mobile-build mobile-apk \
         dev-all start \
         offline-ai-up offline-ai-down offline-ai-logs \
-        openclaw-gateway-up openclaw-logs openclaw-up openclaw-down
+        openclaw-gateway-up openclaw-logs openclaw-up openclaw-down \
+        fisco-up fisco-dev-up fisco-logs fisco-down
 
 COMPOSE_ENV = --env-file .env.openclaw
-COMPOSE = docker compose $(COMPOSE_ENV)
+COMPOSE_GO = docker compose $(COMPOSE_ENV)
+COMPOSE_JAVA = docker compose $(COMPOSE_ENV) -f docker-compose.yml -f docker-compose.java.yml
 COMPOSE_OFFLINE = docker compose $(COMPOSE_ENV) --profile offline-ai
 
 help:
 	@echo "Targets:"
-	@echo "  make up                - 账本 + Web + OpenClaw Gateway"
+	@echo "  make up-go             - Go 后端 + Web（默认，含 LangChain AI）"
+	@echo "  make up-java           - Java 后端 + Web（Spring Boot 桩）"
+	@echo "  make up                - 同 make up-go"
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
-	@echo "  make build-linux       - 交叉编译全部 Go 服务"
+	@echo "  make build-linux       - 交叉编译 Go 服务"
+	@echo "  make build-java        - Maven 打包 Java 服务"
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
-	@echo "  make mobile-dev        - 移动端 Vite 开发服 :25175"
-	@echo "  make fisco-up            - 仅启动 FISCO BCOS 3.x 链容器 (:20200)"
-	@echo "  make fisco-dev-up        - FISCO 链 + ledger-api（FISCO 后端）"
+	@echo "  make fisco-dev-up      - FISCO 链 + ledger-api（Go）"
 
 COMPOSE_FISCO = docker compose $(COMPOSE_ENV) --env-file .env.fisco -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco
 
@@ -42,6 +46,13 @@ ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-linux.ps1
 else
 	$(MAKE) -C backend build-linux
+endif
+
+build-java:
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-java.ps1
+else
+	cd java-backend && mvn -q package -DskipTests
 endif
 
 init-openclaw-config:
@@ -76,40 +87,60 @@ else
 	chmod +x scripts/mobile-apk.sh && ./scripts/mobile-apk.sh
 endif
 
-docker-build: build-linux
-	$(COMPOSE) build
+docker-build-go: build-linux
+	$(COMPOSE_GO) build
 
-up: docker-build init-openclaw-config
-	$(COMPOSE) up -d
+docker-build-java:
+	$(COMPOSE_JAVA) build auth-api ledger-api storage-api gateway-api
+
+docker-build: docker-build-go
+
+up-go: docker-build-go init-openclaw-config
+	$(COMPOSE_GO) up -d
 ifeq ($(OS),Windows_NT)
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend go
 else
 	@echo ""
+	@echo "Backend:    Go (backend/)"
 	@echo "Web UI:     http://localhost:25173"
-	@echo "Mobile Web: http://localhost:25175"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
-	@echo "OpenClaw:   http://localhost:18789  (token: .env.openclaw)"
 	@echo "MiniLedger: http://localhost:24441/dashboard"
 	@echo "Login:      admin / admin123"
-	@echo ""
-	@echo "AI：设置 → AI → API Key + Token → 测试连接（Gateway 可填 http://127.0.0.1:18789）"
 endif
 
+up-java: docker-build-java init-openclaw-config
+	$(COMPOSE_JAVA) up -d
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend java
+else
+	@echo ""
+	@echo "Backend:    Java (java-backend/)"
+	@echo "Web UI:     http://localhost:25173"
+	@echo "Gateway:    http://localhost:28080/api/v1/health"
+	@echo "MiniLedger: http://localhost:24441/dashboard"
+	@echo "Login:      admin / admin123"
+	@echo "Note:       AI/LangChain 请使用 make up-go"
+endif
+
+up: up-go
+
 down:
-	$(COMPOSE) down
+	-$(COMPOSE_JAVA) down
+	$(COMPOSE_GO) down
 
 logs:
-	$(COMPOSE) logs -f
+	$(COMPOSE_GO) logs -f
 
 clean:
 	$(MAKE) -C backend clean
-	-$(COMPOSE) down --rmi local
+	-$(COMPOSE_JAVA) down --rmi local
+	-$(COMPOSE_GO) down --rmi local
 
 dev-all: frontend-install
 ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-dev-hint.ps1
 else
-	@echo "请确保已执行: make up"
+	@echo "请确保已执行: make up-go 或 make up-java"
 endif
 	cd frontend/desktop && npm run dev
 
@@ -122,7 +153,6 @@ ifeq ($(OS),Windows_NT)
 else
 	@echo ""
 	@echo "Ollama: http://localhost:11434/v1"
-	@echo "设置 → AI：选择 Ollama，API 地址 http://127.0.0.1:11434/v1"
 endif
 
 offline-ai-down:
@@ -132,11 +162,10 @@ offline-ai-logs:
 	$(COMPOSE_OFFLINE) logs -f ollama
 
 openclaw-gateway-up: init-openclaw-config
-	$(COMPOSE) up -d openclaw-gateway
+	$(COMPOSE_GO) up -d openclaw-gateway
 
 openclaw-logs:
-	$(COMPOSE) logs -f openclaw-gateway
+	$(COMPOSE_GO) logs -f openclaw-gateway
 
-# 兼容旧命令
 openclaw-up: openclaw-gateway-up
 openclaw-down: offline-ai-down

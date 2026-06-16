@@ -13,13 +13,13 @@ import (
 
 // AgentChatRequest is the LangChain-backed chat payload from the console.
 type AgentChatRequest struct {
-	BaseURL         string        `json:"baseUrl"`
-	APIKey          string        `json:"apiKey,omitempty"`
-	Model           string        `json:"model"`
-	Messages        []ChatMessage `json:"messages"`
-	Stream          bool          `json:"stream"`
-	UseTools        bool          `json:"useTools,omitempty"`
-	BoundLedgerID   string        `json:"boundLedgerId,omitempty"`
+	BaseURL       string        `json:"baseUrl"`
+	APIKey        string        `json:"apiKey,omitempty"`
+	Model         string        `json:"model"`
+	Messages      []ChatMessage `json:"messages"`
+	Stream        bool          `json:"stream"`
+	UseTools      bool          `json:"useTools,omitempty"`
+	BoundLedgerID string        `json:"boundLedgerId,omitempty"`
 }
 
 // ProxyChatContext carries authenticated ledger access for tool calling.

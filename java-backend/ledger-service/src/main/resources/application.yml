@@ -1,0 +1,14 @@
+server:
+  port: 28888
+
+spring:
+  application:
+    name: ledger-api
+
+smartledger:
+  miniledger:
+    base-url: http://miniledger:24441
+
+logging:
+  level:
+    root: info

@@ -14,6 +14,9 @@ backend/infra/miniledger/dashboard
 # Linux 交叉编译产物（Docker 用，不提交）
 backend/bin/linux/
 
+# Java 后端
+java-backend/**/target/
+
 # 前端
 frontend/desktop/node_modules/
 frontend/desktop/.npm-cache/
