@@ -1,0 +1,16 @@
+# Optional HTTPS front door (F27). Requires TLS certs on host.
+#   mkdir -p deploy/certs && openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout deploy/certs/privkey.pem -out deploy/certs/fullchain.pem -subj "/CN=localhost"
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml --profile https up -d
+
+name: smart-ledger
+
+services:
+  web:
+    profiles: ["https"]
+    ports:
+      - "25173:80"
+      - "25174:443"
+    volumes:
+      - ./deploy/nginx/ssl.conf.example:/etc/nginx/conf.d/ssl.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro

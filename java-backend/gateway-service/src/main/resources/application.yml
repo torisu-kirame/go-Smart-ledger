@@ -29,6 +29,7 @@ smartledger:
     auth: http://auth-api:28887
     ledger: http://ledger-api:28888
     storage: http://storage-api:28890
+    ai: http://ai-api:28891
 
 logging:
   level:

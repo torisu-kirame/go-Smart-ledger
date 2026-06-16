@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Backend = Join-Path $PSScriptRoot "..\backend"
+$Backend = Join-Path $PSScriptRoot "..\go-backend"
 $BinDir  = Join-Path $Backend "bin\linux"
 
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null

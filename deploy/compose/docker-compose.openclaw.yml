@@ -1,0 +1,10 @@
+# DEPRECATED — OpenClaw 已并入主栈 docker-compose.yml
+#
+# 请使用: make up
+#
+# 本文件保留仅为兼容旧文档中的 -f docker-compose.openclaw.yml 引用。
+
+name: smart-ledger-openclaw
+
+include:
+  - path: docker-compose.yml

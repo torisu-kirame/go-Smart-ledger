@@ -1,0 +1,26 @@
+# F28: etcd 服务发现（与主 compose 叠加，仅增加 etcd）
+#
+# 启用注册：将 ledger-api / gateway-api 配置中 Discovery.Etcd.Enabled 设为 true
+# 或使用 deploy/etc/*.discovery.docker.yaml 挂载覆盖（见 README）
+#
+#   docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile discovery up -d
+
+name: smart-ledger
+
+services:
+  etcd:
+    profiles: ["discovery"]
+    image: quay.io/coreos/etcd:v3.5.16
+    container_name: smart-ledger-etcd
+    command:
+      - /usr/local/bin/etcd
+      - --advertise-client-urls=http://0.0.0.0:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+    ports:
+      - "22379:2379"
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped

@@ -28,10 +28,11 @@ public class GatewayRoutesConfig {
                 .route("ledger-api", r -> r.path(
                                 "/api/v1/ledgers/**",
                                 "/api/v1/chain/**",
-                                "/api/v1/ai/**",
                                 "/api/v1/entry-schema/**",
                                 "/api/v1/import/**")
                         .uri(upstreams.ledger()))
+                .route("ai-api", r -> r.path("/api/v1/ai/**")
+                        .uri(upstreams.ai()))
                 .route("storage-api", r -> r.path("/api/v1/storage/**")
                         .uri(upstreams.storage()))
                 .build();

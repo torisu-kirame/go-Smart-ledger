@@ -1,15 +1,16 @@
-# Prepare OpenClaw config dirs and .env.openclaw (main docker-compose.yml).
+# Prepare stack env and OpenClaw legacy config dirs (deploy/compose/docker-compose.yml).
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-$EnvFile = Join-Path $Root ".env.openclaw"
-$EnvExample = Join-Path $Root ".env.openclaw.example"
-$ConfigDir = Join-Path $Root "data\openclaw\config"
+$EnvFile = Join-Path $Root "deploy\env\stack.env"
+$EnvExample = Join-Path $Root "deploy\env\stack.env.example"
+$ConfigDir = Join-Path $Root "deploy\config\openclaw"
 $ConfigFile = Join-Path $ConfigDir "openclaw.json"
+$AgentDir = Join-Path $Root "deploy\config\agent"
 $DockerJson = Join-Path $Root "integrations\openclaw\openclaw.docker.json"
 
-New-Item -ItemType Directory -Force -Path $ConfigDir, (Join-Path $Root "data\openclaw\lancedb"), (Join-Path $Root "data\openclaw\auth-secrets") | Out-Null
+New-Item -ItemType Directory -Force -Path $ConfigDir, (Join-Path $Root "deploy\config\openclaw\lancedb"), (Join-Path $Root "deploy\config\openclaw\auth-secrets"), $AgentDir | Out-Null
 
 if (-not (Test-Path $ConfigFile)) {
     Write-Host ">> OpenClaw: writing openclaw.json"
@@ -19,7 +20,7 @@ if (-not (Test-Path $ConfigFile)) {
 node (Join-Path $Root "scripts\repair-openclaw-config.js") $ConfigFile $DockerJson
 
 if (-not (Test-Path $EnvFile)) {
-    Write-Host ">> OpenClaw: creating .env.openclaw from example"
+    Write-Host ">> stack: creating deploy/env/stack.env from example"
     Copy-Item $EnvExample $EnvFile
 }
 
@@ -29,5 +30,5 @@ if ($content -notmatch 'OPENCLAW_GATEWAY_TOKEN=\S+') {
     [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
     $token = [BitConverter]::ToString($bytes).Replace("-", "").ToLower()
     Add-Content -Path $EnvFile -Value "OPENCLAW_GATEWAY_TOKEN=$token"
-    Write-Host ">> OpenClaw: generated OPENCLAW_GATEWAY_TOKEN in .env.openclaw"
+    Write-Host ">> stack: generated OPENCLAW_GATEWAY_TOKEN in deploy/env/stack.env"
 }

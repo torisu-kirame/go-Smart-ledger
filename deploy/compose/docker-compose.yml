@@ -1,0 +1,375 @@
+# Smart Ledger — 一键启动（AI 由 py-backend / ai-api 提供；Ollama 离线可选 profile offline-ai）
+# 重要：请先 make build-linux 再 docker compose build，否则 gateway 等可能是旧二进制
+# 推荐：make up（账本 + Web + AI）
+#
+#   make up
+#
+# 控制台:     http://localhost:25173
+# 网关:       http://localhost:28080
+# 离线 Ollama: make offline-ai-up
+# 链浏览器:   http://localhost:24441/dashboard
+# 默认账号:   admin / admin123
+
+name: smart-ledger
+
+services:
+  nsqlookupd:
+    image: nsqio/nsq:v1.3.0
+    container_name: smart-ledger-nsqlookupd
+    command: /nsqlookupd
+    ports:
+      - "24161:4160"
+      - "24162:4161"
+    restart: unless-stopped
+
+  nsqd:
+    image: nsqio/nsq:v1.3.0
+    container_name: smart-ledger-nsqd
+    command: /nsqd --broadcast-address=nsqd --lookupd-tcp-address=nsqlookupd:4160
+    depends_on:
+      - nsqlookupd
+    ports:
+      - "24150:4150"
+      - "24151:4151"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4151/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  nsqadmin:
+    image: nsqio/nsq:v1.3.0
+    container_name: smart-ledger-nsqadmin
+    command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
+    depends_on:
+      - nsqlookupd
+    ports:
+      - "24171:4171"
+    restart: unless-stopped
+
+  miniledger:
+    image: node:22-alpine
+    container_name: smart-ledger-miniledger
+    working_dir: /app
+    volumes:
+      - ./go-backend/infra/miniledger:/app
+      - miniledger-data:/app/data
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
+    ports:
+      - "24441:24441"
+      - "24440:24440"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:24441/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
+
+  auth-api:
+    build:
+      context: ./go-backend
+      dockerfile: deploy/Dockerfile.auth
+    container_name: smart-ledger-auth-api
+    env_file:
+      - path: deploy/env/.env
+        required: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - auth-avatars:/data/avatars
+    ports:
+      - "28887:28887"
+    healthcheck:
+      # wget --spider 使用 HEAD，go-zero 仅注册 GET 会返回 405
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28887/api/v1/auth/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  ipfs:
+    image: ipfs/kubo:v0.32.1
+    profiles: ["ipfs"]
+    container_name: smart-ledger-ipfs
+    environment:
+      IPFS_PROFILE: server
+    ports:
+      - "25001:5001"
+      - "28090:8080"
+    volumes:
+      - ipfs-data:/data/ipfs
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  ledger-api:
+    build:
+      context: ./go-backend
+      dockerfile: deploy/Dockerfile.ledger
+    container_name: smart-ledger-ledger-api
+    env_file:
+      - path: deploy/env/.env
+        required: false
+    volumes:
+      - ledger-data:/data
+    environment:
+      SL_CHAIN_BACKEND: ${SL_CHAIN_BACKEND:-miniledger}
+      SL_FISCO_JSONRPC: ${SL_FISCO_JSONRPC:-http://fisco-node:20200}
+      SL_FISCO_GROUP_ID: ${SL_FISCO_GROUP_ID:-group0}
+      SL_FISCO_CHAIN_ID: ${SL_FISCO_CHAIN_ID:-chain0}
+    ports:
+      - "28888:28888"
+      - "28898:28898"
+    depends_on:
+      miniledger:
+        condition: service_healthy
+        required: false
+      nsqd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28888/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  storage-api:
+    build:
+      context: ./go-backend
+      dockerfile: deploy/Dockerfile.storage
+    container_name: smart-ledger-storage-api
+    ports:
+      - "28890:28890"
+    volumes:
+      - storage-backups:/data/backups
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28890/api/v1/storage/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  ai-api:
+    build:
+      context: ./py-backend
+      dockerfile: Dockerfile
+    container_name: smart-ledger-ai-api
+    environment:
+      AGENT_CONFIG_PATH: /data/agent/config
+      LEDGER_API_URL: http://ledger-api:28888
+    volumes:
+      - ./deploy/config/agent:/data/agent/config
+    ports:
+      - "28891:28891"
+    depends_on:
+      ledger-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28891/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  gateway-api:
+    build:
+      context: ./go-backend
+      dockerfile: deploy/Dockerfile.gateway
+    container_name: smart-ledger-gateway
+    env_file:
+      - path: deploy/env/.env
+        required: false
+    ports:
+      - "28080:28080"
+    depends_on:
+      auth-api:
+        condition: service_healthy
+      ledger-api:
+        condition: service_healthy
+      storage-api:
+        condition: service_healthy
+      ai-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  # --- 旧版 OpenClaw Gateway（已弃用；AI 见 ai-api；profile openclaw-legacy）---
+  ollama:
+    profiles: ["offline-ai"]
+    image: ollama/ollama:latest
+    container_name: smart-ledger-ollama
+    ports:
+      - "${OLLAMA_HOST_PORT:-11434}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  ollama-init:
+    profiles: ["offline-ai"]
+    image: ollama/ollama:latest
+    container_name: smart-ledger-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Pulling chat model: $$OLLAMA_CHAT_MODEL"
+        ollama pull "$$OLLAMA_CHAT_MODEL" || echo "warn: chat model pull failed"
+        echo "Pulling embed model: $$OLLAMA_EMBED_MODEL"
+        ollama pull "$$OLLAMA_EMBED_MODEL" || echo "warn: embed model pull failed"
+        echo "Ollama models ready"
+    restart: "no"
+
+  openclaw-gateway:
+    profiles: ["openclaw-legacy"]
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    container_name: smart-ledger-openclaw-gateway
+    env_file:
+      - path: deploy/env/stack.env
+        required: false
+    environment:
+      HOME: /home/node
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      OPENCLAW_DISABLE_BONJOUR: ${OPENCLAW_DISABLE_BONJOUR:-1}
+      TZ: ${OPENCLAW_TZ:-UTC}
+      SMART_LEDGER_GATEWAY: ${SMART_LEDGER_GATEWAY:-http://gateway-api:28080}
+    volumes:
+      - ./deploy/config/openclaw:/home/node/.openclaw
+      - ./integrations/openclaw/workspace-smart-ledger:/home/node/.openclaw/workspace/workspace-smart-ledger:ro
+      - ./deploy/config/openclaw/lancedb:/data/openclaw/lancedb
+      - ./deploy/config/openclaw/auth-secrets:/home/node/.config/openclaw
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway",
+        "--bind",
+        "${OPENCLAW_GATEWAY_BIND:-lan}",
+        "--port",
+        "18789",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 40s
+
+  openclaw-cli:
+    profiles: ["openclaw-legacy", "cli"]
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    container_name: smart-ledger-openclaw-cli
+    network_mode: service:openclaw-gateway
+    env_file:
+      - path: deploy/env/stack.env
+        required: false
+    environment:
+      HOME: /home/node
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      BROWSER: echo
+      TZ: ${OPENCLAW_TZ:-UTC}
+    volumes:
+      - ./deploy/config/openclaw:/home/node/.openclaw
+      - ./integrations/openclaw/workspace-smart-ledger:/home/node/.openclaw/workspace/workspace-smart-ledger:ro
+      - ./deploy/config/openclaw/lancedb:/data/openclaw/lancedb
+      - ./deploy/config/openclaw/auth-secrets:/home/node/.config/openclaw
+    stdin_open: true
+    tty: true
+    init: true
+    entrypoint: ["node", "dist/index.js"]
+    depends_on:
+      openclaw-gateway:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend/desktop
+      dockerfile: Dockerfile
+    container_name: smart-ledger-web
+    ports:
+      - "25173:80"
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  web-mobile:
+    build:
+      context: ./frontend/mobile
+      dockerfile: Dockerfile
+    container_name: smart-ledger-web-mobile
+    ports:
+      - "25175:80"
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  auth-avatars:
+  miniledger-data:
+  ledger-data:
+  storage-backups:
+  ipfs-data:
+  ollama-models:
+  fisco-data:

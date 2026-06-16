@@ -1,18 +1,27 @@
-/data/
 *.db
 *.exe
 .env
+go-backend/bin/
+go-backend/data/
+deploy/config/agent/*
+!deploy/config/agent/.gitkeep
+deploy/env/stack.env
+deploy/env/.env
+deploy/env/fisco.env
 backend/bin/
 backend/data/
 data/avatars/
-backend/services/auth/data/
-backend/infra/miniledger/node_modules/
-backend/infra/miniledger/data/
-backend/infra/fisco/nodes/
-# Docker entrypoint 运行时符号链接，勿纳入版本库（Windows Git 无法 open）
-backend/infra/miniledger/dashboard
-# Linux 交叉编译产物（Docker 用，不提交）
-backend/bin/linux/
+go-backend/services/auth/data/
+go-backend/infra/miniledger/node_modules/
+go-backend/infra/miniledger/data/
+go-backend/infra/fisco/nodes/
+go-backend/infra/miniledger/dashboard
+go-backend/bin/linux/
+
+# Python AI 后端
+py-backend/.venv/
+py-backend/__pycache__/
+py-backend/**/__pycache__/
 
 # Java 后端
 java-backend/**/target/
@@ -24,7 +33,5 @@ frontend/desktop/dist/
 frontend/mobile/node_modules/
 /docx/
 
-# OpenClaw upstream clone (scripts/setup-openclaw.*)
-/openclaw/
-data/openclaw/
-.env.openclaw
+# OpenClaw legacy（profile openclaw-legacy）
+deploy/config/openclaw/

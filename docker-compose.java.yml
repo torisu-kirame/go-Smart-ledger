@@ -1,34 +1,3 @@
-# Smart Ledger — Java backend overlay
-# 用法: make up-java  或  docker compose -f docker-compose.yml -f docker-compose.java.yml up -d
-
-name: smart-ledger
-
-services:
-  auth-api:
-    build:
-      context: ./java-backend
-      dockerfile: deploy/Dockerfile.auth
-    environment:
-      SMARTLEDGER_BACKEND: java
-
-  ledger-api:
-    build:
-      context: ./java-backend
-      dockerfile: deploy/Dockerfile.ledger
-    environment:
-      SMARTLEDGER_BACKEND: java
-      SL_CHAIN_BACKEND: miniledger
-
-  storage-api:
-    build:
-      context: ./java-backend
-      dockerfile: deploy/Dockerfile.storage
-    environment:
-      SMARTLEDGER_BACKEND: java
-
-  gateway-api:
-    build:
-      context: ./java-backend
-      dockerfile: deploy/Dockerfile.gateway
-    environment:
-      SMARTLEDGER_BACKEND: java
+# 兼容旧命令
+include:
+  - path: deploy/compose/docker-compose.java.yml

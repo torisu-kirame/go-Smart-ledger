@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Prepare OpenClaw config dirs and .env.openclaw (used by main docker-compose.yml).
+# Prepare stack env and OpenClaw legacy config dirs (deploy/compose/docker-compose.yml).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-ENV_FILE="$ROOT/.env.openclaw"
-ENV_EXAMPLE="$ROOT/.env.openclaw.example"
-CONFIG_DIR="$ROOT/data/openclaw/config"
+ENV_FILE="$ROOT/deploy/env/stack.env"
+ENV_EXAMPLE="$ROOT/deploy/env/stack.env.example"
+CONFIG_DIR="$ROOT/deploy/config/openclaw"
 CONFIG_FILE="$CONFIG_DIR/openclaw.json"
+AGENT_DIR="$ROOT/deploy/config/agent"
 DOCKER_JSON="$ROOT/integrations/openclaw/openclaw.docker.json"
 
-mkdir -p "$CONFIG_DIR" "$ROOT/data/openclaw/lancedb" "$ROOT/data/openclaw/auth-secrets"
+mkdir -p "$CONFIG_DIR" "$ROOT/deploy/config/openclaw/lancedb" "$ROOT/deploy/config/openclaw/auth-secrets" "$AGENT_DIR"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
   echo ">> OpenClaw: writing $CONFIG_FILE"
@@ -21,7 +22,7 @@ fi
 node "$ROOT/scripts/repair-openclaw-config.js" "$CONFIG_FILE" "$DOCKER_JSON"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo ">> OpenClaw: creating .env.openclaw from example"
+  echo ">> stack: creating deploy/env/stack.env from example"
   cp "$ENV_EXAMPLE" "$ENV_FILE"
 fi
 
@@ -39,5 +40,5 @@ if [[ -z "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
   else
     echo "OPENCLAW_GATEWAY_TOKEN=$TOKEN" >>"$ENV_FILE"
   fi
-  echo ">> OpenClaw: generated OPENCLAW_GATEWAY_TOKEN in .env.openclaw"
+  echo ">> stack: generated OPENCLAW_GATEWAY_TOKEN in deploy/env/stack.env"
 fi

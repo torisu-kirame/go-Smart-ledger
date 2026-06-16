@@ -8,15 +8,17 @@
         openclaw-gateway-up openclaw-logs openclaw-up openclaw-down \
         fisco-up fisco-dev-up fisco-logs fisco-down
 
-COMPOSE_ENV = --env-file .env.openclaw
-COMPOSE_GO = docker compose $(COMPOSE_ENV)
-COMPOSE_JAVA = docker compose $(COMPOSE_ENV) -f docker-compose.yml -f docker-compose.java.yml
-COMPOSE_OFFLINE = docker compose $(COMPOSE_ENV) --profile offline-ai
+COMPOSE_ROOT = --project-directory .
+COMPOSE_MAIN = -f deploy/compose/docker-compose.yml
+COMPOSE_ENV = --env-file deploy/env/stack.env
+COMPOSE_GO = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN)
+COMPOSE_JAVA = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN) -f deploy/compose/docker-compose.java.yml
+COMPOSE_OFFLINE = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN) --profile offline-ai
 
 help:
 	@echo "Targets:"
-	@echo "  make up-go             - Go 后端 + Web（默认，含 LangChain AI）"
-	@echo "  make up-java           - Java 后端 + Web（Spring Boot 桩）"
+	@echo "  make up-go             - Go 后端 + py-backend AI + Web（默认）"
+	@echo "  make up-java           - Java 后端 + py-backend AI + Web"
 	@echo "  make up                - 同 make up-go"
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
 	@echo "  make build-linux       - 交叉编译 Go 服务"
@@ -24,7 +26,7 @@ help:
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
 	@echo "  make fisco-dev-up      - FISCO 链 + ledger-api（Go）"
 
-COMPOSE_FISCO = docker compose $(COMPOSE_ENV) --env-file .env.fisco -f docker-compose.yml -f docker-compose.fisco.yml --profile fisco
+COMPOSE_FISCO = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) --env-file deploy/env/fisco.env $(COMPOSE_MAIN) -f deploy/compose/docker-compose.fisco.yml --profile fisco
 
 fisco-up:
 	$(COMPOSE_FISCO) up -d --build fisco-node
@@ -39,13 +41,13 @@ fisco-down:
 	$(COMPOSE_FISCO) down
 
 build:
-	$(MAKE) -C backend build-local
+	$(MAKE) -C go-backend build-local
 
 build-linux:
 ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-linux.ps1
 else
-	$(MAKE) -C backend build-linux
+	$(MAKE) -C go-backend build-linux
 endif
 
 build-java:
@@ -87,39 +89,38 @@ else
 	chmod +x scripts/mobile-apk.sh && ./scripts/mobile-apk.sh
 endif
 
-docker-build-go: build-linux
+docker-build-go: build-linux init-openclaw-config
 	$(COMPOSE_GO) build
 
-docker-build-java:
-	$(COMPOSE_JAVA) build auth-api ledger-api storage-api gateway-api
+docker-build-java: init-openclaw-config
+	$(COMPOSE_JAVA) build auth-api ledger-api storage-api gateway-api ai-api
 
 docker-build: docker-build-go
 
-up-go: docker-build-go init-openclaw-config
+up-go: docker-build-go
 	$(COMPOSE_GO) up -d
 ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend go
 else
 	@echo ""
-	@echo "Backend:    Go (backend/)"
+	@echo "Backend:    Go (go-backend/) + AI (py-backend/)"
 	@echo "Web UI:     http://localhost:25173"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
 	@echo "MiniLedger: http://localhost:24441/dashboard"
 	@echo "Login:      admin / admin123"
 endif
 
-up-java: docker-build-java init-openclaw-config
+up-java: docker-build-java
 	$(COMPOSE_JAVA) up -d
 ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend java
 else
 	@echo ""
-	@echo "Backend:    Java (java-backend/)"
+	@echo "Backend:    Java (java-backend/) + AI (py-backend/)"
 	@echo "Web UI:     http://localhost:25173"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
 	@echo "MiniLedger: http://localhost:24441/dashboard"
 	@echo "Login:      admin / admin123"
-	@echo "Note:       AI/LangChain 请使用 make up-go"
 endif
 
 up: up-go
@@ -132,7 +133,7 @@ logs:
 	$(COMPOSE_GO) logs -f
 
 clean:
-	$(MAKE) -C backend clean
+	$(MAKE) -C go-backend clean
 	-$(COMPOSE_JAVA) down --rmi local
 	-$(COMPOSE_GO) down --rmi local
 
