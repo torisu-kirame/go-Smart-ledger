@@ -1,13 +1,28 @@
 # Smart Ledger — Java backend overlay
 # 用法: make up-java
+# Compose 项目: smart-ledger-java（容器名 smart-ledger-java-*）
 
-name: smart-ledger
+name: smart-ledger-java
 
 services:
+  nsqlookupd:
+    container_name: smart-ledger-java-nsqlookupd
+
+  nsqd:
+    container_name: smart-ledger-java-nsqd
+
+  nsqadmin:
+    container_name: smart-ledger-java-nsqadmin
+
+  miniledger:
+    container_name: smart-ledger-java-miniledger
+
   auth-api:
     build:
       context: ./java-backend
       dockerfile: deploy/Dockerfile.auth
+    image: smart-ledger-java-auth-api:latest
+    container_name: smart-ledger-java-auth-api
     environment:
       SMARTLEDGER_BACKEND: java
 
@@ -15,6 +30,8 @@ services:
     build:
       context: ./java-backend
       dockerfile: deploy/Dockerfile.ledger
+    image: smart-ledger-java-ledger-api:latest
+    container_name: smart-ledger-java-ledger-api
     environment:
       SMARTLEDGER_BACKEND: java
       SL_CHAIN_BACKEND: miniledger
@@ -23,6 +40,8 @@ services:
     build:
       context: ./java-backend
       dockerfile: deploy/Dockerfile.storage
+    image: smart-ledger-java-storage-api:latest
+    container_name: smart-ledger-java-storage-api
     environment:
       SMARTLEDGER_BACKEND: java
 
@@ -30,5 +49,32 @@ services:
     build:
       context: ./java-backend
       dockerfile: deploy/Dockerfile.gateway
+    image: smart-ledger-java-gateway-api:latest
+    container_name: smart-ledger-java-gateway
     environment:
       SMARTLEDGER_BACKEND: java
+
+  ai-api:
+    build:
+      context: ./java-backend
+      dockerfile: deploy/Dockerfile.agent
+    image: smart-ledger-java-ai-api:latest
+    container_name: smart-ledger-java-ai-api
+    environment:
+      SMARTLEDGER_BACKEND: java
+      AGENT_CONFIG_PATH: /data/agent/config
+      LEDGER_API_URL: http://ledger-api:28888
+
+  web:
+    image: smart-ledger-java-web:latest
+    container_name: smart-ledger-java-web
+
+  web-mobile:
+    image: smart-ledger-java-web-mobile:latest
+    container_name: smart-ledger-java-web-mobile
+
+  ollama:
+    container_name: smart-ledger-java-ollama
+
+  ollama-init:
+    container_name: smart-ledger-java-ollama-init

@@ -26,6 +26,7 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext, w http.Respo
 }
 
 func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
+	req.Username = strings.TrimSpace(strings.ToLower(req.Username))
 	if req.Username == "" || req.Password == "" {
 		return nil, xerrors.New(400, "username and password required")
 	}

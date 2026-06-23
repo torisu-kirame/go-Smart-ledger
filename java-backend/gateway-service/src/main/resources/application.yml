@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: gateway-api
+  main:
+    web-application-type: reactive
   cloud:
     gateway:
       httpclient:

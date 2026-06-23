@@ -1,0 +1,20 @@
+server:
+  port: 28891
+
+spring:
+  application:
+    name: agent-api
+  servlet:
+    multipart:
+      max-file-size: 10MB
+
+smartledger:
+  agent:
+    config-path: ${AGENT_CONFIG_PATH:/data/agent/config}
+    ledger-api-url: ${LEDGER_API_URL:http://ledger-api:28888}
+    max-agent-iterations: 6
+
+logging:
+  level:
+    root: info
+    dev.langchain4j: warn

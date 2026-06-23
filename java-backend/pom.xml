@@ -23,12 +23,14 @@
         <module>ledger-service</module>
         <module>storage-service</module>
         <module>gateway-service</module>
+        <module>agent-service</module>
     </modules>
 
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <langchain4j.version>0.36.2</langchain4j.version>
     </properties>
 
     <dependencyManagement>

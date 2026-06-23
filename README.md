@@ -408,12 +408,14 @@ Windows PowerShell：
 
 流程：交叉编译 Go 服务 → `docker compose build` → 启动全部容器（含 **`web`**：Vue 构建产物 + Nginx，:25173 反代 `/api` 至网关）。停止全栈：`make down`。
 
-| 服务 | 容器名 | 端口 |
-|------|--------|------|
-| 控制台（桌面） | `smart-ledger-web` | 25173 |
-| 控制台（移动） | `smart-ledger-web-mobile` | 25175 |
-| 网关 | `smart-ledger-gateway` | 28080 |
-| MiniLedger（legacy） | `smart-ledger-miniledger` | 24441 |
+| 服务 | Go 栈容器名 | Java 栈容器名 | 端口 |
+|------|-------------|---------------|------|
+| 控制台（桌面） | `smart-ledger-go-web` | `smart-ledger-java-web` | 25173 |
+| 控制台（移动） | `smart-ledger-go-web-mobile` | — | 25175 |
+| 网关 | `smart-ledger-go-gateway` | `smart-ledger-java-gateway` | 28080 |
+| MiniLedger | `smart-ledger-go-miniledger` | `smart-ledger-java-miniledger` | 24441 |
+
+Compose 项目名分别为 `smart-ledger-go`（`make up-go`）与 `smart-ledger-java`（`make up-java`），两套后端镜像与容器互不覆盖。
 
 ### 本地前端热更新（可选）
 

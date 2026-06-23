@@ -698,28 +698,30 @@ async function send() {
         scrollToBottom()
       },
     })
-  } catch (e) {
+    } catch (e) {
     const live = agentsState.value.agents.find((a) => a.id === agentId)
     let msgs = live?.messages ? [...live.messages] : []
+    const partial = msgs[assistantIdx]?.content?.trim()
     if (e?.name === 'AbortError') {
-      if (!msgs[assistantIdx]?.content?.trim()) {
+      if (!partial) {
         msgs = msgs.slice(0, assistantIdx)
       }
     } else if (e?.message === 'AI_DISABLED') {
       chatError.value = t('assistant.disabledHint')
-      msgs = msgs.slice(0, assistantIdx)
+      if (!partial) msgs = msgs.slice(0, assistantIdx)
     } else if (e?.message === 'API_KEY_REQUIRED') {
       chatError.value = t('assistant.apiKeyRequired')
-      msgs = msgs.slice(0, assistantIdx)
+      if (!partial) msgs = msgs.slice(0, assistantIdx)
     } else if (e?.message === 'CONNECTION_NOT_VERIFIED') {
       chatError.value = t('assistant.connectionNotVerified')
-      msgs = msgs.slice(0, assistantIdx)
+      if (!partial) msgs = msgs.slice(0, assistantIdx)
     } else if (e?.message === 'AI_EMPTY_RESPONSE') {
       chatError.value = t('assistant.emptyResponse')
-      msgs = msgs.slice(0, assistantIdx)
+      if (!partial) msgs = msgs.slice(0, assistantIdx)
     } else {
-      chatError.value = e?.message || String(e)
-      msgs = msgs.slice(0, assistantIdx)
+      const msg = e?.message || String(e)
+      chatError.value = /network|failed to fetch/i.test(msg) ? t('assistant.streamInterrupted') : msg
+      if (!partial) msgs = msgs.slice(0, assistantIdx)
     }
     applyMessages(agentId, msgs)
   } finally {

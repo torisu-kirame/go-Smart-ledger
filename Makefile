@@ -1,6 +1,6 @@
 # Smart Ledger 全栈构建与启动（Go / Java 双后端可选）
 .PHONY: help build build-linux build-java docker-build docker-build-go docker-build-java \
-        init-openclaw-config up up-go up-java down logs clean \
+        init-openclaw-config up up-go up-java down logs logs-java clean \
         frontend-install frontend-dev frontend-build \
         mobile-install mobile-dev mobile-build mobile-apk \
         dev-all start \
@@ -11,14 +11,14 @@
 COMPOSE_ROOT = --project-directory .
 COMPOSE_MAIN = -f deploy/compose/docker-compose.yml
 COMPOSE_ENV = --env-file deploy/env/stack.env
-COMPOSE_GO = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN)
-COMPOSE_JAVA = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN) -f deploy/compose/docker-compose.java.yml
-COMPOSE_OFFLINE = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN) --profile offline-ai
+COMPOSE_GO = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN)
+COMPOSE_JAVA = docker compose -p smart-ledger-java $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN) -f deploy/compose/docker-compose.java.yml
+COMPOSE_OFFLINE = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_ENV) $(COMPOSE_MAIN) --profile offline-ai
 
 help:
 	@echo "Targets:"
-	@echo "  make up-go             - Go 后端 + py-backend AI + Web（默认）"
-	@echo "  make up-java           - Java 后端 + py-backend AI + Web"
+	@echo "  make up-go             - Go 后端 + py-backend AI + Web（项目 smart-ledger-go）"
+	@echo "  make up-java           - Java 后端 + LangChain4j Agent + Web（项目 smart-ledger-java）"
 	@echo "  make up                - 同 make up-go"
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
 	@echo "  make build-linux       - 交叉编译 Go 服务"
@@ -26,7 +26,7 @@ help:
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
 	@echo "  make fisco-dev-up      - FISCO 链 + ledger-api（Go）"
 
-COMPOSE_FISCO = docker compose $(COMPOSE_ROOT) $(COMPOSE_ENV) --env-file deploy/env/fisco.env $(COMPOSE_MAIN) -f deploy/compose/docker-compose.fisco.yml --profile fisco
+COMPOSE_FISCO = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_ENV) --env-file deploy/env/fisco.env $(COMPOSE_MAIN) -f deploy/compose/docker-compose.fisco.yml --profile fisco
 
 fisco-up:
 	$(COMPOSE_FISCO) up -d --build fisco-node
@@ -116,7 +116,7 @@ ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend java
 else
 	@echo ""
-	@echo "Backend:    Java (java-backend/) + AI (py-backend/)"
+	@echo "Backend:    Java (java-backend/) + LangChain4j Agent"
 	@echo "Web UI:     http://localhost:25173"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
 	@echo "MiniLedger: http://localhost:24441/dashboard"
@@ -131,6 +131,9 @@ down:
 
 logs:
 	$(COMPOSE_GO) logs -f
+
+logs-java:
+	$(COMPOSE_JAVA) logs -f
 
 clean:
 	$(MAKE) -C go-backend clean

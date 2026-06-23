@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/authjwt"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/captcha"
@@ -57,6 +58,7 @@ func registerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
+		req.Username = strings.TrimSpace(strings.ToLower(req.Username))
 		if req.Username == "" || req.Password == "" {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "username and password required"))
 			return

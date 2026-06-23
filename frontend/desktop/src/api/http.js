@@ -23,6 +23,21 @@ export class ApiError extends Error {
   }
 }
 
+function parseApiMessage(body, text, statusText) {
+  if (body?.msg) return body.msg
+  if (body?.message) return body.message
+  const raw = body?.error || text || ''
+  const m = String(raw).match(/msg:\s*(.+)/s)
+  if (m?.[1]) return m[1].trim()
+  return body?.error || statusText
+}
+
+function looksLikeErrorBody(body, text) {
+  if (!body) return false
+  if (typeof body.code === 'number' && body.code >= 400 && body.msg) return true
+  return /^code:\s*\d+,\s*msg:/.test(String(body.error || text || ''))
+}
+
 async function request(path, init = {}, retry = true) {
   const headers = { ...(init.headers || {}) }
   if (!(init.body instanceof FormData)) {
@@ -54,8 +69,10 @@ async function request(path, init = {}, retry = true) {
     }
   }
   if (!res.ok) {
-    const msg = body?.msg || body?.message || body?.error || res.statusText
-    throw new ApiError(msg, res.status)
+    throw new ApiError(parseApiMessage(body, text, res.statusText), res.status)
+  }
+  if (looksLikeErrorBody(body, text)) {
+    throw new ApiError(parseApiMessage(body, text, res.statusText), body?.code || 400)
   }
   return body
 }

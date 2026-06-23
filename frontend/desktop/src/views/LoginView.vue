@@ -42,6 +42,8 @@
       <button class="btn-primary login-submit" type="submit" :disabled="loading">
         {{ loading ? (mode === 'login' ? '登录中…' : '注册中…') : (mode === 'login' ? '登录' : '注册并登录') }}
       </button>
+
+      <p v-if="mode === 'login'" class="login-hint">首次使用请用默认账号 <strong>admin</strong> / <strong>admin123</strong>，或切换到「注册」创建新用户。</p>
     </form>
   </div>
 </template>
@@ -77,10 +79,15 @@ const themeLabel = computed(() => {
 })
 
 async function loadCaptcha() {
-  const c = await api.captcha()
-  captchaId.value = c.captchaId
-  captchaImg.value = c.image.startsWith('data:') ? c.image : `data:image/png;base64,${c.image}`
-  form.captchaCode = ''
+  try {
+    const c = await api.captcha()
+    captchaId.value = c.captchaId
+    captchaImg.value = c.image.startsWith('data:') ? c.image : `data:image/png;base64,${c.image}`
+    form.captchaCode = ''
+  } catch (e) {
+    captchaImg.value = ''
+    error.value = e instanceof ApiError ? e.message : '验证码加载失败，请稍后重试'
+  }
 }
 
 watch(mode, () => {
@@ -99,6 +106,11 @@ function onToggleTheme() {
 }
 
 async function submit() {
+  if (!captchaId.value) {
+    error.value = '验证码未加载，请点击刷新后重试'
+    await loadCaptcha()
+    return
+  }
   loading.value = true
   error.value = ''
   success.value = ''
@@ -251,6 +263,19 @@ async function submit() {
 .login-submit {
   width: 100%;
   margin-top: 0.25rem;
+}
+
+.login-hint {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.login-hint strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .theme-switch {

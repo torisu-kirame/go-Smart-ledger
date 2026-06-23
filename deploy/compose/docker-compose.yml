@@ -9,13 +9,15 @@
 # 离线 Ollama: make offline-ai-up
 # 链浏览器:   http://localhost:24441/dashboard
 # 默认账号:   admin / admin123
+#
+# Compose 项目: smart-ledger-go（容器名 smart-ledger-go-*）
 
-name: smart-ledger
+name: smart-ledger-go
 
 services:
   nsqlookupd:
     image: nsqio/nsq:v1.3.0
-    container_name: smart-ledger-nsqlookupd
+    container_name: smart-ledger-go-nsqlookupd
     command: /nsqlookupd
     ports:
       - "24161:4160"
@@ -24,7 +26,7 @@ services:
 
   nsqd:
     image: nsqio/nsq:v1.3.0
-    container_name: smart-ledger-nsqd
+    container_name: smart-ledger-go-nsqd
     command: /nsqd --broadcast-address=nsqd --lookupd-tcp-address=nsqlookupd:4160
     depends_on:
       - nsqlookupd
@@ -40,7 +42,7 @@ services:
 
   nsqadmin:
     image: nsqio/nsq:v1.3.0
-    container_name: smart-ledger-nsqadmin
+    container_name: smart-ledger-go-nsqadmin
     command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
     depends_on:
       - nsqlookupd
@@ -50,7 +52,7 @@ services:
 
   miniledger:
     image: node:22-alpine
-    container_name: smart-ledger-miniledger
+    container_name: smart-ledger-go-miniledger
     working_dir: /app
     volumes:
       - ./go-backend/infra/miniledger:/app
@@ -71,7 +73,8 @@ services:
     build:
       context: ./go-backend
       dockerfile: deploy/Dockerfile.auth
-    container_name: smart-ledger-auth-api
+    image: smart-ledger-go-auth-api:latest
+    container_name: smart-ledger-go-auth-api
     env_file:
       - path: deploy/env/.env
         required: false
@@ -93,7 +96,7 @@ services:
   ipfs:
     image: ipfs/kubo:v0.32.1
     profiles: ["ipfs"]
-    container_name: smart-ledger-ipfs
+    container_name: smart-ledger-go-ipfs
     environment:
       IPFS_PROFILE: server
     ports:
@@ -113,7 +116,8 @@ services:
     build:
       context: ./go-backend
       dockerfile: deploy/Dockerfile.ledger
-    container_name: smart-ledger-ledger-api
+    image: smart-ledger-go-ledger-api:latest
+    container_name: smart-ledger-go-ledger-api
     env_file:
       - path: deploy/env/.env
         required: false
@@ -145,7 +149,8 @@ services:
     build:
       context: ./go-backend
       dockerfile: deploy/Dockerfile.storage
-    container_name: smart-ledger-storage-api
+    image: smart-ledger-go-storage-api:latest
+    container_name: smart-ledger-go-storage-api
     ports:
       - "28890:28890"
     volumes:
@@ -162,7 +167,8 @@ services:
     build:
       context: ./py-backend
       dockerfile: Dockerfile
-    container_name: smart-ledger-ai-api
+    image: smart-ledger-go-ai-api:latest
+    container_name: smart-ledger-go-ai-api
     environment:
       AGENT_CONFIG_PATH: /data/agent/config
       LEDGER_API_URL: http://ledger-api:28888
@@ -185,7 +191,8 @@ services:
     build:
       context: ./go-backend
       dockerfile: deploy/Dockerfile.gateway
-    container_name: smart-ledger-gateway
+    image: smart-ledger-go-gateway-api:latest
+    container_name: smart-ledger-go-gateway
     env_file:
       - path: deploy/env/.env
         required: false
@@ -212,7 +219,7 @@ services:
   ollama:
     profiles: ["offline-ai"]
     image: ollama/ollama:latest
-    container_name: smart-ledger-ollama
+    container_name: smart-ledger-go-ollama
     ports:
       - "${OLLAMA_HOST_PORT:-11434}:11434"
     volumes:
@@ -228,7 +235,7 @@ services:
   ollama-init:
     profiles: ["offline-ai"]
     image: ollama/ollama:latest
-    container_name: smart-ledger-ollama-init
+    container_name: smart-ledger-go-ollama-init
     depends_on:
       ollama:
         condition: service_healthy
@@ -249,7 +256,7 @@ services:
   openclaw-gateway:
     profiles: ["openclaw-legacy"]
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
-    container_name: smart-ledger-openclaw-gateway
+    container_name: smart-ledger-go-openclaw-gateway
     env_file:
       - path: deploy/env/stack.env
         required: false
@@ -302,7 +309,7 @@ services:
   openclaw-cli:
     profiles: ["openclaw-legacy", "cli"]
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
-    container_name: smart-ledger-openclaw-cli
+    container_name: smart-ledger-go-openclaw-cli
     network_mode: service:openclaw-gateway
     env_file:
       - path: deploy/env/stack.env
@@ -333,7 +340,8 @@ services:
     build:
       context: ./frontend/desktop
       dockerfile: Dockerfile
-    container_name: smart-ledger-web
+    image: smart-ledger-go-web:latest
+    container_name: smart-ledger-go-web
     ports:
       - "25173:80"
     depends_on:
@@ -351,7 +359,8 @@ services:
     build:
       context: ./frontend/mobile
       dockerfile: Dockerfile
-    container_name: smart-ledger-web-mobile
+    image: smart-ledger-go-web-mobile:latest
+    container_name: smart-ledger-go-web-mobile
     ports:
       - "25175:80"
     depends_on:
@@ -367,9 +376,16 @@ services:
 
 volumes:
   auth-avatars:
+    name: smart-ledger-auth-avatars
   miniledger-data:
+    name: smart-ledger-miniledger-data
   ledger-data:
+    name: smart-ledger-ledger-data
   storage-backups:
+    name: smart-ledger-storage-backups
   ipfs-data:
+    name: smart-ledger-ipfs-data
   ollama-models:
+    name: smart-ledger-ollama-models
   fisco-data:
+    name: smart-ledger-fisco-data
