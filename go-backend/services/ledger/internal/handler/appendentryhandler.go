@@ -20,6 +20,9 @@ func appendEntryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
+		if req.Entry.SignerId == "" {
+			req.Entry.SignerId = r.Header.Get("X-User-Id")
+		}
 
 		id := pathvar.Vars(r)["id"]
 		l := logic.NewAppendEntryLogic(r.Context(), svcCtx)

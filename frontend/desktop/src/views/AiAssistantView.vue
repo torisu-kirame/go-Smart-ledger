@@ -103,7 +103,11 @@
             <header v-if="msg.role !== 'user'" class="chat-bubble__role">
               {{ activeAgent?.name || t('assistant.roleAssistant') }}
             </header>
-            <div class="chat-bubble__body">{{ msg.content }}</div>
+            <div
+              class="chat-bubble__body"
+              :class="{ 'chat-bubble__body--md': msg.role === 'assistant' }"
+              v-html="msg.role === 'assistant' ? renderMd(msg.content) : escapeText(msg.content)"
+            />
           </article>
           <div
             v-if="streaming && !messages[messages.length - 1]?.content"
@@ -118,6 +122,23 @@
         <div v-if="chatError" class="alert alert-error">{{ chatError }}</div>
 
         <form class="assistant-composer panel" @submit.prevent="send">
+          <div class="skill-bar" role="list" :aria-label="t('assistant.skillsTitle')">
+            <button
+              v-for="skill in skills"
+              :key="skill.id"
+              type="button"
+              class="skill-chip"
+              role="listitem"
+              :class="{ 'skill-chip--active': activeSkillId === skill.id }"
+              :disabled="!aiEnabled || streaming || exporting || (skill.needsLedger && !hasBoundLedger)"
+              :title="skillNeedsLedgerHint(skill)"
+              @click="onSkillClick(skill)"
+            >
+              <AppIcon :name="skill.icon" size="sm" />
+              <span>{{ t(skill.labelKey) }}</span>
+            </button>
+          </div>
+          <p v-if="!hasBoundLedger" class="skill-bar-hint">{{ t('assistant.skillsNeedLedger') }}</p>
           <div class="composer-row">
             <textarea
               v-model="input"
@@ -314,6 +335,8 @@ import {
   defaultSystemMessages,
   streamChat,
 } from '../api/aiChat'
+import { AI_SKILLS } from '../utils/aiSkills'
+import { escapeHtml, renderMarkdown } from '../utils/markdown'
 import { useI18n } from '../composables/useI18n'
 import { WORKSPACE_FILE_NAMES } from '../utils/agentWorkspace'
 import {
@@ -360,6 +383,7 @@ const agentsState = ref(loadAgentsState())
 const activeAgent = computed(() => getActiveAgent(agentsState.value))
 const messages = computed(() => activeAgent.value?.messages ?? [])
 const agentContextReady = computed(() => !!activeAgent.value?.ledgerContextText?.trim())
+const hasBoundLedger = computed(() => !!activeAgent.value?.ledgerId?.trim())
 
 const workspaceFileNames = WORKSPACE_FILE_NAMES
 const selectedWorkspaceFile = ref(WORKSPACE_FILE_NAMES[0])
@@ -382,6 +406,10 @@ const threadEl = ref(null)
 let abortCtrl = null
 let diskSaveTimer = null
 let diskLoadToken = 0
+
+const skills = AI_SKILLS
+const activeSkillId = ref('')
+const exporting = ref(false)
 
 const showAgentModal = ref(false)
 const showLedgerModal = ref(false)
@@ -642,6 +670,70 @@ function clearLedgerContext() {
   refreshAgents()
 }
 
+function escapeText(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>')
+}
+
+function renderMd(text) {
+  return renderMarkdown(text)
+}
+
+function skillNeedsLedgerHint(skill) {
+  if (skill.needsLedger && !hasBoundLedger.value) {
+    return t('assistant.skillsNeedLedger')
+  }
+  return t(skill.hintKey)
+}
+
+async function onSkillClick(skill) {
+  if (!aiEnabled.value || streaming.value || exporting.value) return
+  if (skill.needsLedger && !hasBoundLedger.value) {
+    chatError.value = t('assistant.skillsNeedLedger')
+    openLedgerModal()
+    return
+  }
+  activeSkillId.value = skill.id
+  chatError.value = ''
+
+  if (skill.action === 'export') {
+    await runExportSkill()
+    return
+  }
+
+  input.value = skill.prompt
+  await nextTick()
+  await send({ forceTools: true })
+}
+
+async function runExportSkill() {
+  const agent = activeAgent.value
+  const ledgerId = agent?.ledgerId?.trim()
+  if (!ledgerId) {
+    chatError.value = t('assistant.skillsNeedLedger')
+    return
+  }
+  exporting.value = true
+  try {
+    const name = await api.downloadAuditExport(ledgerId, 'xlsx')
+    const tip = t('assistant.exportOk').replace('{name}', name || 'audit.xlsx')
+    const next = [
+      ...messages.value,
+      { role: 'user', content: t('assistant.skillExport') },
+      {
+        role: 'assistant',
+        content: `## 导出完成\n\n已下载审计导出文件：**${name || 'audit.xlsx'}**\n\n${tip}`,
+      },
+    ]
+    persistMessages(next)
+    await scrollToBottom()
+  } catch (e) {
+    chatError.value = e?.message || t('assistant.exportFail')
+  } finally {
+    exporting.value = false
+    activeSkillId.value = ''
+  }
+}
+
 async function scrollToBottom() {
   await nextTick()
   if (threadEl.value) threadEl.value.scrollTop = threadEl.value.scrollHeight
@@ -655,7 +747,7 @@ function persistMessages(next) {
   applyMessages(agentsState.value.activeId, next)
 }
 
-async function send() {
+async function send(opts = {}) {
   const agentId = agentsState.value.activeId
   const agent = activeAgent.value
   const text = input.value.trim()
@@ -668,7 +760,12 @@ async function send() {
   await scrollToBottom()
 
   const history = next.map((m) => ({ role: m.role, content: m.content }))
-  const systemPrompt = agentSystemPrompt(agent)
+  const systemPrompt = [
+    agentSystemPrompt(agent),
+    '回复请使用 Markdown（标题、列表、表格、代码块），便于阅读。',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
   const ledgerContext = agent.ledgerContextText || ''
   const payload = [
     ...defaultSystemMessages(ledgerContext, systemPrompt),
@@ -681,11 +778,13 @@ async function send() {
   persistMessages(withAssistant)
   abortCtrl = new AbortController()
 
+  const useTools = !!(opts.forceTools || agent.ledgerId?.trim())
+
   try {
     await streamChat({
       messages: payload,
       signal: abortCtrl.signal,
-      useTools: !!(agent.ledgerId?.trim()),
+      useTools,
       boundLedgerId: agent.ledgerId || '',
       onDelta(delta) {
         const current = agentsState.value
@@ -727,6 +826,7 @@ async function send() {
   } finally {
     streaming.value = false
     abortCtrl = null
+    activeSkillId.value = ''
     await scrollToBottom()
   }
 }
@@ -1016,10 +1116,91 @@ watch(
 }
 
 .chat-bubble__body {
-  white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.925rem;
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+.chat-bubble__body:not(.chat-bubble__body--md) {
+  white-space: pre-wrap;
+}
+
+.chat-bubble__body--md :deep(.md-p) {
+  margin: 0.35rem 0;
+}
+
+.chat-bubble__body--md :deep(.md-h) {
+  margin: 0.65rem 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.chat-bubble__body--md :deep(h1.md-h) {
+  font-size: 1.15rem;
+}
+.chat-bubble__body--md :deep(h2.md-h) {
+  font-size: 1.08rem;
+}
+.chat-bubble__body--md :deep(h3.md-h) {
+  font-size: 1.02rem;
+}
+
+.chat-bubble__body--md :deep(.md-ul),
+.chat-bubble__body--md :deep(.md-ol) {
+  margin: 0.35rem 0;
+  padding-left: 1.25rem;
+}
+
+.chat-bubble__body--md :deep(.md-code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.chat-bubble__body--md :deep(.md-pre) {
+  margin: 0.5rem 0;
+  padding: 0.65rem 0.75rem;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text) 6%, var(--bg));
+  border: 1px solid var(--border);
+}
+
+.chat-bubble__body--md :deep(.md-code-block) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  white-space: pre;
+}
+
+.chat-bubble__body--md :deep(.md-table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+}
+
+.chat-bubble__body--md :deep(.md-table th),
+.chat-bubble__body--md :deep(.md-table td) {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.chat-bubble__body--md :deep(.md-table th) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.chat-bubble__body--md :deep(.md-hr) {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.75rem 0;
+}
+
+.chat-bubble__body--md :deep(a) {
+  color: var(--accent);
 }
 
 .chat-bubble--typing {
@@ -1060,6 +1241,54 @@ watch(
   flex-shrink: 0;
   padding: 0.65rem 0.75rem;
   margin-bottom: 0 !important;
+}
+
+.skill-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+  max-height: 5.5rem;
+  overflow-y: auto;
+}
+
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.skill-chip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.skill-chip--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.skill-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.skill-bar-hint {
+  margin: 0 0 0.45rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .composer-row {

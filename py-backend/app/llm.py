@@ -120,6 +120,9 @@ def build_agent_system_prefix(messages: list[ChatMessage], bound_ledger_id: str)
             f"当前绑定账本 ID：{lid}。调用需要 ledgerId 的工具时，若用户未指定其他账本，请使用该 ID。"
         )
     parts.append(
-        "你可以通过 list_ledgers、get_ledger_summary、search_ledger_rag、verify_ledger 工具查询账本；不要编造链上数据。"
+        "你可以通过 list_ledgers、get_ledger_summary、search_ledger_rag、verify_ledger、"
+        "append_ledger_entry（记流水）、get_financial_reports、get_ledger_budget 等工具操作/查询账本；"
+        "不要编造链上数据。记流水时用途要具体（如「午餐-张总客户」），区分 expense/income/transfer。"
+        "回复请使用 Markdown（标题、列表、表格、代码块）。"
     )
     return "\n\n".join(parts)

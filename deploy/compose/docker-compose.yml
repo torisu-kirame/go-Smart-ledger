@@ -22,6 +22,12 @@ services:
     ports:
       - "24161:4160"
       - "24162:4161"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4161/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
     restart: unless-stopped
 
   nsqd:
@@ -29,7 +35,8 @@ services:
     container_name: smart-ledger-go-nsqd
     command: /nsqd --broadcast-address=nsqd --lookupd-tcp-address=nsqlookupd:4160
     depends_on:
-      - nsqlookupd
+      nsqlookupd:
+        condition: service_healthy
     ports:
       - "24150:4150"
       - "24151:4151"
@@ -134,15 +141,16 @@ services:
     depends_on:
       miniledger:
         condition: service_healthy
-        required: false
+      nsqlookupd:
+        condition: service_healthy
       nsqd:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28888/api/v1/health"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 15s
+      retries: 10
+      start_period: 45s
     restart: unless-stopped
 
   storage-api:
