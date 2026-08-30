@@ -38,9 +38,6 @@ func (s *Service) ImportAdaptiveCommit(
 	if meta.CreatorID != userID {
 		return nil, domain.ErrUnauthorized
 	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, domain.ErrBookkeepingModeMismatch
-	}
 	domain.NormalizeLedgerTables(meta)
 	if !meta.MultiTableEnabled {
 		meta, err = s.SetMultiTableEnabled(ctx, ledgerID, userID, true)
@@ -67,23 +64,19 @@ func (s *Service) ImportAdaptiveCommit(
 		tableName = "导入数据"
 	}
 	createName := uniqueTableName(meta, tableName)
-	meta, err = s.createTableInternal(ctx, meta, userID, createName, schema)
+	meta, newTable, err := s.createTableInternal(ctx, meta, userID, createName, schema)
 	if err != nil {
 		return nil, err
 	}
-	t := domain.TableByName(meta, createName)
-	if t == nil {
-		return nil, domain.ErrTableNotFound
-	}
-	res, err := s.BatchImport(ctx, ledgerID, signerID, t.ID, rows, autoAnchor)
+	res, err := s.BatchImport(ctx, ledgerID, signerID, newTable.ID, rows, autoAnchor)
 	if err != nil {
 		return nil, err
 	}
 	return &AdaptiveImportCommitResult{
 		Import:      res,
-		TableID:     t.ID,
-		TableName:   t.Name,
-		EntrySchema: t.EntrySchema,
+		TableID:     newTable.ID,
+		TableName:   newTable.Name,
+		EntrySchema: newTable.EntrySchema,
 		Mode:        "created",
 	}, nil
 }
@@ -165,28 +158,30 @@ func uniqueTableName(meta *domain.LedgerMeta, base string) string {
 	return base + " (新)"
 }
 
-func (s *Service) createTableInternal(ctx context.Context, meta *domain.LedgerMeta, userID, name string, schema domain.EntrySchema) (*domain.LedgerMeta, error) {
+func (s *Service) createTableInternal(ctx context.Context, meta *domain.LedgerMeta, userID, name string, schema domain.EntrySchema) (*domain.LedgerMeta, *domain.LedgerTable, error) {
 	for _, t := range meta.Tables {
 		if t.Name == name {
-			return nil, domain.ErrInvalidTable
+			return nil, nil, domain.ErrInvalidTable
 		}
 	}
 	id, err := snowflake.NextString()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	now := time.Now().UTC()
-	meta.Tables = append(meta.Tables, domain.LedgerTable{
+	newTable := domain.LedgerTable{
 		ID:          id,
 		Name:        name,
 		EntrySchema: schema,
 		SortOrder:   len(meta.Tables),
 		CreatedAt:   now,
-	})
+	}
+	meta.Tables = append(meta.Tables, newTable)
 	meta.MultiTableEnabled = true
 	meta.UpdatedAt = now
 	if err := s.putMeta(ctx, meta); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return s.loadMeta(ctx, meta.ID)
+	// Prefer in-memory meta: MiniLedger world_state reads can lag right after putMeta.
+	return meta, &meta.Tables[len(meta.Tables)-1], nil
 }

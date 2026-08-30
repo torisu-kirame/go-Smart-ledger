@@ -8,12 +8,32 @@ import (
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/accounting"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/storage"
 )
 
 var ErrAttachmentNotFound = errors.New("attachment not found")
+
+// LinkAttachment is the public API used by HTTP handlers.
+func (s *Service) LinkAttachment(
+	ctx context.Context,
+	ledgerID, userID, tableID string,
+	entrySeq uint64,
+	filename, mime string,
+	size int64,
+	body []byte,
+	aux *accounting.AuxiliaryDims,
+	backup *storage.DualBackup,
+) (*accounting.Attachment, error) {
+	return s.LinkEntryAttachment(ctx, ledgerID, userID, tableID, entrySeq, filename, mime, size, body, aux, backup)
+}
+
+// ListAttachments returns attachment metadata (optional tableId / entrySeq filters).
+func (s *Service) ListAttachments(ctx context.Context, ledgerID, userID, tableID string, entrySeq uint64) ([]accounting.Attachment, error) {
+	return s.ListEntryAttachments(ctx, ledgerID, userID, tableID, entrySeq)
+}
 
 // LinkEntryAttachment stores a file linked to a chain event seq (F44, table-aware for F49).
 func (s *Service) LinkEntryAttachment(
@@ -34,15 +54,11 @@ func (s *Service) LinkEntryAttachment(
 		return nil, domain.ErrEntryValidation
 	}
 	tableID = domain.ResolveTableID(meta, tableID)
-	if domain.IsProfessionalBookkeeping(meta) {
-		tableID = ""
-	} else {
-		if err := domain.ValidateTableAccess(meta, tableID); err != nil {
-			return nil, err
-		}
-		if err := s.validateAttachmentTarget(ctx, meta, tableID, entrySeq); err != nil {
-			return nil, err
-		}
+	if err := domain.ValidateTableAccess(meta, tableID); err != nil {
+		return nil, err
+	}
+	if err := s.validateAttachmentTarget(ctx, meta, tableID, entrySeq); err != nil {
+		return nil, err
 	}
 	id, err := snowflake.NextString()
 	if err != nil {
@@ -84,11 +100,10 @@ func (s *Service) ListEntryAttachments(ctx context.Context, ledgerID, userID, ta
 	if err != nil {
 		return nil, err
 	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		tableID = ""
-	} else {
-		tableID = domain.ResolveTableID(meta, tableID)
-		if err := domain.ValidateTableAccess(meta, tableID); err != nil {
+	filterTable := strings.TrimSpace(tableID)
+	if filterTable != "" {
+		filterTable = domain.ResolveTableID(meta, filterTable)
+		if err := domain.ValidateTableAccess(meta, filterTable); err != nil {
 			return nil, err
 		}
 	}
@@ -108,12 +123,12 @@ func (s *Service) ListEntryAttachments(ctx context.Context, ledgerID, userID, ta
 		if entrySeq > 0 && att.EntrySeq != entrySeq {
 			continue
 		}
-		if tableID != "" && domain.IsSimpleBookkeeping(meta) {
+		if filterTable != "" {
 			attTable := att.TableID
 			if attTable == "" {
 				attTable = domain.DefaultTableID
 			}
-			if attTable != tableID {
+			if attTable != filterTable {
 				continue
 			}
 		}
@@ -203,4 +218,12 @@ func (s *Service) validateAttachmentTarget(ctx context.Context, meta *domain.Led
 		return domain.ErrEntryValidation
 	}
 	return nil
+}
+
+func (s *Service) putJSON(ctx context.Context, key, ledgerID string, v interface{}) error {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return s.submitOne(ctx, "state:"+key, ledgerID, chainstore.TxRequest{Key: key, Value: raw})
 }

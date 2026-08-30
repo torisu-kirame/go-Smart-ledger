@@ -113,10 +113,7 @@ services:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       OPENCLAW_AGENT_MODEL: ${OPENCLAW_AGENT_MODEL:-openclaw/default}
       AGENT_CONFIG_PATH: /data/agent/config
-      SL_CHAIN_BACKEND: ${SL_CHAIN_BACKEND:-miniledger}
-      SL_FISCO_JSONRPC: ${SL_FISCO_JSONRPC:-http://fisco-node:20200}
-      SL_FISCO_GROUP_ID: ${SL_FISCO_GROUP_ID:-group0}
-      SL_FISCO_CHAIN_ID: ${SL_FISCO_CHAIN_ID:-chain0}
+      SL_CHAIN_BACKEND: miniledger
     volumes:
       - auth-avatars:/data/avatars
       - ledger-data:/data
@@ -307,5 +304,3 @@ volumes:
     name: smart-ledger-ipfs-data
   ollama-models:
     name: smart-ledger-ollama-models
-  fisco-data:
-    name: smart-ledger-fisco-data

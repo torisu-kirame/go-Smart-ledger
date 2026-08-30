@@ -9,10 +9,9 @@ import (
 
 type Config struct {
 	rest.RestConf
-	// Chain selects authoritative ledger backend: miniledger (default) | fisco
+	// Chain selects authoritative ledger backend (miniledger only).
 	Chain struct {
-		Backend string `json:",default=miniledger,options=miniledger|fisco"`
-		FISCO   chainstore.FISCOConfig `json:"FISCO,optional"`
+		Backend string `json:",default=miniledger,options=miniledger"`
 	} `json:"Chain,optional"`
 	MiniLedger struct {
 		BaseURL string `json:",default=http://127.0.0.1:24441"`
@@ -58,7 +57,6 @@ type Config struct {
 func (c Config) ChainStoreConfig() chainstore.Config {
 	cfg := chainstore.Config{
 		Backend: c.Chain.Backend,
-		FISCO:   c.Chain.FISCO,
 	}
 	cfg.MiniLedger.BaseURL = c.MiniLedger.BaseURL
 	return cfg

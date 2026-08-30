@@ -19,9 +19,6 @@ func (s *Service) SetMultiTableEnabled(ctx context.Context, ledgerID, userID str
 	if meta.CreatorID != userID {
 		return nil, domain.ErrUnauthorized
 	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, domain.ErrBookkeepingModeMismatch
-	}
 	domain.NormalizeLedgerTables(meta)
 	if meta.MultiTableEnabled == enabled {
 		return meta, nil
@@ -47,9 +44,6 @@ func (s *Service) CreateTable(ctx context.Context, ledgerID, userID, name string
 	}
 	if meta.CreatorID != userID {
 		return nil, domain.ErrUnauthorized
-	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, domain.ErrBookkeepingModeMismatch
 	}
 	domain.NormalizeLedgerTables(meta)
 	if !meta.MultiTableEnabled {
@@ -97,9 +91,6 @@ func (s *Service) UpdateTable(ctx context.Context, ledgerID, userID, tableID, na
 	}
 	if meta.CreatorID != userID {
 		return nil, domain.ErrUnauthorized
-	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, domain.ErrBookkeepingModeMismatch
 	}
 	domain.NormalizeLedgerTables(meta)
 	t := domain.TableByID(meta, tableID)

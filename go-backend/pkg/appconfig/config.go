@@ -37,7 +37,7 @@ type Config struct {
 	} `json:"Users,optional"`
 
 	Chain struct {
-		Backend string `json:",default=miniledger,options=miniledger|fisco"`
+		Backend string `json:",default=miniledger,options=miniledger"`
 	} `json:"Chain,optional"`
 	MiniLedger struct {
 		BaseURL string `json:",default=http://127.0.0.1:24441"`

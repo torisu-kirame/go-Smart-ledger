@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/accounting"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/evmanchor"
@@ -55,25 +54,21 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 	}
 	mode := domain.NormalizeBookkeepingMode(opts.BookkeepingMode)
 	blankSheets := false
-	if mode == domain.BookkeepingProfessional {
-		schema = domain.ProfessionalEntrySchema()
-	} else {
-		// Simple ledgers: sheet workbook — no preset template; sheets created by user.
-		if strings.TrimSpace(schema.TemplateID) == "" || schema.TemplateID == domain.TemplateCustom {
-			if len(schema.Fields) == 0 {
-				schema = domain.EntrySchema{TemplateID: domain.TemplateCustom, Fields: nil}
-				blankSheets = true
-			} else {
-				schema.TemplateID = domain.TemplateCustom
-				if err := domain.ValidateSchema(schema); err != nil {
-					return nil, err
-				}
-			}
+	// Simple ledgers: sheet workbook — no preset template; sheets created by user.
+	if strings.TrimSpace(schema.TemplateID) == "" || schema.TemplateID == domain.TemplateCustom {
+		if len(schema.Fields) == 0 {
+			schema = domain.EntrySchema{TemplateID: domain.TemplateCustom, Fields: nil}
+			blankSheets = true
 		} else {
-			schema = domain.ResolveEntrySchema(schema)
+			schema.TemplateID = domain.TemplateCustom
 			if err := domain.ValidateSchema(schema); err != nil {
 				return nil, err
 			}
+		}
+	} else {
+		schema = domain.ResolveEntrySchema(schema)
+		if err := domain.ValidateSchema(schema); err != nil {
+			return nil, err
 		}
 	}
 	idInt, err := snowflake.NextInt64()
@@ -117,19 +112,13 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if mode == domain.BookkeepingSimple {
-		meta.MultiTableEnabled = true
-		if blankSheets {
-			meta.Tables = []domain.LedgerTable{}
-		}
+	meta.MultiTableEnabled = true
+	if blankSheets {
+		meta.Tables = []domain.LedgerTable{}
 	}
 	domain.NormalizeLedgerTables(meta)
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err
-	}
-	if mode == domain.BookkeepingProfessional {
-		def := accounting.DefaultChart(id)
-		_ = s.putJSON(ctx, domain.LedgerCOAKey(id), id, def)
 	}
 	payload, _ := json.Marshal(map[string]any{
 		"name": name, "type": t, "members": members, "ledgerAddress": ledgerAddr,
@@ -295,15 +284,32 @@ func (s *Service) appendEventLocked(ctx context.Context, meta *domain.LedgerMeta
 	if err != nil {
 		return nil, err
 	}
-	// Preserve soft-delete / rename applied on the caller pointer when the
+	// Never rewind seq from a lagging world_state read — BatchImport used to
+	// loadMeta after each row and reuse the same seq, overwriting EntryAdded.
+	if meta.LatestSeq > fresh.LatestSeq {
+		fresh.LatestSeq = meta.LatestSeq
+		fresh.LatestRoot = meta.LatestRoot
+	}
+	if maxSeq := s.maxEventSeq(ctx, meta.ID); maxSeq > fresh.LatestSeq {
+		fresh.LatestSeq = maxSeq
+	}
+	// Preserve meta mutations applied on the caller pointer when the
 	// world_state read is briefly stale after a prior putMeta.
 	if !meta.ArchivedAt.IsZero() {
 		fresh.ArchivedAt = meta.ArchivedAt
 	}
-	if name := strings.TrimSpace(meta.Name); name != "" && name != fresh.Name {
-		if !meta.UpdatedAt.IsZero() && (fresh.UpdatedAt.IsZero() || !meta.UpdatedAt.Before(fresh.UpdatedAt)) {
-			fresh.Name = name
+	callerNewer := !meta.UpdatedAt.IsZero() && (fresh.UpdatedAt.IsZero() || !meta.UpdatedAt.Before(fresh.UpdatedAt))
+	if name := strings.TrimSpace(meta.Name); name != "" && name != fresh.Name && callerNewer {
+		fresh.Name = name
+	}
+	if callerNewer {
+		// Multi-table / sheet edits must not be wiped by a stale reload
+		// (import-to-new-table: putMeta then appendEvent).
+		fresh.MultiTableEnabled = meta.MultiTableEnabled
+		if meta.Tables != nil {
+			fresh.Tables = append([]domain.LedgerTable(nil), meta.Tables...)
 		}
+		fresh.EntrySchema = meta.EntrySchema
 	}
 	ev, err := s.appendEventUsingMetaUnlocked(ctx, fresh, signerID, eventType, payload)
 	if err != nil {
@@ -311,6 +317,20 @@ func (s *Service) appendEventLocked(ctx context.Context, meta *domain.LedgerMeta
 	}
 	*meta = *fresh
 	return ev, nil
+}
+
+func (s *Service) maxEventSeq(ctx context.Context, ledgerID string) uint64 {
+	events, err := s.ListEvents(ctx, ledgerID, 1, 0)
+	if err != nil || len(events) == 0 {
+		return 0
+	}
+	var max uint64
+	for _, e := range events {
+		if e.Seq > max {
+			max = e.Seq
+		}
+	}
+	return max
 }
 
 // appendEventUsingMetaUnlocked appends using meta.LatestSeq as-is.
@@ -455,14 +475,6 @@ func MapDomainError(err error) int {
 		errors.Is(err, domain.ErrInvalidApproval),
 		errors.Is(err, domain.ErrCannotApproveOwn),
 		errors.Is(err, ErrRestoreConflict),
-		errors.Is(err, accounting.ErrUnbalanced),
-		errors.Is(err, accounting.ErrInvalidJournal),
-		errors.Is(err, accounting.ErrInvalidAccount),
-		errors.Is(err, accounting.ErrAccountNotFound),
-		errors.Is(err, accounting.ErrPeriodClosed),
-		errors.Is(err, accounting.ErrInvalidPeriod),
-		errors.Is(err, accounting.ErrStmtNotFound),
-		errors.Is(err, accounting.ErrLineNotFound),
 		errors.Is(err, domain.ErrEncryptionAlreadyEnabled),
 		errors.Is(err, domain.ErrInvalidApprovalPolicy),
 		errors.Is(err, domain.ErrBookkeepingModeMismatch):

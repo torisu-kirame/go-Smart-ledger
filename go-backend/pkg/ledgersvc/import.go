@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/importxlsx"
@@ -38,17 +39,28 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID, tableID s
 	if err != nil {
 		return nil, err
 	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, domain.ErrBookkeepingModeMismatch
-	}
-	domain.NormalizeLedgerTables(meta)
-	tableID = domain.ResolveTableID(meta, tableID)
-	if err := domain.ValidateTableAccess(meta, tableID); err != nil {
-		return nil, err
-	}
-	schema, err := domain.SchemaForTable(meta, tableID)
-	if err != nil {
-		return nil, err
+	tableID = strings.TrimSpace(tableID)
+	var schema domain.EntrySchema
+	for attempt := 0; attempt < 8; attempt++ {
+		domain.NormalizeLedgerTables(meta)
+		tid := domain.ResolveTableID(meta, tableID)
+		if err := domain.ValidateTableAccess(meta, tid); err != nil {
+			if !errors.Is(err, domain.ErrTableNotFound) || attempt == 7 {
+				return nil, err
+			}
+			time.Sleep(time.Duration(attempt+1) * 15 * time.Millisecond)
+			meta, err = s.loadMeta(ctx, ledgerID)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		tableID = tid
+		schema, err = domain.SchemaForTable(meta, tableID)
+		if err != nil {
+			return nil, err
+		}
+		break
 	}
 	presentKeys := importPresentKeys(rows)
 	validateSchema := domain.RelaxRequiredForAbsentColumns(schema, presentKeys)
@@ -90,11 +102,9 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID, tableID s
 			return nil, err
 		}
 		imported++
-		// reload meta after each append
-		meta, err = s.loadMeta(ctx, ledgerID)
-		if err != nil {
-			return nil, err
-		}
+		// Do NOT loadMeta here: MiniLedger world_state can lag and rewind
+		// LatestSeq, causing every row to overwrite the same event key.
+		// appendEvent already updates meta.LatestSeq / LatestRoot in place.
 	}
 	if imported == 0 {
 		msg := "all rows skipped"

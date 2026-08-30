@@ -97,9 +97,8 @@ func toolDefinitions() []map[string]any {
 		fnTool("create_ledger",
 			"Create a new simple multi-table ledger. Prefer this over raw call_ledger_api.",
 			map[string]any{
-				"name":             map[string]any{"type": "string", "description": "Ledger display name"},
-				"bookkeepingMode":  map[string]any{"type": "string", "description": "simple (default) | professional"},
-				"type":             map[string]any{"type": "string", "description": "private (default) | multi"},
+				"name":              map[string]any{"type": "string", "description": "Ledger display name"},
+				"type":              map[string]any{"type": "string", "description": "private (default) | multi"},
 				"multiTableEnabled": map[string]any{"type": "boolean", "description": "Default true for simple ledgers"},
 			},
 			[]string{"name"},
@@ -309,14 +308,8 @@ func (l *LedgerHTTP) toolCreateLedger(ctx context.Context, args map[string]any) 
 	if lt != "multi" {
 		lt = "private"
 	}
-	mode, _ := args["bookkeepingMode"].(string)
-	if mode != "professional" {
-		mode = "simple"
-	}
 	multi := true
-	if mode == "professional" {
-		multi = false
-	} else if v, ok := args["multiTableEnabled"].(bool); ok {
+	if v, ok := args["multiTableEnabled"].(bool); ok {
 		multi = v
 	}
 	uid := l.UserID
@@ -325,14 +318,10 @@ func (l *LedgerHTTP) toolCreateLedger(ctx context.Context, args map[string]any) 
 		"name":              name,
 		"creatorId":         uid,
 		"members":           []map[string]any{{"id": uid, "role": "owner"}},
-		"bookkeepingMode":   mode,
+		"bookkeepingMode":   "simple",
 		"multiTableEnabled": multi,
 		"entrySchema":       map[string]any{"templateId": "custom", "fields": []any{}},
 		"approvalPolicy":    map[string]any{"enabled": false, "threshold": 1},
-	}
-	if mode == "professional" {
-		body["entrySchema"] = map[string]any{"templateId": "professional", "fields": []any{}}
-		delete(body, "multiTableEnabled")
 	}
 	out, err := l.Request(ctx, http.MethodPost, "/api/v1/ledgers", nil, body)
 	if err != nil {

@@ -43,9 +43,6 @@ func (s *Service) ImportSheetCSV(
 	if err != nil {
 		return nil, err
 	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, domain.ErrBookkeepingModeMismatch
-	}
 	domain.NormalizeLedgerTables(meta)
 
 	tableID = strings.TrimSpace(tableID)
@@ -88,13 +85,9 @@ func (s *Service) importSheetCSVCreate(
 	if existing := domain.TableByName(meta, sheetName); existing != nil {
 		return s.importSheetCSVAppend(ctx, meta, ledgerID, userID, signerID, csvData, existing.ID, autoAnchor)
 	}
-	meta, err = s.createTableInternal(ctx, meta, userID, sheetName, schema)
+	meta, t, err := s.createTableInternal(ctx, meta, userID, sheetName, schema)
 	if err != nil {
 		return nil, err
-	}
-	t := domain.TableByName(meta, sheetName)
-	if t == nil {
-		return nil, domain.ErrTableNotFound
 	}
 	res, err := s.BatchImport(ctx, ledgerID, signerID, t.ID, rows, autoAnchor)
 	if err != nil {

@@ -195,10 +195,12 @@ func buildSystemPrefix(messages []ChatMessage, boundLedgerID string) string {
 		"优先专用工具：import_markdown_table / import_sheet_csv（MD→CSV→sheet-csv 批量导入）、create_ledger、create_ledger_sheet、"+
 			"append_ledger_entries_batch、append_ledger_entry、list_ledgers、get_ledger_summary、search_ledger_rag；必要时再用 call_ledger_api。",
 		"用户给出 Markdown 表格时：调用 import_markdown_table（markdown 可省略，服务端会用用户消息里的完整表）。"+
-			"禁止对每一行单独调用 append_ledger_entry。tableId 空=新建 Sheet；有 tableId=追加到该 Sheet 底部。",
+			"禁止对每一行单独调用 append_ledger_entry。tableId 空=新建 Sheet；有 tableId=追加到该 Sheet 底部。"+
+			"「新建账本+导入表格」：先 create_ledger，再直接 import_markdown_table（不要先 create_ledger_sheet 再导入，以免空表+覆盖）。sheetName 可指定表名。"+
+			"创建账本失败重试前先 list_ledgers，避免同名重复空账本。",
 		"写分录 API 必须 body={\"entry\":{\"tableId\":\"...\",\"data\":{字段key:值}}}，不能把 tableId 放在顶层。",
-		"建 Sheet：create_ledger_sheet（fields 含 key/label/type/required；不要建「序号」列）。",
-		"不要编造链上数据。回复使用 Markdown。写完后核对 written 与 parsedRows 是否一致。",
+		"建 Sheet：仅在用户只要空表结构、暂不导入数据时用 create_ledger_sheet（fields 含 key/label/type/required；不要建「序号」列）。",
+		"不要编造链上数据。回复使用 Markdown。写完后用 get_ledger_summary 核对行数；ImportBatch.imported 不等于链上 EntryAdded 条数时不可声称成功。",
 	)
 	return strings.Join(parts, "\n\n")
 }

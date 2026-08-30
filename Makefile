@@ -5,8 +5,7 @@
         mobile-install mobile-dev mobile-build mobile-apk \
         dev-all start \
         offline-ai-up offline-ai-down offline-ai-logs \
-        openclaw-gateway-up openclaw-logs openclaw-up openclaw-down \
-        fisco-up fisco-dev-up fisco-logs fisco-down
+        openclaw-gateway-up openclaw-logs openclaw-up openclaw-down
 
 COMPOSE_ROOT = --project-directory .
 COMPOSE_MAIN = -f deploy/compose/docker-compose.yml
@@ -24,21 +23,6 @@ help:
 	@echo "  make build-linux       - 交叉编译 Gin 单体 smart-ledger-api"
 	@echo "  make build-java        - Maven 打包 Java 服务"
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
-	@echo "  make fisco-dev-up      - FISCO 链 + gateway-api 单体（Go）"
-
-COMPOSE_FISCO = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_ENV) --env-file deploy/env/fisco.env $(COMPOSE_MAIN) -f deploy/compose/docker-compose.fisco.yml --profile fisco
-
-fisco-up:
-	$(COMPOSE_FISCO) up -d --build fisco-node
-
-fisco-dev-up:
-	$(COMPOSE_FISCO) up -d --build
-
-fisco-logs:
-	$(COMPOSE_FISCO) logs -f fisco-node
-
-fisco-down:
-	$(COMPOSE_FISCO) down
 
 build:
 	$(MAKE) -C go-backend build-local

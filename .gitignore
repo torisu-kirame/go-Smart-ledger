@@ -7,14 +7,12 @@ deploy/config/agent/*
 !deploy/config/agent/.gitkeep
 deploy/env/stack.env
 deploy/env/.env
-deploy/env/fisco.env
 backend/bin/
 backend/data/
 data/avatars/
 go-backend/services/auth/data/
 go-backend/infra/miniledger/node_modules/
 go-backend/infra/miniledger/data/
-go-backend/infra/fisco/nodes/
 go-backend/infra/miniledger/dashboard
 go-backend/bin/linux/
 

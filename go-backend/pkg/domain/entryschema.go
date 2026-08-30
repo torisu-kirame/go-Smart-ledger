@@ -78,9 +78,6 @@ func BuiltinTemplates() []EntrySchema {
 // ResolveEntrySchema returns ledger schema; empty meta uses classic columns (legacy ledgers).
 // TemplateCustom keeps caller-defined fields (may be empty for blank workbooks).
 func ResolveEntrySchema(s EntrySchema) EntrySchema {
-	if s.TemplateID == TemplateProfessional {
-		return s
-	}
 	if s.TemplateID == TemplateCustom {
 		return s
 	}

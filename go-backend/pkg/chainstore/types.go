@@ -7,10 +7,9 @@ type Backend string
 
 const (
 	BackendMiniLedger Backend = "miniledger"
-	BackendFISCO      Backend = "fisco"
 )
 
-// TxRequest is a generic key-value chain write (MiniLedger KV or FISCO table row).
+// TxRequest is a generic key-value chain write (MiniLedger KV).
 type TxRequest struct {
 	Key     string          `json:"key,omitempty"`
 	Value   json.RawMessage `json:"value,omitempty"`

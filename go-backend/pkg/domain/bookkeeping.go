@@ -2,47 +2,34 @@ package domain
 
 import "errors"
 
-// Bookkeeping mode: simple (template entries) vs professional (COA + journals).
+// Bookkeeping mode: only simple (template / multi-table sheets) is supported.
 const (
-	BookkeepingSimple        = "simple"
-	BookkeepingProfessional  = "professional"
-	TemplateProfessional     = "professional"
+	BookkeepingSimple = "simple"
+	// Deprecated: professional mode removed; kept so old payloads normalize to simple.
+	BookkeepingProfessional = "professional"
+	TemplateProfessional    = "professional"
 )
 
+// ErrBookkeepingModeMismatch is retained for HTTP mapping compatibility.
 var ErrBookkeepingModeMismatch = errors.New("bookkeeping mode mismatch")
 
 func NormalizeBookkeepingMode(m string) string {
-	switch m {
-	case BookkeepingProfessional:
-		return BookkeepingProfessional
-	default:
-		return BookkeepingSimple
-	}
+	_ = m
+	return BookkeepingSimple
 }
 
-// ResolvedBookkeepingMode returns the effective mode for a ledger (legacy → simple).
+// ResolvedBookkeepingMode always returns simple.
 func ResolvedBookkeepingMode(meta *LedgerMeta) string {
-	if meta == nil {
-		return BookkeepingSimple
-	}
-	if meta.BookkeepingMode != "" {
-		return NormalizeBookkeepingMode(meta.BookkeepingMode)
-	}
-	if meta.EntrySchema.TemplateID == TemplateProfessional {
-		return BookkeepingProfessional
-	}
+	_ = meta
 	return BookkeepingSimple
 }
 
 func IsProfessionalBookkeeping(meta *LedgerMeta) bool {
-	return ResolvedBookkeepingMode(meta) == BookkeepingProfessional
+	_ = meta
+	return false
 }
 
 func IsSimpleBookkeeping(meta *LedgerMeta) bool {
-	return !IsProfessionalBookkeeping(meta)
-}
-
-// ProfessionalEntrySchema is stored on professional ledgers (no dynamic entry columns).
-func ProfessionalEntrySchema() EntrySchema {
-	return EntrySchema{TemplateID: TemplateProfessional, Fields: nil}
+	_ = meta
+	return true
 }

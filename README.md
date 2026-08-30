@@ -1,8 +1,8 @@
 # Smart Ledger（go-Smart-ledger）
 
 去中心化区块链自定义账本系统：支持私人账本与多人账本。  
-**当前发布线（v0.13.0-miniledger）** 权威链为 [Chainscore MiniLedger](https://github.com/Chainscore/miniledger)；**v0.14+** 正在迁移至 **FISCO BCOS**（见 [FISCO 迁移](#fisco-bcos-迁移-v014)）。  
-后端 **Go + go-zero 微服务**，前端 **Vue 3** 桌面 + 移动 Web/APK。
+**当前发布线** 权威链为 [Chainscore MiniLedger](https://github.com/Chainscore/miniledger)。  
+后端 **Go（Gin 单体）**，前端 **Vue 3** 桌面 + 移动 Web/APK。
 
 > **维护说明**：每次新增功能或变更规划时，请同步更新本文档——在「项目计划」中登记 idea，并在「已完成 / 未完成」中勾选状态。文末「更新记录」追加一条摘要。
 
@@ -47,7 +47,6 @@
 - [快速开始](#快速开始)
 - [移动端与 APK 打包](#移动端与-apk-打包)
 - [版本标签](#版本标签)
-- [FISCO BCOS 迁移（v0.14+）](#fisco-bcos-迁移-v014)
 - [更新记录](#更新记录)
 
 ---
@@ -61,38 +60,26 @@ flowchart TB
         Mobile[frontend/mobile Vue3 + Vant]
     end
 
-    subgraph gateway_layer [网关 :28080]
-        GW[gateway-api JWT + CORS]
+    subgraph api [API :28080]
+        GW[smart-ledger-api Gin 单体]
     end
 
-    subgraph services [Go 微服务]
-        AUTH[auth-api :28887]
-        LEDGER[ledger-api :28888]
-        STORAGE[storage-api :28890]
-    end
-
-    subgraph chain [链层 — 可切换]
-        ML[MiniLedger :24441 legacy]
-        FISCO[FISCO BCOS JSON-RPC v0.14+]
+    subgraph chain [链层]
+        ML[MiniLedger :24441]
     end
 
     Desktop --> GW
     Mobile --> GW
-    GW --> AUTH
-    GW --> LEDGER
-    GW --> STORAGE
-    LEDGER --> ML
-    LEDGER -.-> FISCO
+    GW --> ML
 ```
 
 | 层级 | 技术 |
 |------|------|
-| 链（legacy） | Chainscore MiniLedger（REST + SQLite 世界状态） |
-| 链（目标） | FISCO BCOS 联盟链 + `LedgerRegistry` 合约（[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)） |
-| 链抽象 | `backend/pkg/chainstore`（`miniledger` / `fisco` 后端） |
-| 后端 | go-zero REST 微服务 |
+| 链 | Chainscore MiniLedger（REST + SQLite 世界状态） |
+| 链抽象 | `go-backend/pkg/chainstore`（仅 `miniledger`） |
+| 后端 | Gin 单体（auth + ledger + storage + AI） |
 | 前端 | Vue 3 桌面（`frontend/desktop`）+ 移动 Web/APK（`frontend/mobile`） |
-| 部署 | `deploy/compose/docker-compose.yml` + 可选 overlay（如 fisco） |
+| 部署 | `deploy/compose/docker-compose.yml` + 可选 overlay（raft / https 等） |
 
 ---
 
@@ -237,7 +224,7 @@ flowchart TB
 go-Smart-ledger/
 ├── README.md                 # 本文件：计划 + 进度
 ├── Makefile                  # 全栈构建入口
-├── deploy/compose/           # Docker Compose 主栈与 overlay（fisco / raft / https 等）
+├── deploy/compose/           # Docker Compose 主栈与 overlay（raft / https 等）
 ├── .env.openclaw.example       # OpenClaw Docker 环境变量模板
 ├── integrations/openclaw/    # OpenClaw 工作区与示例配置（不含上游源码）
 ├── openclaw/                 # 由 setup-openclaw 克隆（gitignore）
@@ -331,7 +318,6 @@ go-Smart-ledger/
 | F23 | 上链失败重试队列、待上链状态 UI | P1 | ✅ 已完成 |
 | F24 | 前端纳入 Docker（Nginx 托管 dist） | P1 | ✅ 已完成 |
 | F25 | 移动端 Vue3 + Vant + Capacitor APK | P2 | ✅ 已完成 |
-| F50 | FISCO BCOS 权威链迁移（合约/表、迁移、浏览器、Compose） | P1 | 🟡 进行中（v0.15.1 FISCO 3.x RPC 已合入） |
 | F26 | 集成测试 / CI（GitHub Actions） | P2 | ⬜ 未完成 |
 | F27 | 生产加固：密钥管理、HTTPS、Cookie Secure、限流 | P1 | ✅ 已完成 |
 | F28 | go-zero gRPC + 服务发现（etcd） | P3 | ✅ 已完成 |
@@ -376,7 +362,7 @@ go-Smart-ledger/
 
 ### 已知限制
 
-- **默认 Compose 仍启动 MiniLedger**；FISCO 为 overlay + 配置切换；`Chain.Backend: fisco` 且部署合约后可 KV 读写（v0.15.0-fisco.3）。
+- 权威链仅为 **MiniLedger**（Compose 默认启动）。
 - 移动端 APK 打包需本机 **JDK 17+** 与 **Android SDK**（见 [移动端与 APK 打包](#移动端与-apk-打包)）。
 - 默认 JWT/Cookie 密钥仅供开发，生产必须更换。
 
@@ -531,43 +517,16 @@ Git annotated tags 标记里程碑；**MiniLedger 时代线** 止于 `v0.13.0-mi
 | 标签 | 说明 |
 |------|------|
 | `v0.1.0` … `v0.12.0` | 自初始骨架至 OpenAPI / 模板同步 |
-| `v0.13.0-miniledger` | 移动 Web + APK；**MiniLedger 顶层链最后稳定线** |
+| `v0.13.0-miniledger` | 移动 Web + APK；**MiniLedger 顶层链稳定线** |
 | `miniledger-era` | 同上（快速引用） |
-| `v0.14.x-fisco.*` | FISCO BCOS 迁移各阶段（见下） |
 
 查看：`git tag -l --sort=v:refname`
 
 ---
 
-## FISCO BCOS 迁移（v0.14+）
-
-目标：**完全以 FISCO BCOS 为权威账本**——合约/表重做账本创建、事件、成员、审批、复式状态；迁移历史数据；链浏览器、重试队列、Compose 文档换一套。
-
-| 已完成 | 进行中 / 待办 |
-|--------|----------------|
-| `putState`/`getState` KV（v0.15.0-fisco.3） | `txqueue` FISCO 重试语义 |
-| FISCO BCOS **3.x 原生 RPC**（v0.15.1-fisco.4） | 默认 Compose 切 FISCO |
-| MiniLedger 适配器（默认不变） | 前端链浏览器 UI 优化 |
-| 迁移工具 `migrate-miniledger-to-fisco` | |
-
-**文档**：[`docs/fisco-bcos-migration.md`](docs/fisco-bcos-migration.md)  
-**建链**：[`backend/infra/fisco/README.md`](backend/infra/fisco/README.md)  
-**配置示例**：[`backend/deploy/etc/ledger-api.fisco.docker.yaml`](backend/deploy/etc/ledger-api.fisco.docker.yaml)
-
-```bash
-# 启用 FISCO profile（内置 fisco-node 容器，见 backend/infra/fisco/）
-make fisco-dev-up
-# 或仅链：make fisco-up
-```
-
----
-
 ## 更新记录
 
-- 2026-05-24：**FISCO 3.x 容器化** — `fisco-node` 镜像 + Compose overlay；`make fisco-up` / `make fisco-dev-up`。
-- 2026-05-24：**v0.15.1-fisco.4** — FISCO BCOS 3.x 原生 JSON-RPC；纯 Go 交易签名；`/chain` GetRaw 区块/节点查询。
-- 2026-05-24：**v0.15.0-fisco.3** — FISCO `putState`/`getState` 对接 ledgersvc KV；链上键索引；`PrivateKeyHex` / `SL_FISCO_PRIVATE_KEY`。
-- 2026-06-04：**v0.14.2-fisco.2** — FISCO 合约骨架、chainstore、fisco compose；README 增补 APK 与迁移路线图。
+- 2026-08-30：移除 FISCO BCOS 相关代码、Compose、文档与依赖；权威链仅保留 MiniLedger。
 - 2026-06-04：**v0.13.0-miniledger** — 移动端 Web/APK；Git 标签标记 MiniLedger 顶层链时代线。
 
 ## 更新规范

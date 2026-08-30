@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/accounting"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/auditexport"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 )
@@ -105,36 +104,7 @@ func (s *Service) BuildAuditBundle(ctx context.Context, ledgerID, userID string)
 	if err == nil {
 		bundle.Attachments = atts
 	}
-
-	if domain.IsProfessionalBookkeeping(meta) {
-		if chart, err := s.GetChart(ctx, ledgerID, userID); err == nil {
-			bundle.Chart = chart
-		}
-		if journals, err := s.ListJournals(ctx, ledgerID, userID); err == nil {
-			bundle.Journals = journals
-		}
-		if periods, err := s.listPeriodStates(ctx, ledgerID); err == nil {
-			bundle.Periods = periods
-		}
-	}
 	return bundle, nil
-}
-
-func (s *Service) listPeriodStates(ctx context.Context, ledgerID string) ([]accounting.PeriodState, error) {
-	rows, err := s.chain.Query(ctx,
-		`SELECT key, value FROM world_state WHERE key LIKE ? ORDER BY key`,
-		domain.LedgerPeriodPrefix(ledgerID)+"%")
-	if err != nil {
-		return nil, err
-	}
-	var out []accounting.PeriodState
-	for _, row := range rows {
-		var ps accounting.PeriodState
-		if unmarshalStateValue(row.Value, &ps) == nil {
-			out = append(out, ps)
-		}
-	}
-	return out, nil
 }
 
 // ExportAudit returns rendered audit package bytes.

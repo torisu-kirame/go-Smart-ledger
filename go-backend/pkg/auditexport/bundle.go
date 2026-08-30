@@ -30,22 +30,19 @@ type EntryRow struct {
 
 // Bundle is the full audit dataset before rendering.
 type Bundle struct {
-	LedgerID           string
-	LedgerName         string
-	BookkeepingMode    string
-	MultiTableEnabled  bool
-	LatestSeq          uint64
-	LatestRoot         string
-	AnchorStatus       string
-	IntegrityValid     bool
-	ExportedAt         time.Time
-	ExportedBy         string
-	Tables             []TableRows
-	Attachments        []accounting.Attachment
-	Journals           []accounting.JournalEntry
-	Chart              *accounting.ChartOfAccounts
-	Periods            []accounting.PeriodState
-	ExternalAnchorTx   string
+	LedgerID          string
+	LedgerName        string
+	BookkeepingMode   string
+	MultiTableEnabled bool
+	LatestSeq         uint64
+	LatestRoot        string
+	AnchorStatus      string
+	IntegrityValid    bool
+	ExportedAt        time.Time
+	ExportedBy        string
+	Tables            []TableRows
+	Attachments       []accounting.Attachment
+	ExternalAnchorTx  string
 }
 
 // Manifest is machine-readable audit metadata (JSON in zip).
@@ -63,7 +60,6 @@ type Manifest struct {
 	TableCount        int       `json:"tableCount"`
 	EntryCount        int       `json:"entryCount"`
 	AttachmentCount   int       `json:"attachmentCount"`
-	JournalCount      int       `json:"journalCount"`
 }
 
 func (b *Bundle) Manifest() Manifest {
@@ -85,7 +81,6 @@ func (b *Bundle) Manifest() Manifest {
 		TableCount:        len(b.Tables),
 		EntryCount:        entries,
 		AttachmentCount:   len(b.Attachments),
-		JournalCount:      len(b.Journals),
 	}
 }
 

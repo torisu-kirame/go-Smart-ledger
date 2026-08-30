@@ -41,7 +41,7 @@ type LedgerMeta struct {
 	CreatorID      string           `json:"creatorId"`
 	LedgerAddress  string           `json:"ledgerAddress,omitempty"`
 	Members        []Member         `json:"members"`
-	BookkeepingMode   string           `json:"bookkeepingMode,omitempty"` // simple | professional
+	BookkeepingMode   string           `json:"bookkeepingMode,omitempty"` // simple
 	MultiTableEnabled bool             `json:"multiTableEnabled,omitempty"`
 	Tables            []LedgerTable    `json:"tables,omitempty"`
 	EntrySchema       EntrySchema      `json:"entrySchema,omitempty"`

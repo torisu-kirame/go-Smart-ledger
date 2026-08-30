@@ -14,8 +14,8 @@ func buildSummaryPDF(b *Bundle) ([]byte, error) {
 		fmt.Sprintf("Mode: %s | Multi-table: %v", b.BookkeepingMode, b.MultiTableEnabled),
 		fmt.Sprintf("Latest seq: %d | Merkle root: %s", b.LatestSeq, truncateRoot(b.LatestRoot)),
 		fmt.Sprintf("Anchor: %s | Integrity valid: %v", b.AnchorStatus, b.IntegrityValid),
-		fmt.Sprintf("Tables: %d | Entries: %d | Attachments: %d | Journals: %d",
-			len(b.Tables), entryTotal(b), len(b.Attachments), len(b.Journals)),
+		fmt.Sprintf("Tables: %d | Entries: %d | Attachments: %d",
+			len(b.Tables), entryTotal(b), len(b.Attachments)),
 	}
 	if b.ExternalAnchorTx != "" {
 		lines = append(lines, "External anchor: "+b.ExternalAnchorTx)

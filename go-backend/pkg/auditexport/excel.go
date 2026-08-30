@@ -20,16 +20,6 @@ func buildWorkbook(b *Bundle) ([]byte, error) {
 	if err := writeAttachmentsSheet(f, b); err != nil {
 		return nil, err
 	}
-	if len(b.Journals) > 0 {
-		if err := writeJournalsSheet(f, b); err != nil {
-			return nil, err
-		}
-	}
-	if b.Chart != nil && len(b.Chart.Accounts) > 0 {
-		if err := writeChartSheet(f, b); err != nil {
-			return nil, err
-		}
-	}
 	for _, tbl := range b.Tables {
 		if err := writeTableSheet(f, b, tbl); err != nil {
 			return nil, err
@@ -74,7 +64,6 @@ func writeCoverSheet(f *excelize.File, b *Bundle) error {
 		{"子表数量", fmt.Sprintf("%d", len(b.Tables))},
 		{"流水笔数", fmt.Sprintf("%d", entryTotal(b))},
 		{"附件数量", fmt.Sprintf("%d", len(b.Attachments))},
-		{"凭证数量", fmt.Sprintf("%d", len(b.Journals))},
 	}
 	if b.ExternalAnchorTx != "" {
 		rows = append(rows, []string{"链外锚定 Tx", b.ExternalAnchorTx})
@@ -115,36 +104,6 @@ func writeAttachmentsSheet(f *excelize.File, b *Bundle) error {
 			dept, proj, cp, a.Size, a.UploadedBy, a.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		writeDataRow(f, sheet, i+2, row)
-	}
-	return nil
-}
-
-func writeJournalsSheet(f *excelize.File, b *Bundle) error {
-	sheet := "会计凭证"
-	_, _ = f.NewSheet(sheet)
-	headers := []string{"凭证ID", "期间", "日期", "摘要", "科目", "借方", "贷方", "分录备注", "过账人", "事件Seq"}
-	writeHeaderRow(f, sheet, headers)
-	r := 2
-	for _, j := range b.Journals {
-		for _, ln := range j.Lines {
-			row := []any{
-				j.ID, j.Period, j.Date, j.Description,
-				ln.AccountCode, ln.Debit, ln.Credit, ln.Memo,
-				j.PostedBy, j.EventSeq,
-			}
-			writeDataRow(f, sheet, r, row)
-			r++
-		}
-	}
-	return nil
-}
-
-func writeChartSheet(f *excelize.File, b *Bundle) error {
-	sheet := "会计科目"
-	_, _ = f.NewSheet(sheet)
-	writeHeaderRow(f, sheet, []string{"科目编码", "科目名称", "类别", "启用"})
-	for i, a := range b.Chart.Accounts {
-		writeDataRow(f, sheet, i+2, []any{a.Code, a.Name, string(a.Category), a.Active})
 	}
 	return nil
 }

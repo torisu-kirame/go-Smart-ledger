@@ -46,10 +46,6 @@ func importAdaptivePreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))
 			return
 		}
-		if domain.IsProfessionalBookkeeping(meta) {
-			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "adaptive import only for simple ledgers"))
-			return
-		}
 		result, err := importfile.ParseAdaptive(data, hdr.Filename)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, err.Error()))

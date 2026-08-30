@@ -3,7 +3,6 @@ package logic
 import (
 	"errors"
 
-	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/accounting"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/ledgersvc"
 	xerrors "github.com/zeromicro/x/errors"
@@ -34,17 +33,7 @@ func ToCodeErr(err error) error {
 		errors.Is(err, domain.ErrInvalidTable),
 		errors.Is(err, domain.ErrTableHasEntries),
 		errors.Is(err, ledgersvc.ErrImportHasErrors),
-		errors.Is(err, ledgersvc.ErrRestoreConflict),
-		errors.Is(err, accounting.ErrInvalidJournal),
-		errors.Is(err, accounting.ErrUnbalanced),
-		errors.Is(err, accounting.ErrInvalidAccount),
-		errors.Is(err, accounting.ErrAccountNotFound),
-		errors.Is(err, accounting.ErrPeriodClosed),
-		errors.Is(err, accounting.ErrInvalidPeriod),
-		errors.Is(err, accounting.ErrInvalidBudget),
-		errors.Is(err, accounting.ErrInvalidCurrency),
-		errors.Is(err, accounting.ErrInvalidFxRates),
-		errors.Is(err, accounting.ErrInvalidTax):
+		errors.Is(err, ledgersvc.ErrRestoreConflict):
 		return xerrors.New(400, err.Error())
 	case errors.Is(err, domain.ErrAlreadyMember),
 		errors.Is(err, domain.ErrInviteAlreadyPending),

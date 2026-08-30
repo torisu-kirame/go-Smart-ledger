@@ -63,9 +63,6 @@ func (s *Service) ProposeEntry(ctx context.Context, ledgerID, actorID string, en
 	if err := domain.CanAppend(meta, actorID); err != nil {
 		return nil, nil, err
 	}
-	if domain.IsProfessionalBookkeeping(meta) {
-		return nil, nil, domain.ErrBookkeepingModeMismatch
-	}
 	domain.NormalizeLedgerTables(meta)
 	tableID := domain.ResolveTableID(meta, entry.TableID)
 	if err := domain.ValidateTableAccess(meta, tableID); err != nil {

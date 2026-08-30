@@ -31,11 +31,6 @@ func NormalizeLedgerTables(meta *LedgerMeta) {
 	if meta == nil {
 		return
 	}
-	if IsProfessionalBookkeeping(meta) {
-		meta.MultiTableEnabled = false
-		meta.Tables = nil
-		return
-	}
 	if meta.MultiTableEnabled && len(meta.Tables) == 0 {
 		// Intentionally blank workbook: custom schema with no fields yet.
 		if meta.EntrySchema.TemplateID == TemplateCustom && len(meta.EntrySchema.Fields) == 0 {
