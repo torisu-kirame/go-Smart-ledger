@@ -20,19 +20,20 @@ const (
 type EntryFieldDef struct {
 	Key      string    `json:"key"`
 	Label    string    `json:"label"`
-	Type     FieldType `json:"type"`
-	Required bool      `json:"required"`
+	Type     FieldType `json:"type,optional"`
+	Required bool      `json:"required,optional"`
 }
 
 // EntrySchema is stored on ledger meta; drives forms and Excel import.
 type EntrySchema struct {
-	TemplateID string          `json:"templateId,omitempty"`
-	Fields     []EntryFieldDef `json:"fields"`
+	TemplateID string          `json:"templateId,optional"`
+	Fields     []EntryFieldDef `json:"fields,optional"`
 }
 
 const (
-	TemplateDefault = "default"
-	TemplateClassic = "classic"
+	TemplateDefault      = "default"
+	TemplateClassic      = "classic"
+	TemplateCustom       = "custom"
 )
 
 var (
@@ -75,8 +76,12 @@ func BuiltinTemplates() []EntrySchema {
 }
 
 // ResolveEntrySchema returns ledger schema; empty meta uses classic columns (legacy ledgers).
+// TemplateCustom keeps caller-defined fields (may be empty for blank workbooks).
 func ResolveEntrySchema(s EntrySchema) EntrySchema {
 	if s.TemplateID == TemplateProfessional {
+		return s
+	}
+	if s.TemplateID == TemplateCustom {
 		return s
 	}
 	if len(s.Fields) == 0 {

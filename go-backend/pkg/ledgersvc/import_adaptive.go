@@ -17,13 +17,16 @@ type AdaptiveImportCommitResult struct {
 	TableID     string              `json:"tableId"`
 	TableName   string              `json:"tableName"`
 	EntrySchema domain.EntrySchema  `json:"entrySchema"`
+	Mode        string              `json:"mode"` // created | appended
 }
 
-// ImportAdaptiveCommit enables multi-table, creates a table from inferred schema, and imports rows.
+// ImportAdaptiveCommit enables multi-table, then either appends to an existing
+// sheet (tableID) or creates a new sheet (tableName). Missing fields are merged
+// when appending.
 func (s *Service) ImportAdaptiveCommit(
 	ctx context.Context,
 	ledgerID, userID, signerID string,
-	tableName string,
+	tableID, tableName string,
 	schema domain.EntrySchema,
 	rows []importxlsx.RowPreview,
 	autoAnchor bool,
@@ -45,20 +48,30 @@ func (s *Service) ImportAdaptiveCommit(
 			return nil, err
 		}
 	}
-	tableName = strings.TrimSpace(tableName)
-	if tableName == "" {
-		tableName = "导入数据"
-	}
-	tableName = uniqueTableName(meta, tableName)
 	schema = domain.ResolveEntrySchema(schema)
 	if err := domain.ValidateSchema(schema); err != nil {
 		return nil, err
 	}
-	meta, err = s.createTableInternal(ctx, meta, userID, tableName, schema)
+
+	tableID = strings.TrimSpace(tableID)
+	if tableID != "" {
+		existing := domain.TableByID(meta, tableID)
+		if existing == nil {
+			return nil, domain.ErrTableNotFound
+		}
+		return s.importAdaptiveAppend(ctx, meta, ledgerID, userID, signerID, existing, schema, rows, autoAnchor)
+	}
+
+	tableName = strings.TrimSpace(tableName)
+	if tableName == "" {
+		tableName = "导入数据"
+	}
+	createName := uniqueTableName(meta, tableName)
+	meta, err = s.createTableInternal(ctx, meta, userID, createName, schema)
 	if err != nil {
 		return nil, err
 	}
-	t := domain.TableByName(meta, tableName)
+	t := domain.TableByName(meta, createName)
 	if t == nil {
 		return nil, domain.ErrTableNotFound
 	}
@@ -71,7 +84,68 @@ func (s *Service) ImportAdaptiveCommit(
 		TableID:     t.ID,
 		TableName:   t.Name,
 		EntrySchema: t.EntrySchema,
+		Mode:        "created",
 	}, nil
+}
+
+func (s *Service) importAdaptiveAppend(
+	ctx context.Context,
+	meta *domain.LedgerMeta,
+	ledgerID, userID, signerID string,
+	existing *domain.LedgerTable,
+	incoming domain.EntrySchema,
+	rows []importxlsx.RowPreview,
+	autoAnchor bool,
+) (*AdaptiveImportCommitResult, error) {
+	merged, remap := domain.MergeEntrySchema(existing.EntrySchema, incoming)
+	if len(merged.Fields) != len(domain.ResolveEntrySchema(existing.EntrySchema).Fields) {
+		var err error
+		meta, err = s.UpdateTable(ctx, ledgerID, userID, existing.ID, "", &merged)
+		if err != nil {
+			return nil, err
+		}
+		existing = domain.TableByID(meta, existing.ID)
+		if existing == nil {
+			return nil, domain.ErrTableNotFound
+		}
+	}
+	mapped := remapImportRows(rows, remap)
+	res, err := s.BatchImport(ctx, ledgerID, signerID, existing.ID, mapped, autoAnchor)
+	if err != nil {
+		return nil, err
+	}
+	return &AdaptiveImportCommitResult{
+		Import:      res,
+		TableID:     existing.ID,
+		TableName:   existing.Name,
+		EntrySchema: existing.EntrySchema,
+		Mode:        "appended",
+	}, nil
+}
+
+func remapImportRows(rows []importxlsx.RowPreview, remap map[string]string) []importxlsx.RowPreview {
+	if len(remap) == 0 {
+		return rows
+	}
+	out := make([]importxlsx.RowPreview, len(rows))
+	for i, r := range rows {
+		nr := r
+		if len(r.Cells) == 0 {
+			out[i] = nr
+			continue
+		}
+		cells := make(map[string]string, len(r.Cells))
+		for k, v := range r.Cells {
+			if dest, ok := remap[k]; ok {
+				cells[dest] = v
+			} else {
+				cells[k] = v
+			}
+		}
+		nr.Cells = cells
+		out[i] = nr
+	}
+	return out
 }
 
 func uniqueTableName(meta *domain.LedgerMeta, base string) string {

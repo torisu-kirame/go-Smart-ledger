@@ -199,8 +199,10 @@ export const api = {
     if (mode === 'professional') {
       body.entrySchema = { templateId: 'professional', fields: [] }
       body.approvalPolicy = { enabled: false, threshold: 1 }
+      delete body.multiTableEnabled
     } else {
-      body.entrySchema = data.entrySchema || { templateId: 'default' }
+      body.entrySchema = data.entrySchema || { templateId: 'custom', fields: [] }
+      body.multiTableEnabled = true
     }
     return request('/ledgers', { method: 'POST', body: JSON.stringify(body) })
   },
@@ -325,6 +327,19 @@ export const api = {
   },
   importCommit: (id, body) =>
     request(`/ledgers/${id}/import/commit`, { method: 'POST', body: JSON.stringify(body) }),
+  /** 一站式 CSV→Sheet：无 tableId 新建 Sheet；有 tableId 追加到底部。也可 multipart 上传 file */
+  importSheetCSV: (id, body) =>
+    request(`/ledgers/${id}/import/sheet-csv`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  importSheetCSVFile: (id, file, { tableId = '', sheetName = '' } = {}) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (tableId) fd.append('tableId', tableId)
+    if (sheetName) fd.append('sheetName', sheetName)
+    return request(`/ledgers/${id}/import/sheet-csv`, { method: 'POST', body: fd })
+  },
   ledgerBackup: (id, password) =>
     request(`/ledgers/${id}/backup`, { method: 'POST', body: JSON.stringify({ password }) }),
   restorePreview: (id, body) =>

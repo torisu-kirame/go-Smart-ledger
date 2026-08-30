@@ -6,13 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/accounting"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/evmanchor"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/ledgerhd"
-	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/chainstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/txqueue"
 )
@@ -23,13 +25,24 @@ type Service struct {
 	hd       *ledgerhd.Deriver
 	queue    *txqueue.Queue
 	external evmanchor.Anchorer
+	// ledgerLocks serializes append/meta writes per ledger so concurrent
+	// EntryAdded requests cannot claim the same seq (last-write-wins race).
+	ledgerLocks sync.Map // ledgerID -> *sync.Mutex
 }
+
+// ErrSeqConflict means another writer already occupied LatestSeq+1.
+var ErrSeqConflict = errors.New("ledger sequence conflict")
 
 func New(chain chainstore.Store, hd *ledgerhd.Deriver, queue *txqueue.Queue, external evmanchor.Anchorer) *Service {
 	if external == nil {
 		external = evmanchor.Noop()
 	}
 	return &Service{chain: chain, hd: hd, queue: queue, external: external}
+}
+
+func (s *Service) ledgerLock(ledgerID string) *sync.Mutex {
+	v, _ := s.ledgerLocks.LoadOrStore(ledgerID, &sync.Mutex{})
+	return v.(*sync.Mutex)
 }
 
 func (s *Service) Online(ctx context.Context) bool {
@@ -41,12 +54,26 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		return nil, err
 	}
 	mode := domain.NormalizeBookkeepingMode(opts.BookkeepingMode)
+	blankSheets := false
 	if mode == domain.BookkeepingProfessional {
 		schema = domain.ProfessionalEntrySchema()
 	} else {
-		schema = domain.ResolveEntrySchema(schema)
-		if err := domain.ValidateSchema(schema); err != nil {
-			return nil, err
+		// Simple ledgers: sheet workbook — no preset template; sheets created by user.
+		if strings.TrimSpace(schema.TemplateID) == "" || schema.TemplateID == domain.TemplateCustom {
+			if len(schema.Fields) == 0 {
+				schema = domain.EntrySchema{TemplateID: domain.TemplateCustom, Fields: nil}
+				blankSheets = true
+			} else {
+				schema.TemplateID = domain.TemplateCustom
+				if err := domain.ValidateSchema(schema); err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			schema = domain.ResolveEntrySchema(schema)
+			if err := domain.ValidateSchema(schema); err != nil {
+				return nil, err
+			}
 		}
 	}
 	idInt, err := snowflake.NextInt64()
@@ -73,22 +100,28 @@ func (s *Service) Create(ctx context.Context, t domain.LedgerType, name, creator
 		enc.Algo = "aes-gcm-v1"
 	}
 	meta := &domain.LedgerMeta{
-		ID:              id,
-		Type:            t,
-		Name:            name,
-		CreatorID:       creatorID,
-		LedgerAddress:   ledgerAddr,
-		Members:          members,
-		BookkeepingMode:  mode,
-		EntrySchema:      schema,
-		ApprovalPolicy:   ap,
-		Encryption:      enc,
-		StorageLocation: domain.NormalizeStorageLocation(opts.StorageLocation),
-		LatestSeq:       0,
-		LatestRoot:      domain.MerkleRoot(nil),
-		AnchorStatus:    "pending",
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		ID:                id,
+		Type:              t,
+		Name:              name,
+		CreatorID:         creatorID,
+		LedgerAddress:     ledgerAddr,
+		Members:           members,
+		BookkeepingMode:   mode,
+		EntrySchema:       schema,
+		ApprovalPolicy:    ap,
+		Encryption:        enc,
+		StorageLocation:   domain.NormalizeStorageLocation(opts.StorageLocation),
+		LatestSeq:         0,
+		LatestRoot:        domain.MerkleRoot(nil),
+		AnchorStatus:      "pending",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if mode == domain.BookkeepingSimple {
+		meta.MultiTableEnabled = true
+		if blankSheets {
+			meta.Tables = []domain.LedgerTable{}
+		}
 	}
 	domain.NormalizeLedgerTables(meta)
 	if err := s.putMeta(ctx, meta); err != nil {
@@ -232,7 +265,61 @@ func (s *Service) Verify(ctx context.Context, ledgerID string) (bool, error) {
 }
 
 func (s *Service) appendEvent(ctx context.Context, meta *domain.LedgerMeta, signerID, eventType string, payload []byte) (*domain.EventRecord, error) {
+	if meta == nil || strings.TrimSpace(meta.ID) == "" {
+		return nil, domain.ErrLedgerNotFound
+	}
+	var last error
+	for attempt := 0; attempt < 8; attempt++ {
+		ev, err := s.appendEventLocked(ctx, meta, signerID, eventType, payload)
+		if err == nil {
+			return ev, nil
+		}
+		if !errors.Is(err, ErrSeqConflict) {
+			return nil, err
+		}
+		last = err
+		time.Sleep(time.Duration(attempt+1) * 5 * time.Millisecond)
+	}
+	if last == nil {
+		last = ErrSeqConflict
+	}
+	return nil, last
+}
+
+func (s *Service) appendEventLocked(ctx context.Context, meta *domain.LedgerMeta, signerID, eventType string, payload []byte) (*domain.EventRecord, error) {
+	mu := s.ledgerLock(meta.ID)
+	mu.Lock()
+	defer mu.Unlock()
+
+	fresh, err := s.loadMeta(ctx, meta.ID)
+	if err != nil {
+		return nil, err
+	}
+	// Preserve soft-delete / rename applied on the caller pointer when the
+	// world_state read is briefly stale after a prior putMeta.
+	if !meta.ArchivedAt.IsZero() {
+		fresh.ArchivedAt = meta.ArchivedAt
+	}
+	if name := strings.TrimSpace(meta.Name); name != "" && name != fresh.Name {
+		if !meta.UpdatedAt.IsZero() && (fresh.UpdatedAt.IsZero() || !meta.UpdatedAt.Before(fresh.UpdatedAt)) {
+			fresh.Name = name
+		}
+	}
+	ev, err := s.appendEventUsingMetaUnlocked(ctx, fresh, signerID, eventType, payload)
+	if err != nil {
+		return nil, err
+	}
+	*meta = *fresh
+	return ev, nil
+}
+
+// appendEventUsingMetaUnlocked appends using meta.LatestSeq as-is.
+// Caller MUST hold ledgerLock(meta.ID).
+func (s *Service) appendEventUsingMetaUnlocked(ctx context.Context, meta *domain.LedgerMeta, signerID, eventType string, payload []byte) (*domain.EventRecord, error) {
 	seq := meta.LatestSeq + 1
+	if existing, _ := s.ListEvents(ctx, meta.ID, seq, seq); len(existing) > 0 {
+		return nil, fmt.Errorf("%w: seq %d already exists", ErrSeqConflict, seq)
+	}
 	prev := meta.LatestRoot
 	if seq > 1 {
 		events, _ := s.ListEvents(ctx, meta.ID, seq-1, seq-1)
@@ -270,13 +357,23 @@ func (s *Service) appendEvent(ctx context.Context, meta *domain.LedgerMeta, sign
 	meta.LatestSeq = seq
 	meta.LatestRoot = domain.MerkleRoot(hashes)
 	meta.UpdatedAt = time.Now().UTC()
-	if err := s.putMeta(ctx, meta); err != nil {
+	if err := s.putMetaUnlocked(ctx, meta); err != nil {
 		return nil, err
 	}
 	return &ev, nil
 }
 
 func (s *Service) putMeta(ctx context.Context, meta *domain.LedgerMeta) error {
+	if meta == nil || strings.TrimSpace(meta.ID) == "" {
+		return domain.ErrLedgerNotFound
+	}
+	mu := s.ledgerLock(meta.ID)
+	mu.Lock()
+	defer mu.Unlock()
+	return s.putMetaUnlocked(ctx, meta)
+}
+
+func (s *Service) putMetaUnlocked(ctx context.Context, meta *domain.LedgerMeta) error {
 	raw, err := json.Marshal(meta)
 	if err != nil {
 		return err

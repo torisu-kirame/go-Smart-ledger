@@ -17,7 +17,7 @@ COMPOSE_OFFLINE = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_EN
 
 help:
 	@echo "Targets:"
-	@echo "  make up-go             - Go 后端 + py-backend AI + Web（项目 smart-ledger-go）"
+	@echo "  make up-go             - Go 后端 + OpenClaw Agent + Web（项目 smart-ledger-go）"
 	@echo "  make up-java           - Java 后端 + LangChain4j Agent + Web（项目 smart-ledger-java）"
 	@echo "  make up                - 同 make up-go"
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
@@ -103,7 +103,7 @@ ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend go
 else
 	@echo ""
-	@echo "Backend:    Go (go-backend/) + AI (py-backend/)"
+	@echo "Backend:    Go (go-backend/) + OpenClaw Agent"
 	@echo "Web UI:     http://localhost:25173"
 	@echo "Gateway:    http://localhost:28080/api/v1/health"
 	@echo "MiniLedger: http://localhost:24441/dashboard"

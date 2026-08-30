@@ -47,7 +47,8 @@ func ToCodeErr(err error) error {
 		errors.Is(err, accounting.ErrInvalidTax):
 		return xerrors.New(400, err.Error())
 	case errors.Is(err, domain.ErrAlreadyMember),
-		errors.Is(err, domain.ErrInviteAlreadyPending):
+		errors.Is(err, domain.ErrInviteAlreadyPending),
+		errors.Is(err, ledgersvc.ErrSeqConflict):
 		return xerrors.New(409, err.Error())
 	case errors.Is(err, domain.ErrInviteNotFound),
 		errors.Is(err, ledgersvc.ErrAttachmentNotFound):

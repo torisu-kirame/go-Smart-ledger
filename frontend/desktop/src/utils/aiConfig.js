@@ -72,6 +72,9 @@ const defaults = {
   baseUrl: AI_PROVIDERS.deepseek.baseUrl,
   chatModel: AI_PROVIDERS.deepseek.models[0],
   apiKey: '',
+  /** 可选覆盖；空则使用 gateway 环境变量 OPENCLAW_GATEWAY_* */
+  openclawGateway: '',
+  openclawGatewayToken: '',
   connectionVerified: false,
   connectionVerifiedAt: '',
   workspacePath: 'agents/main/workspace',
@@ -84,10 +87,10 @@ function newProfileId() {
 function normalizeConfig(raw) {
   const merged = { ...defaults, ...raw }
   delete merged.embedModel
-  delete merged.openclawGateway
-  delete merged.openclawGatewayToken
   delete merged.openclawModel
   delete merged.openclawJson
+  if (merged.openclawGateway == null) merged.openclawGateway = ''
+  if (merged.openclawGatewayToken == null) merged.openclawGatewayToken = ''
   if (merged.connectionVerified) {
     merged.enabled = true
   }

@@ -22,7 +22,7 @@ export function buildLedgerContextPrompt(exportData, ledgerName) {
   return `${header}\n\n${lines.join('\n')}`
 }
 
-/** Test LangChain LLM connection via ledger-api. */
+/** Test OpenClaw Gateway connection via gateway-api. */
 export async function testAiConnection(cfg = loadAiConfig()) {
   const res = await fetch(`${BASE}/ai/test`, {
     method: 'POST',
@@ -35,6 +35,8 @@ export async function testAiConnection(cfg = loadAiConfig()) {
       baseUrl: cfg.baseUrl,
       apiKey: cfg.apiKey,
       model: cfg.chatModel,
+      gatewayUrl: cfg.openclawGateway || '',
+      gatewayToken: cfg.openclawGatewayToken || '',
     }),
   })
   if (!res.ok) {
@@ -104,7 +106,7 @@ function tryParseJsonCompletion(text) {
   }
 }
 
-/** Stream chat via LangChain Agent backend (ledger-api). */
+/** Stream chat via OpenClaw agent (gateway-api). */
 export async function streamChat({ messages, signal, onDelta, useTools = false, boundLedgerId = '' }) {
   const cfg = loadAiConfig()
   if (!cfg.enabled) {
@@ -125,6 +127,8 @@ export async function streamChat({ messages, signal, onDelta, useTools = false, 
       baseUrl: cfg.baseUrl,
       apiKey: cfg.apiKey,
       model: cfg.chatModel,
+      gatewayUrl: cfg.openclawGateway || '',
+      gatewayToken: cfg.openclawGatewayToken || '',
       messages,
       stream: true,
       useTools: !!useTools,
@@ -142,7 +146,7 @@ export async function streamChat({ messages, signal, onDelta, useTools = false, 
     if (content && onDelta) onDelta(content)
     return content
   }
-  const decoder = new TextDecoder()
+  const decoder = new TextDecoder('utf-8')
   let full = ''
   let buffer = ''
   while (true) {

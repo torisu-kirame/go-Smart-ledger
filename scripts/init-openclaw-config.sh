@@ -21,6 +21,31 @@ fi
 
 node "$ROOT/scripts/repair-openclaw-config.js" "$CONFIG_FILE" "$DOCKER_JSON"
 
+LEGACY_CONFIG="$ROOT/data/openclaw/config/openclaw.json"
+if [[ -f "$LEGACY_CONFIG" ]]; then
+  node -e '
+const fs=require("fs"); const path=require("path");
+const { syncOpenClawProviderAuth } = require("./scripts/openclaw-auth-sync");
+const legacy=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+const dstPath=process.argv[2];
+const dst=JSON.parse(fs.readFileSync(dstPath,"utf8"));
+let seeded=false;
+for (const [name, block] of Object.entries(legacy.models?.providers||{})) {
+  const key=String(block?.apiKey||"").trim();
+  if (!key) continue;
+  if (!dst.models) dst.models={mode:"merge",providers:{}};
+  if (!dst.models.providers) dst.models.providers={};
+  if (!dst.models.providers[name]) { dst.models.providers[name]={...block}; seeded=true; }
+  else if (!String(dst.models.providers[name].apiKey||"").trim()) {
+    dst.models.providers[name].apiKey=key; seeded=true;
+  }
+}
+syncOpenClawProviderAuth(dst, path.dirname(dstPath));
+fs.writeFileSync(dstPath, JSON.stringify(dst,null,2)+"\n");
+if (seeded) console.log(">> OpenClaw: seeded provider API keys from data/openclaw/config");
+' "$LEGACY_CONFIG" "$CONFIG_FILE"
+fi
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo ">> stack: creating deploy/env/stack.env from example"
   cp "$ENV_EXAMPLE" "$ENV_FILE"

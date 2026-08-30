@@ -43,15 +43,16 @@ type EncryptionReq struct {
 }
 
 type CreateLedgerReq struct {
-	Type            string            `json:"type"`
-	Name            string            `json:"name"`
-	CreatorId       string            `json:"creatorId"`
-	Members         []Member          `json:"members"`
-	BookkeepingMode string            `json:"bookkeepingMode,optional"`
-	EntrySchema     EntrySchemaReq    `json:"entrySchema,optional"`
-	ApprovalPolicy ApprovalPolicyReq `json:"approvalPolicy,optional"`
-	Encryption       EncryptionReq     `json:"encryption,optional"`
-	StorageLocation  string            `json:"storageLocation,optional"`
+	Type              string            `json:"type"`
+	Name              string            `json:"name"`
+	CreatorId         string            `json:"creatorId"`
+	Members           []Member          `json:"members"`
+	BookkeepingMode   string            `json:"bookkeepingMode,optional"`
+	EntrySchema       EntrySchemaReq    `json:"entrySchema,optional"`
+	MultiTableEnabled bool              `json:"multiTableEnabled,optional"`
+	ApprovalPolicy    ApprovalPolicyReq `json:"approvalPolicy,optional"`
+	Encryption        EncryptionReq     `json:"encryption,optional"`
+	StorageLocation   string            `json:"storageLocation,optional"`
 }
 
 type EntrySchemaReq struct {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/importxlsx"
@@ -49,22 +50,36 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID, tableID s
 	if err != nil {
 		return nil, err
 	}
+	presentKeys := importPresentKeys(rows)
+	validateSchema := domain.RelaxRequiredForAbsentColumns(schema, presentKeys)
+
 	imported := 0
 	skipped := 0
+	var firstSkip string
 	for _, row := range rows {
 		if row.Error != "" {
 			skipped++
+			if firstSkip == "" {
+				firstSkip = row.Error
+			}
 			continue
 		}
-		entry, err := importxlsx.ToEntry(row, schema)
+		row = fillImportUserFields(row, validateSchema, signerID)
+		entry, err := importxlsx.ToEntry(row, validateSchema)
 		if err != nil {
 			skipped++
+			if firstSkip == "" {
+				firstSkip = err.Error()
+			}
 			continue
 		}
 		entry.TableID = tableID
 		sid, err := domain.SignerFromEntry(schema, entry.NormalizeData(), signerID)
 		if err != nil {
 			skipped++
+			if firstSkip == "" {
+				firstSkip = err.Error()
+			}
 			continue
 		}
 		if err := domain.CanAppend(meta, sid); err != nil {
@@ -80,6 +95,13 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID, tableID s
 		if err != nil {
 			return nil, err
 		}
+	}
+	if imported == 0 {
+		msg := "all rows skipped"
+		if firstSkip != "" {
+			msg = fmt.Sprintf("all %d rows skipped: %s", skipped, firstSkip)
+		}
+		return nil, fmt.Errorf("%w: %s", ErrImportHasErrors, msg)
 	}
 	batchMeta, _ := json.Marshal(map[string]any{
 		"imported": imported,
@@ -106,4 +128,72 @@ func (s *Service) BatchImport(ctx context.Context, ledgerID, signerID, tableID s
 		res.Root = meta.LatestRoot
 	}
 	return res, nil
+}
+
+func importPresentKeys(rows []importxlsx.RowPreview) map[string]bool {
+	out := map[string]bool{}
+	for _, r := range rows {
+		if r.Error != "" {
+			continue
+		}
+		for k := range r.Cells {
+			if strings.TrimSpace(k) != "" {
+				out[k] = true
+			}
+		}
+		for _, k := range []string{"date", "type", "amount", "category", "note", "counterparty"} {
+			var v string
+			switch k {
+			case "date":
+				v = r.Date
+			case "type":
+				v = r.Type
+			case "amount":
+				v = r.Amount
+			case "category":
+				v = r.Category
+			case "note":
+				v = r.Note
+			case "counterparty":
+				v = r.Counterparty
+			}
+			if strings.TrimSpace(v) != "" {
+				out[k] = true
+			}
+		}
+	}
+	return out
+}
+
+func fillImportUserFields(row importxlsx.RowPreview, schema domain.EntrySchema, signerID string) importxlsx.RowPreview {
+	signerID = strings.TrimSpace(signerID)
+	if signerID == "" {
+		return row
+	}
+	schema = domain.ResolveEntrySchema(schema)
+	cells := row.Cells
+	if cells == nil {
+		cells = map[string]string{}
+	} else {
+		cp := make(map[string]string, len(cells)+2)
+		for k, v := range cells {
+			cp[k] = v
+		}
+		cells = cp
+	}
+	changed := false
+	for _, f := range schema.Fields {
+		if f.Type != domain.FieldUser {
+			continue
+		}
+		if strings.TrimSpace(cells[f.Key]) == "" {
+			cells[f.Key] = signerID
+			changed = true
+		}
+	}
+	if !changed {
+		return row
+	}
+	row.Cells = cells
+	return row
 }

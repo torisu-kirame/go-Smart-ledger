@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/ai"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/config"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/handler"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/middleware"
@@ -38,7 +39,14 @@ func main() {
 	authJWT := middleware.JWT(c.Auth.AccessSecret)(authProxy)
 	ledgerProxy := middleware.JWT(c.Auth.AccessSecret)(proxy.Handler(c.Upstreams.Ledger))
 	storageProxy := middleware.JWT(c.Auth.AccessSecret)(proxy.Handler(c.Upstreams.Storage))
-	aiProxy := middleware.JWT(c.Auth.AccessSecret)(proxy.Handler(c.Upstreams.Ai))
+	aiH := ai.NewHandlers(ai.Options{
+		OpenClawURL:   c.OpenClaw.GatewayURL,
+		OpenClawToken: c.OpenClaw.GatewayToken,
+		AgentModel:    c.OpenClaw.AgentModel,
+		LedgerURL:     c.Upstreams.Ledger,
+		AgentRoot:     c.Agent.ConfigPath,
+	})
+	aiJWT := middleware.JWT(c.Auth.AccessSecret)
 
 	// 公开：认证（refresh cookie 由 auth 服务设置）
 	server.AddRoutes([]rest.Route{
@@ -140,10 +148,10 @@ func main() {
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/accounting/periods/:period/reopen", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/accounting/reports", Handler: ledgerProxy},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/audit-export", Handler: ledgerProxy},
-		{Method: http.MethodPost, Path: "/api/v1/ai/chat", Handler: aiProxy},
-		{Method: http.MethodPost, Path: "/api/v1/ai/test", Handler: aiProxy},
-		{Method: http.MethodPost, Path: "/api/v1/ai/agent/load", Handler: aiProxy},
-		{Method: http.MethodPost, Path: "/api/v1/ai/agent/save", Handler: aiProxy},
+		{Method: http.MethodPost, Path: "/api/v1/ai/chat", Handler: aiJWT(aiH.Chat)},
+		{Method: http.MethodPost, Path: "/api/v1/ai/test", Handler: aiJWT(aiH.Test)},
+		{Method: http.MethodPost, Path: "/api/v1/ai/agent/load", Handler: aiJWT(aiH.Load)},
+		{Method: http.MethodPost, Path: "/api/v1/ai/agent/save", Handler: aiJWT(aiH.Save)},
 		{Method: http.MethodGet, Path: "/api/v1/ledgers/:id/accounting/attachments", Handler: ledgerProxy},
 		{Method: http.MethodPost, Path: "/api/v1/ledgers/:id/accounting/attachments", Handler: ledgerProxy},
 		{Method: http.MethodPatch, Path: "/api/v1/ledgers/:id/accounting/attachments/:attachId", Handler: ledgerProxy},

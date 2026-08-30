@@ -1,23 +1,24 @@
 # Tools
 
-Smart Ledger 控制台 AI 助手当前通过网关代理 OpenClaw，能力与知识来源如下。
+Smart Ledger AI：**控制台 → gateway-api → OpenClaw Gateway**。
 
-## 对话与记忆
+## 账本操作
 
-- 流式对话：`POST /api/v1/ai/chat`（经 Smart Ledger 网关转发 OpenClaw Gateway）
-- Agent 设定：本工作区 MD 文件（AGENTS、SOUL、API-REFERENCE 等）合并为 system prompt
-- 可选 OpenClaw memory-lancedb（离线栈 `make offline-ai-up`）
+由 gateway 工具循环执行（用户 JWT）：
 
-## 账本数据
+| 工具 | 用途 |
+|------|------|
+| **`import_markdown_table`** | MD→CSV→`/import/sheet-csv` 批量导入（首选） |
+| **`import_sheet_csv`** | 直接提交 CSV 文本到 sheet-csv API |
+| **`create_ledger`** | 创建账本（simple + 多表默认开） |
+| **`create_ledger_sheet`** | 开多表并创建 Sheet（fields） |
+| **`append_ledger_entry`** | 追加一条（自动 `{entry:{...}}`） |
+| **`append_ledger_entries_batch`** | 批量追加（表格场景请用 sheet-csv） |
+| `list_ledgers` / `get_ledger_summary` / `search_ledger_rag` | 查询 |
+| `call_ledger_api` | 白名单 REST（entries 会自动 wrap） |
 
-- 助手页绑定账本 → 注入同步摘要或 RAG 导出到上下文
-- 全量导出：`GET /api/v1/ledgers/{id}/rag-export`
-- 增量事件：`GET /api/v1/ledgers/{id}/sync`
+技能：`skills/smart-ledger-api/SKILL.md`
 
-## API 参考
+## 对话
 
-- **API-REFERENCE.md**：用户向 Smart Ledger REST API（由 OpenAPI 自动生成）
-- 完整机器可读规范：仓库根目录 `OpenAPI-swagger-user.json`
-- 勿向用户推荐内部接口（健康检查、Agent 磁盘读写、链队列 retry 等，见 API-REFERENCE 末尾说明）
-
-高级 OpenClaw 原生工具以 Gateway 配置为准；账本业务以 Smart Ledger API 为准。
+- `POST /api/v1/ai/chat`（网关编排；推理经 OpenClaw）

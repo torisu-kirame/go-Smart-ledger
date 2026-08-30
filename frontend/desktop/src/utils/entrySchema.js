@@ -27,6 +27,12 @@ export function resolveSchema(ledger, templates) {
 export function resolveSchemaWithTemplates(ledger, templates = []) {
   const ledgerSchema = ledger?.entrySchema
   const tid = ledgerSchema?.templateId
+  if (tid === 'custom') {
+    return {
+      templateId: 'custom',
+      fields: Array.isArray(ledgerSchema?.fields) ? ledgerSchema.fields.map((f) => ({ ...f })) : [],
+    }
+  }
   if (tid && tid !== 'custom') {
     const global = templates.find((t) => t.templateId === tid)
     if (global?.fields?.length) {
@@ -52,6 +58,26 @@ export function emptyEntryData(schema, defaults = {}) {
     data[f.key] = defaults[f.key] ?? ''
   }
   return data
+}
+
+export function normalizeSchemaFields(fields) {
+  return (fields || [])
+    .filter((f) => String(f.key || '').trim() && String(f.label || '').trim())
+    .map((f) => ({
+      key: String(f.key).trim(),
+      label: String(f.label).trim(),
+      type: f.type || 'text',
+      required: !!f.required,
+    }))
+}
+
+export function blankFieldRows(count = 1) {
+  return Array.from({ length: count }, () => ({
+    key: '',
+    label: '',
+    type: 'text',
+    required: false,
+  }))
 }
 
 export function cellLabel(schema, key) {

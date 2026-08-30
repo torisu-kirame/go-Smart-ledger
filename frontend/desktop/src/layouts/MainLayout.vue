@@ -25,7 +25,7 @@
               :href="href"
               class="nav-item"
               :class="{ active: navItemActive(item) }"
-              @click="navigate"
+              @click="onNavClick(item, navigate, $event)"
             >
               <AppIcon :name="item.icon" size="sm" class="nav-item__icon" />
               <span>{{ item.label }}</span>
@@ -56,27 +56,57 @@
         </button>
       </div>
     </aside>
-    <main class="main">
-      <router-view />
+    <main class="main" :class="{ 'main--split': panes.split }">
+      <WorkspaceTabBar v-if="showWorkspaceTabs" />
+      <div v-if="panes.split" class="split-workspace">
+        <section
+          class="split-pane"
+          :class="{ 'split-pane--focus': panes.focus === 'left' }"
+          @mousedown="panes.setFocus('left')"
+        >
+          <component :is="paneView(panes.leftId)" />
+        </section>
+        <div
+          class="split-resizer"
+          title="Drag to resize"
+          @mousedown.prevent="startResize"
+        />
+        <section
+          class="split-pane"
+          :class="{ 'split-pane--focus': panes.focus === 'right' }"
+          @mousedown="panes.setFocus('right')"
+        >
+          <component :is="paneView(panes.rightId)" />
+        </section>
+      </div>
+      <router-view v-else />
     </main>
     <ToastStack />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import ToastStack from '../components/ToastStack.vue'
+import WorkspaceTabBar from '../components/WorkspaceTabBar.vue'
 import { api } from '../api/http'
 import { useAuthStore } from '../stores/auth'
+import { useWorkspacePanes, tabFromPath } from '../stores/workspacePanes'
 import { useI18n } from '../composables/useI18n'
 import { NAV_ICON_BY_ROUTE } from '../icons/registry.js'
+
+const AiAssistantView = defineAsyncComponent(() => import('../views/AiAssistantView.vue'))
+const LedgersView = defineAsyncComponent(() => import('../views/LedgersView.vue'))
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const panes = useWorkspacePanes()
 const { t } = useI18n()
+
+const leftWidthPct = ref(50)
 
 function navItem(to, labelKey, exact = true) {
   return {
@@ -93,8 +123,9 @@ const navGroups = computed(() => [
     label: t('layout.navGroup.workspace'),
     items: [
       navItem('/', 'layout.nav.home', true),
-      navItem('/assistant', 'layout.nav.assistant', true),
+      // 账本管理在上，AI 助手在下
       navItem('/ledgers', 'layout.nav.ledgers', false),
+      navItem('/assistant', 'layout.nav.assistant', true),
     ],
   },
   {
@@ -127,26 +158,84 @@ const footAvatar = computed(() =>
   auth.user?.id ? api.userAvatarUrl(auth.user.id) : ''
 )
 
-/** 一级导航：二级路径（如 /ledgers/:id）仍高亮对应模块 */
+const showWorkspaceTabs = computed(() => {
+  if (panes.split) return true
+  return !!tabFromPath(route.path) || panes.openTabs.length > 0
+})
+
+function paneView(id) {
+  if (id === 'assistant') return AiAssistantView
+  if (id === 'ledgers') return LedgersView
+  return LedgersView
+}
+
 function navItemActive(item) {
   const navRoot = route.meta?.navRoot
   if (navRoot && item.to === navRoot) return true
-
+  if (panes.split) {
+    const focused = panes.focus === 'right' ? panes.rightTab : panes.leftTab
+    if (focused && item.to === focused.path) return true
+  }
   const path = route.path
   if (item.to === '/') return path === '/' || path === ''
   if (path === item.to) return true
   return path.startsWith(`${item.to}/`)
 }
 
+function onNavClick(item, navigate, ev) {
+  const tab = tabFromPath(item.to)
+  if (tab) {
+    if (panes.split) {
+      panes.placeOnSide(tab.id, panes.focus)
+    } else {
+      panes.openSingle(tab.id)
+    }
+  } else if (panes.split) {
+    panes.exitSplit(panes.focus === 'right' ? panes.rightId : panes.leftId)
+  }
+  navigate(ev)
+}
+
 function goSettings(hash = '') {
   const h = typeof hash === 'string' && hash.startsWith('#') ? hash : ''
+  if (panes.split) panes.exitSplit()
   router.push(h ? { path: '/settings', hash: h } : '/settings')
 }
 
 function onBrandClick(ev) {
+  if (panes.split) panes.exitSplit()
   if (router.currentRoute.value.path === '/') {
     ev.preventDefault()
   }
+}
+
+watch(
+  () => route.path,
+  (path) => {
+    if (path.startsWith('/ledgers/') && path !== '/ledgers') {
+      if (panes.split) panes.exitSplit('ledgers')
+      return
+    }
+    panes.syncFromRoute(path)
+  },
+  { immediate: true }
+)
+
+function startResize(e) {
+  const root = e.currentTarget.parentElement
+  if (!root) return
+  const rect = root.getBoundingClientRect()
+  function onMove(ev) {
+    const pct = ((ev.clientX - rect.left) / rect.width) * 100
+    leftWidthPct.value = Math.min(75, Math.max(25, pct))
+    root.style.setProperty('--split-left', `${leftWidthPct.value}%`)
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
 }
 
 onMounted(() => {
@@ -369,6 +458,47 @@ async function onLogout() {
   padding: 1.5rem 2rem 2rem;
   overflow-x: hidden;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.main--split {
+  overflow: hidden;
+}
+
+.split-workspace {
+  --split-left: 50%;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--split-left) 6px minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+}
+
+.split-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.35rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.split-pane--focus {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.split-resizer {
+  cursor: col-resize;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0.25rem 0;
+}
+
+.split-resizer:hover {
+  background: var(--accent);
 }
 
 @media (max-width: 960px) {
@@ -408,6 +538,19 @@ async function onLogout() {
     min-height: 50vh;
     overflow: visible;
     padding: 1rem;
+  }
+
+  .main--split {
+    overflow: visible;
+  }
+
+  .split-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .split-resizer {
+    display: none;
   }
 }
 </style>

@@ -127,7 +127,7 @@ func (s *Service) UpdateTable(ctx context.Context, ledgerID, userID, tableID, na
 			return nil, err
 		}
 		meta.Tables[idx].EntrySchema = sch
-		if t.ID == domain.DefaultTableID {
+		if idx == 0 || t.ID == domain.DefaultTableID {
 			meta.EntrySchema = sch
 		}
 	}
@@ -140,7 +140,7 @@ func (s *Service) UpdateTable(ctx context.Context, ledgerID, userID, tableID, na
 	return meta, nil
 }
 
-// DeleteTable removes an empty non-default table.
+// DeleteTable removes an empty table (any sheet, including the last one).
 func (s *Service) DeleteTable(ctx context.Context, ledgerID, userID, tableID string) (*domain.LedgerMeta, error) {
 	meta, err := s.GetForUser(ctx, ledgerID, userID)
 	if err != nil {
@@ -150,9 +150,9 @@ func (s *Service) DeleteTable(ctx context.Context, ledgerID, userID, tableID str
 		return nil, domain.ErrUnauthorized
 	}
 	domain.NormalizeLedgerTables(meta)
-	tableID = domain.ResolveTableID(meta, tableID)
-	if tableID == domain.DefaultTableID {
-		return nil, domain.ErrInvalidTable
+	tableID = strings.TrimSpace(tableID)
+	if tableID == "" {
+		return nil, domain.ErrTableNotFound
 	}
 	if !meta.MultiTableEnabled {
 		return nil, domain.ErrMultiTableDisabled
@@ -171,6 +171,11 @@ func (s *Service) DeleteTable(ctx context.Context, ledgerID, userID, tableID str
 		return nil, domain.ErrTableHasEntries
 	}
 	meta.Tables = append(meta.Tables[:found], meta.Tables[found+1:]...)
+	if len(meta.Tables) == 0 {
+		meta.EntrySchema = domain.EntrySchema{TemplateID: domain.TemplateCustom, Fields: nil}
+	} else {
+		meta.EntrySchema = meta.Tables[0].EntrySchema
+	}
 	meta.UpdatedAt = time.Now().UTC()
 	if err := s.putMeta(ctx, meta); err != nil {
 		return nil, err

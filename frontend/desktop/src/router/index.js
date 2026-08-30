@@ -96,7 +96,7 @@ const routes = [
           },
           {
             path: 'templates',
-            component: () => import('../views/EntryTemplatesView.vue'),
+            redirect: (to) => `/ledgers/${to.params.id}/view`,
           },
           {
             path: 'settings',

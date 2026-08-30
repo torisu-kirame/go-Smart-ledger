@@ -41,6 +41,7 @@ func main() {
 	handler.RegisterCollaborationHandlers(server, ctx)
 	handler.RegisterTableHandlers(server, ctx)
 	handler.RegisterImportAdaptiveHandlers(server, ctx)
+	handler.RegisterSheetCSVImportHandlers(server, ctx)
 	handler.RegisterAccountingHandlers(server, ctx)
 	handler.RegisterAuditExportHandlers(server, ctx)
 	handler.RegisterChainHandlers(server, ctx)

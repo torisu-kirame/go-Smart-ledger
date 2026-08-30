@@ -111,9 +111,9 @@
           </ul>
         </dd>
       </div>
-      <div v-if="schemaLabel && isSimpleLedger" class="info-row">
-        <dt>流水模板</dt>
-        <dd>{{ schemaLabel }}</dd>
+      <div v-if="isSimpleLedger" class="info-row">
+        <dt>工作表</dt>
+        <dd>{{ sheetSummary }}</dd>
       </div>
     </dl>
   </section>
@@ -133,7 +133,7 @@ import {
 import { bookkeepingModeLabel } from '../../utils/bookkeepingMode'
 
 const auth = useAuthStore()
-const { ledgerId, ledger, groupKey, error, msg, schema, bookkeepingMode, isSimpleLedger } =
+const { ledgerId, ledger, groupKey, error, msg, bookkeepingMode, isSimpleLedger } =
   useLedgerDetail()
 
 const passphrase = ref('')
@@ -156,12 +156,11 @@ const unlocked = computed(
 
 const storageLabel = computed(() => storageLocationLabel(ledger.value?.storageLocation))
 
-const schemaLabel = computed(() => {
-  const s = schema.value
-  if (!s) return ''
-  if (s.templateId && s.templateId !== 'custom') return s.templateId
-  if (s.fields?.length) return `自定义（${s.fields.length} 个字段）`
-  return s.templateId || ''
+const sheetSummary = computed(() => {
+  const n = ledger.value?.tables?.length || 0
+  if (!n) return '暂无 Sheet（请先创建）'
+  const names = (ledger.value.tables || []).map((t) => t.name).filter(Boolean)
+  return names.length ? `${n} 张：${names.join('、')}` : `${n} 张`
 })
 
 const lockHint = computed(() => {

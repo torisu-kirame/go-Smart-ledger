@@ -19,17 +19,19 @@ var (
 const maxRows = 5000
 
 // RowPreview is one parsed row with dynamic columns in Cells.
+// Tags use ",optional" so go-zero httpx.Parse accepts omitted empty fields
+// (valid rows often omit "error").
 type RowPreview struct {
 	Line   int               `json:"line"`
-	Cells  map[string]string `json:"cells"`
-	Error  string            `json:"error,omitempty"`
+	Cells  map[string]string `json:"cells,optional"`
+	Error  string            `json:"error,optional"`
 	// Legacy flat fields for older frontends
-	Date         string `json:"date,omitempty"`
-	Type         string `json:"type,omitempty"`
-	Amount       string `json:"amount,omitempty"`
-	Category     string `json:"category,omitempty"`
-	Note         string `json:"note,omitempty"`
-	Counterparty string `json:"counterparty,omitempty"`
+	Date         string `json:"date,optional"`
+	Type         string `json:"type,optional"`
+	Amount       string `json:"amount,optional"`
+	Category     string `json:"category,optional"`
+	Note         string `json:"note,optional"`
+	Counterparty string `json:"counterparty,optional"`
 }
 
 // Parse reads xlsx using ledger entry schema column labels.

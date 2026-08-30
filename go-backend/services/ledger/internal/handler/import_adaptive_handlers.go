@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -73,12 +74,13 @@ func importAdaptivePreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 type adaptiveCommitBody struct {
 	SignerID       string                  `json:"signerId"`
-	TableName      string                  `json:"tableName,optional"`
+	TableId        string                  `json:"tableId,optional"` // set → append to existing sheet
+	TableName      string                  `json:"tableName,optional"` // used when creating a new sheet
 	EntrySchema    domain.EntrySchema      `json:"entrySchema"`
 	Rows           []importxlsx.RowPreview `json:"rows"`
-	AutoAnchor     bool                    `json:"autoAnchor"`
-	AutoBackup     bool                    `json:"autoBackup"`
-	BackupPassword string                  `json:"backupPassword,omitempty"`
+	AutoAnchor     bool                    `json:"autoAnchor,optional"`
+	AutoBackup     bool                    `json:"autoBackup,optional"`
+	BackupPassword string                  `json:"backupPassword,optional"`
 }
 
 func importAdaptiveCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
@@ -90,8 +92,13 @@ func importAdaptiveCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		var body adaptiveCommitBody
-		if err := httpx.Parse(r, &body); err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
+		raw, err := io.ReadAll(io.LimitReader(r.Body, 16<<20))
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid body"))
+			return
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json body"))
 			return
 		}
 		if body.SignerID == "" {
@@ -99,7 +106,7 @@ func importAdaptiveCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 		res, err := svcCtx.Ledger.ImportAdaptiveCommit(
 			r.Context(), id, uid, body.SignerID,
-			body.TableName, body.EntrySchema, body.Rows, body.AutoAnchor,
+			body.TableId, body.TableName, body.EntrySchema, body.Rows, body.AutoAnchor,
 		)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, logic.ToCodeErr(err))

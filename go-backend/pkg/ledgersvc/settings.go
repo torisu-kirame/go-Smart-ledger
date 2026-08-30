@@ -37,24 +37,32 @@ func (s *Service) UpdateLedger(ctx context.Context, ledgerID, userID, name strin
 
 // ArchiveLedger soft-deletes a ledger for all members (creator only).
 func (s *Service) ArchiveLedger(ctx context.Context, ledgerID, userID string) error {
-	meta, err := s.GetForUser(ctx, ledgerID, userID)
+	mu := s.ledgerLock(ledgerID)
+	mu.Lock()
+	defer mu.Unlock()
+
+	meta, err := s.loadMeta(ctx, ledgerID)
 	if err != nil {
 		return err
-	}
-	if meta.CreatorID != userID {
-		return domain.ErrUnauthorized
 	}
 	if !meta.ArchivedAt.IsZero() {
 		return nil
 	}
+	if userID != "" && !domain.IsMember(meta, userID) {
+		return domain.ErrUnauthorized
+	}
+	if meta.CreatorID != userID {
+		return domain.ErrUnauthorized
+	}
 	now := time.Now().UTC()
 	meta.ArchivedAt = now
 	meta.UpdatedAt = now
-	if err := s.putMeta(ctx, meta); err != nil {
+	payload, _ := json.Marshal(map[string]any{"archivedAt": now.Format(time.RFC3339)})
+	// Single locked write: set ArchivedAt and append event together so a
+	// subsequent reload cannot wipe the soft-delete flag.
+	if _, err := s.appendEventUsingMetaUnlocked(ctx, meta, userID, domain.EventLedgerArchived, payload); err != nil {
 		return err
 	}
-	payload, _ := json.Marshal(map[string]any{"archivedAt": now.Format(time.RFC3339)})
-	_, _ = s.appendEvent(ctx, meta, userID, domain.EventLedgerArchived, payload)
 	return nil
 }
 

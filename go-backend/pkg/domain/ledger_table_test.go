@@ -10,6 +10,21 @@ func TestNormalizeLedgerTablesDefault(t *testing.T) {
 	}
 }
 
+func TestNormalizeLedgerTablesBlankMulti(t *testing.T) {
+	meta := &LedgerMeta{
+		MultiTableEnabled: true,
+		EntrySchema:       EntrySchema{TemplateID: TemplateCustom},
+		Tables:            nil,
+	}
+	NormalizeLedgerTables(meta)
+	if len(meta.Tables) != 0 {
+		t.Fatalf("expected empty tables, got %+v", meta.Tables)
+	}
+	if meta.EntrySchema.TemplateID != TemplateCustom {
+		t.Fatalf("expected custom template id")
+	}
+}
+
 func TestSchemaForTableMulti(t *testing.T) {
 	meta := &LedgerMeta{
 		MultiTableEnabled: true,

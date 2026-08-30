@@ -66,26 +66,10 @@
             {{
               form.bookkeepingMode === 'professional'
                 ? '复式记账：科目表、凭证、报表、期间与对账（创建后不可切换）。'
-                : '简单流水：按模板字段记一笔，支持 Excel 导入与多人审批。'
+                : '简单流水：创建后自行新建 Sheet，并自定义字段；支持 Excel 导入与多人审批。'
             }}
           </p>
         </div>
-        <template v-if="form.bookkeepingMode === 'simple'">
-        <div class="form-row">
-          <label>流水模板</label>
-          <AppSelect v-model="form.templateId" :options="templateOptions" />
-        </div>
-        <div v-if="form.templateId === 'custom'" class="custom-schema">
-          <div v-for="(f, i) in form.customFields" :key="i" class="form-row member">
-            <input v-model="f.key" placeholder="字段 key（英文）" />
-            <input v-model="f.label" placeholder="显示名" />
-            <AppSelect v-model="f.type" sm class="member-select" :options="FIELD_TYPE_OPTIONS" />
-            <label class="check"><input type="checkbox" v-model="f.required" /> 必填</label>
-            <DeleteButton icon-only sm title="删除字段" @click="form.customFields.splice(i, 1)" />
-          </div>
-          <button type="button" class="btn-ghost" @click="addCustomField">+ 字段</button>
-        </div>
-        </template>
         <div v-if="form.type === 'multi'" class="form-row">
           <label class="inline-check">
             <input v-model="form.enableE2E" type="checkbox" />
@@ -115,7 +99,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, ApiError } from '../api/http'
 import { useAuthStore } from '../stores/auth'
@@ -124,13 +108,7 @@ import AppIcon from '../components/AppIcon.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { usePageCrumbs } from '../composables/usePageCrumbs'
 import AppSelect from '../components/AppSelect.vue'
-import DeleteButton from '../components/DeleteButton.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
-import { DEFAULT_ENTRY_SCHEMA, FIELD_TYPE_OPTIONS } from '../utils/entrySchema'
-import {
-  loadEntryTemplates,
-  useEntryTemplates,
-} from '../composables/useEntryTemplates'
 import { buildEncryptionForCreate, saveLocalGroupKey, saveLocalPassphrase } from '../utils/e2eCrypto'
 import { DEFAULT_STORAGE_LOCATION, storageLocationLabel } from '../utils/ledgerStorage'
 import {
@@ -152,9 +130,8 @@ const error = ref('')
 const success = ref('')
 const show = ref(false)
 const saving = ref(false)
-const { templates } = useEntryTemplates()
 const bookkeepingModeOptions = [
-  { value: BOOKKEEPING_SIMPLE, label: '简单流水（模板字段）' },
+  { value: BOOKKEEPING_SIMPLE, label: '简单流水（自定义 Sheet）' },
   { value: BOOKKEEPING_PROFESSIONAL, label: '专业复式（科目与凭证）' },
 ]
 
@@ -162,8 +139,6 @@ const form = reactive({
   type: 'private',
   name: '',
   bookkeepingMode: BOOKKEEPING_SIMPLE,
-  templateId: 'default',
-  customFields: [{ key: '', label: '', type: 'text', required: true }],
   otherMemberIds: [],
   enableE2E: false,
   e2ePassphrase: '',
@@ -174,28 +149,6 @@ const ledgerTypeOptions = [
   { value: 'multi', label: '多人（邀请加入）' },
 ]
 
-const templateOptions = computed(() => [
-  ...templates.value.map((t) => ({
-    value: t.templateId,
-    label: `${templateLabel(t)}${t.builtin ? '（内置）' : ''}`,
-  })),
-  { value: 'custom', label: '临时自定义（不保存）' },
-])
-
-const selectedTemplateFields = computed(() => {
-  if (form.templateId === 'custom') return ''
-  const t = templates.value.find((x) => x.templateId === form.templateId)
-  return (t?.fields || []).map((f) => f.label).join('、')
-})
-
-function templateLabel(t) {
-  return t.name || t.templateId
-}
-
-function addCustomField() {
-  form.customFields.push({ key: '', label: '', type: 'text', required: false })
-}
-
 function shortAddr(a) {
   if (!a) return '—'
   return a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a
@@ -205,31 +158,9 @@ function resetForm() {
   form.type = 'private'
   form.name = ''
   form.bookkeepingMode = BOOKKEEPING_SIMPLE
-  form.templateId = 'default'
-  form.customFields = [{ key: '', label: '', type: 'text', required: true }]
   form.otherMemberIds = []
   form.enableE2E = false
   form.e2ePassphrase = ''
-}
-
-function buildEntrySchema() {
-  if (form.templateId === 'custom') {
-    const fields = form.customFields
-      .filter((f) => f.key.trim() && f.label.trim())
-      .map((f) => ({
-        key: f.key.trim(),
-        label: f.label.trim(),
-        type: f.type,
-        required: !!f.required,
-      }))
-    if (!fields.length) throw new ApiError('请至少定义 1 个自定义字段', 400)
-    return { templateId: 'custom', fields }
-  }
-  const t = templates.value.find((x) => x.templateId === form.templateId)
-  if (t?.fields?.length) {
-    return { templateId: t.templateId, fields: t.fields }
-  }
-  return { templateId: form.templateId }
 }
 
 function openCreate() {
@@ -299,14 +230,10 @@ async function sendInvitesToUsers(ledgerId, userIds) {
 }
 
 onMounted(async () => {
-  try {
-    await loadEntryTemplates()
-    if (!templates.value.length) {
-      templates.value = [DEFAULT_ENTRY_SCHEMA]
-    }
-  } catch {
-    templates.value = [DEFAULT_ENTRY_SCHEMA]
-  }
+  await load()
+})
+
+onActivated(async () => {
   await load()
 })
 
@@ -360,7 +287,8 @@ async function create() {
       creatorId: auth.user.id,
       members,
       bookkeepingMode: form.bookkeepingMode,
-      entrySchema: isSimple ? buildEntrySchema() : undefined,
+      entrySchema: isSimple ? { templateId: 'custom', fields: [] } : undefined,
+      multiTableEnabled: isSimple,
       approvalPolicy:
         isSimple && form.type === 'multi'
           ? {

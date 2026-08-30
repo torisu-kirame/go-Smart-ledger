@@ -13,10 +13,11 @@ import (
 
 // CreateOptions optional policies for new ledgers (F17/F19).
 type CreateOptions struct {
-	BookkeepingMode string
-	ApprovalPolicy  domain.ApprovalPolicy
-	Encryption      domain.LedgerEncryption
-	StorageLocation string
+	BookkeepingMode   string
+	ApprovalPolicy    domain.ApprovalPolicy
+	Encryption        domain.LedgerEncryption
+	StorageLocation   string
+	MultiTableEnabled bool
 }
 
 func (s *Service) ListForUser(ctx context.Context, userID string) ([]*domain.LedgerMeta, error) {

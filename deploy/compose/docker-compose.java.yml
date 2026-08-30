@@ -53,7 +53,17 @@ services:
     container_name: smart-ledger-java-gateway
     environment:
       SMARTLEDGER_BACKEND: java
+    depends_on:
+      auth-api:
+        condition: service_healthy
+      ledger-api:
+        condition: service_healthy
+      storage-api:
+        condition: service_healthy
+      ai-api:
+        condition: service_healthy
 
+  # Java 栈仍使用 LangChain4j agent-service（非 OpenClaw）
   ai-api:
     build:
       context: ./java-backend
@@ -64,6 +74,20 @@ services:
       SMARTLEDGER_BACKEND: java
       AGENT_CONFIG_PATH: /data/agent/config
       LEDGER_API_URL: http://ledger-api:28888
+    volumes:
+      - ./deploy/config/agent:/data/agent/config
+    ports:
+      - "28891:28891"
+    depends_on:
+      ledger-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28891/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
 
   web:
     image: smart-ledger-java-web:latest

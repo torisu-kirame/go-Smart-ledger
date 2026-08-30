@@ -26,6 +26,7 @@ type LedgerTable struct {
 }
 
 // NormalizeLedgerTables ensures Tables slice and EntrySchema stay aligned for legacy meta.
+// When MultiTableEnabled and Tables is empty, the workbook has no sheets yet (user must create).
 func NormalizeLedgerTables(meta *LedgerMeta) {
 	if meta == nil {
 		return
@@ -34,6 +35,17 @@ func NormalizeLedgerTables(meta *LedgerMeta) {
 		meta.MultiTableEnabled = false
 		meta.Tables = nil
 		return
+	}
+	if meta.MultiTableEnabled && len(meta.Tables) == 0 {
+		// Intentionally blank workbook: custom schema with no fields yet.
+		if meta.EntrySchema.TemplateID == TemplateCustom && len(meta.EntrySchema.Fields) == 0 {
+			return
+		}
+		if strings.TrimSpace(meta.EntrySchema.TemplateID) == "" && len(meta.EntrySchema.Fields) == 0 {
+			meta.EntrySchema.TemplateID = TemplateCustom
+			return
+		}
+		// Fall through: seed a first sheet from existing schema (legacy / templated).
 	}
 	schema := ResolveEntrySchema(meta.EntrySchema)
 	if len(meta.Tables) == 0 {

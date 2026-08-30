@@ -122,6 +122,49 @@
         <div v-if="chatError" class="alert alert-error">{{ chatError }}</div>
 
         <form class="assistant-composer panel" @submit.prevent="send">
+          <div class="composer-row">
+            <button
+              v-if="activeSkill"
+              type="button"
+              class="composer-skill-tag"
+              :title="t(activeSkill.hintKey)"
+              @click.stop="clearActiveSkill"
+            >
+              <AppIcon :name="activeSkill.icon" size="sm" />
+              <span>{{ t(activeSkill.labelKey) }}</span>
+              <span class="composer-skill-tag__x" aria-hidden="true">×</span>
+            </button>
+            <textarea
+              ref="inputEl"
+              v-model="input"
+              class="composer-input"
+              :class="{ 'composer-input--has-skill': !!activeSkill }"
+              rows="1"
+              :placeholder="composerPlaceholder"
+              :disabled="!aiEnabled || streaming"
+              @input="autoResizeInput"
+              @keydown="onComposerKeydown"
+            />
+            <div class="composer-actions">
+              <button
+                v-if="streaming"
+                type="button"
+                class="icon-btn btn-ghost composer-icon-btn"
+                :title="t('assistant.stop')"
+                @click="stop"
+              >
+                <AppIcon name="square" size="sm" />
+              </button>
+              <button
+                type="submit"
+                class="icon-btn btn-primary composer-send"
+                :title="t('assistant.send')"
+                :disabled="!aiEnabled || streaming || !canSend"
+              >
+                <AppIcon name="plane" size="sm" />
+              </button>
+            </div>
+          </div>
           <div class="skill-bar" role="list" :aria-label="t('assistant.skillsTitle')">
             <button
               v-for="skill in skills"
@@ -139,35 +182,6 @@
             </button>
           </div>
           <p v-if="!hasBoundLedger" class="skill-bar-hint">{{ t('assistant.skillsNeedLedger') }}</p>
-          <div class="composer-row">
-            <textarea
-              v-model="input"
-              class="composer-input"
-              rows="2"
-              :placeholder="t('assistant.inputPlaceholder')"
-              :disabled="!aiEnabled || streaming"
-              @keydown.enter.exact.prevent="send"
-            />
-            <div class="composer-actions">
-              <button
-                v-if="streaming"
-                type="button"
-                class="icon-btn btn-ghost composer-icon-btn"
-                :title="t('assistant.stop')"
-                @click="stop"
-              >
-                <AppIcon name="square" size="sm" />
-              </button>
-              <button
-                type="submit"
-                class="icon-btn btn-primary composer-send"
-                :title="t('assistant.send')"
-                :disabled="!aiEnabled || streaming || !input.trim()"
-              >
-                <AppIcon name="plane" size="sm" />
-              </button>
-            </div>
-          </div>
         </form>
       </div>
     </div>
@@ -400,6 +414,7 @@ const contextLoading = ref(false)
 const contextError = ref('')
 
 const input = ref('')
+const inputEl = ref(null)
 const streaming = ref(false)
 const chatError = ref('')
 const threadEl = ref(null)
@@ -410,6 +425,73 @@ let diskLoadToken = 0
 const skills = AI_SKILLS
 const activeSkillId = ref('')
 const exporting = ref(false)
+
+const activeSkill = computed(() => skills.find((s) => s.id === activeSkillId.value) || null)
+
+const canSend = computed(() => {
+  if (input.value.trim()) return true
+  // 已选技能且为可空发送的 prompt 类（引导话术）
+  return !!(activeSkill.value && activeSkill.value.action === 'prompt')
+})
+
+const composerPlaceholder = computed(() => {
+  if (activeSkill.value?.action === 'fill') {
+    return t('assistant.inputPlaceholderFill')
+  }
+  if (activeSkill.value) {
+    return t('assistant.inputPlaceholderSkill')
+  }
+  return t('assistant.inputPlaceholder')
+})
+
+const COMPOSER_LINE_PX = 22
+const COMPOSER_MAX_LINES = 10
+const COMPOSER_PAD_Y = 28 // padding top+bottom of textarea
+
+function autoResizeInput() {
+  const el = inputEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  const minH = 3.1 * 16 // ~3.1rem，与外框同高
+  const maxH = COMPOSER_LINE_PX * COMPOSER_MAX_LINES + COMPOSER_PAD_Y
+  const next = Math.min(Math.max(el.scrollHeight, minH), maxH)
+  el.style.height = `${next}px`
+  el.style.overflowY = el.scrollHeight > maxH ? 'auto' : 'hidden'
+}
+
+function onComposerKeydown(e) {
+  // 光标在开头 / 内容为空时，Backspace/Delete 清除框内技能 tag
+  if (
+    (e.key === 'Backspace' || e.key === 'Delete') &&
+    activeSkill.value &&
+    !e.isComposing
+  ) {
+    const el = inputEl.value
+    const start = el?.selectionStart ?? 0
+    const end = el?.selectionEnd ?? 0
+    const empty = !input.value
+    const caretAtStart = start === 0 && end === 0
+    if (empty || (e.key === 'Backspace' && caretAtStart)) {
+      e.preventDefault()
+      clearActiveSkill()
+      return
+    }
+  }
+  if (e.key !== 'Enter') return
+  // Enter 换行；Ctrl/Cmd+Enter 发送
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
+    send()
+  }
+}
+
+function clearActiveSkill() {
+  activeSkillId.value = ''
+  nextTick(() => {
+    autoResizeInput()
+    inputEl.value?.focus()
+  })
+}
 
 const showAgentModal = ref(false)
 const showLedgerModal = ref(false)
@@ -692,17 +774,24 @@ async function onSkillClick(skill) {
     openLedgerModal()
     return
   }
-  activeSkillId.value = skill.id
   chatError.value = ''
 
   if (skill.action === 'export') {
+    activeSkillId.value = skill.id
     await runExportSkill()
     return
   }
 
-  input.value = skill.prompt
+  // 豆包式：再次点击同一技能 → 取消选中
+  if (activeSkillId.value === skill.id) {
+    clearActiveSkill()
+    return
+  }
+
+  activeSkillId.value = skill.id
   await nextTick()
-  await send({ forceTools: true })
+  autoResizeInput()
+  inputEl.value?.focus()
 }
 
 async function runExportSkill() {
@@ -750,16 +839,39 @@ function persistMessages(next) {
 async function send(opts = {}) {
   const agentId = agentsState.value.activeId
   const agent = activeAgent.value
-  const text = input.value.trim()
-  if (!text || streaming.value || !aiEnabled.value || !agentId || !agent) return
+  const userText = input.value.trim()
+  const skill = activeSkill.value
+  if (streaming.value || !aiEnabled.value || !agentId || !agent) return
+  if (!userText && !(skill && skill.action === 'prompt')) return
 
   chatError.value = ''
-  const next = [...messages.value, { role: 'user', content: text }]
+
+  // 展示给用户的气泡：技能标签 + 用户输入
+  const displayParts = []
+  if (skill) displayParts.push(`【${t(skill.labelKey)}】`)
+  if (userText) displayParts.push(userText)
+  const displayContent = displayParts.join('\n')
+
+  // 发给模型：技能引导话术 + 用户输入（一并输出）
+  const modelParts = []
+  if (skill?.prompt?.trim()) modelParts.push(skill.prompt.trim())
+  if (userText) modelParts.push(userText)
+  const modelContent = modelParts.join('\n\n') || displayContent
+
+  const next = [...messages.value, { role: 'user', content: displayContent }]
   persistMessages(next)
   input.value = ''
+  const sentSkillId = activeSkillId.value
+  activeSkillId.value = ''
+  await nextTick()
+  autoResizeInput()
   await scrollToBottom()
 
-  const history = next.map((m) => ({ role: m.role, content: m.content }))
+  const history = next.map((m, i) =>
+    i === next.length - 1
+      ? { role: 'user', content: modelContent }
+      : { role: m.role, content: m.content }
+  )
   const systemPrompt = [
     agentSystemPrompt(agent),
     '回复请使用 Markdown（标题、列表、表格、代码块），便于阅读。',
@@ -778,7 +890,10 @@ async function send(opts = {}) {
   persistMessages(withAssistant)
   abortCtrl = new AbortController()
 
-  const useTools = !!(opts.forceTools || agent.ledgerId?.trim())
+  // Markdown tables need the tool agent (server may auto-import from SourceText).
+  const hasMdTable = /\|.+\|[\s\S]*?\n\s*\|[-:\s|]+\|/.test(userText) ||
+    /\|.+\|[\s\S]*?\n\s*\|[-:\s|]+\|/.test(modelContent)
+  const useTools = !!(opts.forceTools || sentSkillId || agent.ledgerId?.trim() || hasMdTable)
 
   try {
     await streamChat({
@@ -847,7 +962,10 @@ onMounted(() => {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshAiGate()
   })
+  nextTick(() => autoResizeInput())
 })
+
+watch(input, () => nextTick(() => autoResizeInput()))
 
 function onPageHide() {
   if (diskSaveTimer) {
@@ -1239,15 +1357,110 @@ watch(
 
 .assistant-composer {
   flex-shrink: 0;
-  padding: 0.65rem 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  padding: 0.75rem 1rem 0.65rem;
   margin-bottom: 0 !important;
+  box-sizing: border-box;
+}
+
+.composer-row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.composer-skill-tag {
+  position: absolute;
+  left: 0.55rem;
+  top: 0.55rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.22rem 0.5rem 0.22rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.composer-skill-tag:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg-elevated));
+}
+
+.composer-skill-tag__x {
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0.75;
+  margin-left: 0.05rem;
+}
+
+.composer-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  resize: none;
+  outline: none;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-sm) + 2px);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  line-height: 22px;
+  box-sizing: border-box;
+  padding: 0.7rem 0.75rem;
+  min-height: 3.1rem;
+  max-height: calc(22px * 10 + 1.4rem);
+  overflow-y: hidden;
+  cursor: text;
+}
+
+.composer-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.composer-input--has-skill {
+  padding-left: 7.5rem;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding-bottom: 0.2rem;
+}
+
+.composer-icon-btn,
+.composer-send {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.composer-send:disabled {
+  opacity: 0.45;
 }
 
 .skill-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-bottom: 0.55rem;
+  margin-top: 0.65rem;
   max-height: 5.5rem;
   overflow-y: auto;
 }
@@ -1286,51 +1499,9 @@ watch(
 }
 
 .skill-bar-hint {
-  margin: 0 0 0.45rem;
+  margin: 0.4rem 0 0;
   font-size: 0.75rem;
   color: var(--text-muted);
-}
-
-.composer-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
-
-.composer-input {
-  flex: 1;
-  resize: none;
-  min-height: 2.75rem;
-  max-height: 8rem;
-  padding: 0.6rem 0.7rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text);
-  font: inherit;
-  line-height: 1.45;
-}
-
-.composer-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-}
-
-.composer-icon-btn,
-.composer-send {
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-}
-
-.composer-send:disabled {
-  opacity: 0.45;
 }
 
 .modal--no-dismiss {

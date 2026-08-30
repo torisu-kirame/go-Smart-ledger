@@ -19,6 +19,41 @@ if (-not (Test-Path $ConfigFile)) {
 
 node (Join-Path $Root "scripts\repair-openclaw-config.js") $ConfigFile $DockerJson
 
+# If deploy config has empty provider keys, seed from legacy data/openclaw/config when present
+$LegacyConfig = Join-Path $Root "data\openclaw\config\openclaw.json"
+if (Test-Path $LegacyConfig) {
+    node -e @"
+const fs=require('fs'); const path=require('path');
+const { syncOpenClawProviderAuth } = require('./scripts/openclaw-auth-sync');
+const legacy=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));
+const dstPath=process.argv[2];
+const dst=JSON.parse(fs.readFileSync(dstPath,'utf8'));
+const providers=legacy.models?.providers||{};
+let seeded=false;
+for (const [name, block] of Object.entries(providers)) {
+  const key=String(block?.apiKey||'').trim();
+  if (!key) continue;
+  if (!dst.models) dst.models={mode:'merge',providers:{}};
+  if (!dst.models.providers) dst.models.providers={};
+  if (!dst.models.providers[name]) dst.models.providers[name]={...block};
+  else if (!String(dst.models.providers[name].apiKey||'').trim()) {
+    dst.models.providers[name].apiKey=key;
+  } else continue;
+  seeded=true;
+}
+if (seeded) {
+  syncOpenClawProviderAuth(dst, path.dirname(dstPath));
+  fs.writeFileSync(dstPath, JSON.stringify(dst,null,2)+'\n');
+  console.log('>> OpenClaw: seeded provider API keys from data/openclaw/config');
+} else {
+  syncOpenClawProviderAuth(dst, path.dirname(dstPath));
+  fs.writeFileSync(dstPath, JSON.stringify(dst,null,2)+'\n');
+}
+"@ $LegacyConfig $ConfigFile
+} else {
+    node -e "const fs=require('fs');const path=require('path');const {syncOpenClawProviderAuth}=require('./scripts/openclaw-auth-sync');const p=process.argv[1];const c=JSON.parse(fs.readFileSync(p,'utf8'));if(syncOpenClawProviderAuth(c,path.dirname(p))){fs.writeFileSync(p,JSON.stringify(c,null,2)+'\n');console.log('>> OpenClaw: synced auth-profiles.json')}" $ConfigFile
+}
+
 if (-not (Test-Path $EnvFile)) {
     Write-Host ">> stack: creating deploy/env/stack.env from example"
     Copy-Item $EnvExample $EnvFile

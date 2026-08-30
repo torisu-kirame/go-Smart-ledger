@@ -1,11 +1,12 @@
-# Smart Ledger — 一键启动（AI 由 py-backend / ai-api 提供；Ollama 离线可选 profile offline-ai）
+# Smart Ledger — 一键启动（AI：gateway → OpenClaw Agent；Ollama 可选 profile offline-ai）
 # 重要：请先 make build-linux 再 docker compose build，否则 gateway 等可能是旧二进制
-# 推荐：make up（账本 + Web + AI）
+# 推荐：make up（账本 + Web + OpenClaw）
 #
 #   make up
 #
 # 控制台:     http://localhost:25173
 # 网关:       http://localhost:28080
+# OpenClaw:   http://localhost:18789
 # 离线 Ollama: make offline-ai-up
 # 链浏览器:   http://localhost:24441/dashboard
 # 默认账号:   admin / admin123
@@ -171,30 +172,6 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  ai-api:
-    build:
-      context: ./py-backend
-      dockerfile: Dockerfile
-    image: smart-ledger-go-ai-api:latest
-    container_name: smart-ledger-go-ai-api
-    environment:
-      AGENT_CONFIG_PATH: /data/agent/config
-      LEDGER_API_URL: http://ledger-api:28888
-    volumes:
-      - ./deploy/config/agent:/data/agent/config
-    ports:
-      - "28891:28891"
-    depends_on:
-      ledger-api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28891/api/v1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 15s
-    restart: unless-stopped
-
   gateway-api:
     build:
       context: ./go-backend
@@ -204,6 +181,14 @@ services:
     env_file:
       - path: deploy/env/.env
         required: false
+    environment:
+      OPENCLAW_GATEWAY_URL: ${OPENCLAW_GATEWAY_URL:-http://openclaw-gateway:18789}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_AGENT_MODEL: ${OPENCLAW_AGENT_MODEL:-openclaw/default}
+      AGENT_CONFIG_PATH: /data/agent/config
+      LEDGER_API_URL: http://ledger-api:28888
+    volumes:
+      - ./deploy/config/agent:/data/agent/config
     ports:
       - "28080:28080"
     depends_on:
@@ -213,8 +198,6 @@ services:
         condition: service_healthy
       storage-api:
         condition: service_healthy
-      ai-api:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28080/api/v1/health"]
       interval: 10s
@@ -223,7 +206,7 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # --- 旧版 OpenClaw Gateway（已弃用；AI 见 ai-api；profile openclaw-legacy）---
+  # --- OpenClaw Gateway（AI Agent 核心）；Ollama 仅 profile offline-ai ---
   ollama:
     profiles: ["offline-ai"]
     image: ollama/ollama:latest
@@ -262,7 +245,6 @@ services:
     restart: "no"
 
   openclaw-gateway:
-    profiles: ["openclaw-legacy"]
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: smart-ledger-go-openclaw-gateway
     env_file:
@@ -286,9 +268,6 @@ services:
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
-    depends_on:
-      gateway-api:
-        condition: service_healthy
     init: true
     restart: unless-stopped
     command:
@@ -315,7 +294,7 @@ services:
       start_period: 40s
 
   openclaw-cli:
-    profiles: ["openclaw-legacy", "cli"]
+    profiles: ["cli", "offline-ai"]
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: smart-ledger-go-openclaw-cli
     network_mode: service:openclaw-gateway

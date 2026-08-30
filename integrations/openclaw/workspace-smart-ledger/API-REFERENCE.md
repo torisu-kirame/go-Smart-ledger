@@ -93,8 +93,10 @@ _账本 CRUD、分录、成员、邀请、备份与 RAG 导出_
 - `PATCH /api/v1/ledgers/{id}/encryption/passphrase-view-policy` — 设置口令查看策略
 - `PUT /api/v1/ledgers/{id}/encryption/passphrase-view-wrap` — 更新口令查看包装
 - `POST /api/v1/ledgers/{id}/encryption/rotate` — 轮换账本加密密钥
-- `POST /api/v1/ledgers/{id}/entries` — 追加简单流水分录
+- `POST /api/v1/ledgers/{id}/entries` — 追加分录；body 必须为 `{"entry":{"tableId":"...","data":{...},"signerId":"..."}}`（优先用工具 `append_ledger_entry`）
 - `POST /api/v1/ledgers/{id}/entries/propose` — 提议分录（多人协作）
+- `POST /api/v1/ledgers` — 创建账本（优先 `create_ledger`）
+- `POST /api/v1/ledgers/{id}/tables` — 创建 Sheet；body `{"name":"...","entrySchema":{"fields":[{"key","label","type","required"}]}}`（优先 `create_ledger_sheet`）
 - `GET /api/v1/ledgers/{id}/events` — 账本事件流（含链上序列）
 - `GET /api/v1/ledgers/{id}/invites` — 账本发出的邀请
 - `POST /api/v1/ledgers/{id}/invites/accept` — 接受账本邀请
@@ -108,7 +110,6 @@ _账本 CRUD、分录、成员、邀请、备份与 RAG 导出_
 - `POST /api/v1/ledgers/{id}/restore/preview` — 恢复备份预览
 - `PATCH /api/v1/ledgers/{id}/storage-location` — 设置账本备份存储位置
 - `GET /api/v1/ledgers/{id}/sync` — 同步账本增量事件
-- `POST /api/v1/ledgers/{id}/tables` — 创建子表
 - `DELETE /api/v1/ledgers/{id}/tables/{tableId}` — 删除子表
 - `PATCH /api/v1/ledgers/{id}/tables/{tableId}` — 更新子表
 - `GET /api/v1/ledgers/{id}/verify` — 校验账本 Merkle 根与链上锚定
@@ -117,13 +118,14 @@ _账本 CRUD、分录、成员、邀请、备份与 RAG 导出_
 
 ### Import
 
-_Excel 导入与模板下载_
+_CSV/Excel 导入_
 
+- `POST /api/v1/ledgers/{id}/import/sheet-csv` — **CSV→Sheet 一站式导入**：JSON `{csv, tableId?, sheetName?}` 或 multipart `file`；无 `tableId` 自动新建 Sheet，有则追加到底部
+- `POST /api/v1/ledgers/{id}/import/adaptive/preview` — 自适应导入预览
+- `POST /api/v1/ledgers/{id}/import/adaptive/commit` — 自适应导入提交
+- `POST /api/v1/ledgers/{id}/import/preview` — 按已有 schema 预览（xlsx/csv）
+- `POST /api/v1/ledgers/{id}/import/commit` — 按已有 schema 提交批量导入
 - `GET /api/v1/import/template` — 下载 Excel 导入模板
-- `POST /api/v1/ledgers/{id}/import/adaptive/commit` — 提交自适应 Excel 导入
-- `POST /api/v1/ledgers/{id}/import/adaptive/preview` — 自适应 Excel 导入预览
-- `POST /api/v1/ledgers/{id}/import/commit` — 提交标准 Excel 导入
-- `POST /api/v1/ledgers/{id}/import/preview` — 标准 Excel 导入预览
 
 ### Accounting
 

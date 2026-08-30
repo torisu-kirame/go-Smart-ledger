@@ -60,6 +60,25 @@ export const AI_SKILLS = [
 请查询预算与分析接口（若有），用 Markdown 给出预算表、执行进度与预警。`,
   },
   {
+    id: 'importTable',
+    icon: 'grid',
+    labelKey: 'assistant.skillImportTable',
+    hintKey: 'assistant.skillImportTableHint',
+    action: 'fill',
+    needsLedger: true,
+    prompt: `请将下面的 Markdown 表格导入当前绑定账本。
+
+硬性要求：
+1. 调用 import_markdown_table（markdown 可省略或只传片段也可——服务端会用用户消息里的完整表）。
+2. 不要传 tableId → 自动新建 Sheet；若用户指定已有 Sheet，再传 tableId 以追加到表底。
+3. 禁止逐行 append_ledger_entry / call_ledger_api .../entries。
+4. 汇报 expectedRows 与 import.imported，二者应一致。
+
+请在下方粘贴完整表格后发送：
+
+`,
+  },
+  {
     id: 'summary',
     icon: 'ledger',
     labelKey: 'assistant.skillSummary',

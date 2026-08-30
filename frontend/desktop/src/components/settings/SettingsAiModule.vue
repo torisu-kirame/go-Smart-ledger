@@ -91,6 +91,28 @@
       <p class="field-hint">{{ t('settings.ai.apiKeyHint') }}</p>
     </div>
 
+    <div class="form-row">
+      <label>{{ t('settings.ai.openclawGateway') }}</label>
+      <input
+        v-model="ai.openclawGateway"
+        type="url"
+        :placeholder="t('settings.ai.openclawGatewayPh')"
+        @change="persistAi"
+      />
+      <p class="field-hint">{{ t('settings.ai.openclawGatewayHint') }}</p>
+    </div>
+
+    <div class="form-row">
+      <label>{{ t('settings.ai.openclawGatewayToken') }}</label>
+      <input
+        v-model="ai.openclawGatewayToken"
+        type="password"
+        autocomplete="off"
+        :placeholder="t('settings.ai.openclawGatewayTokenPh')"
+        @change="persistAi"
+      />
+    </div>
+
     <div class="test-row panel">
       <button
         type="button"

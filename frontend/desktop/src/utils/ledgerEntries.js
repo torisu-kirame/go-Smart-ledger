@@ -104,8 +104,15 @@ export function displayCell(row, field, members = []) {
 
 export function contentColumns(schema) {
   const fields = schema?.fields || []
-  return [
-    { key: '_seq', label: '序号', fixed: true },
-    ...fields.map((f) => ({ key: f.key, label: cellLabel(schema, f.key), field: f })),
-  ]
+  // UI chain sequence — label「#」避免与业务字段「序号」重复显示
+  const cols = [{ key: '_seq', label: '#', fixed: true }]
+  for (const f of fields) {
+    const label = cellLabel(schema, f.key)
+    // hide legacy duplicate 序号 fields created by earlier AI imports
+    if (label === '序号' && (f.key === 'seq' || f.key === '序号' || f.key === 'no' || f.key === 'line_no')) {
+      continue
+    }
+    cols.push({ key: f.key, label, field: f })
+  }
+  return cols
 }

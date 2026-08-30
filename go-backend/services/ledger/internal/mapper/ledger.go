@@ -56,7 +56,8 @@ func CreateOptionsFromReq(req *types.CreateLedgerReq) ledgersvc.CreateOptions {
 			Algo:        req.Encryption.Algo,
 			WrappedKeys: req.Encryption.WrappedKeys,
 		},
-		StorageLocation: req.StorageLocation,
+		StorageLocation:   req.StorageLocation,
+		MultiTableEnabled: req.MultiTableEnabled,
 	}
 }
 

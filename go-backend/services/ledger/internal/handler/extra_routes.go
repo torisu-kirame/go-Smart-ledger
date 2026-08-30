@@ -178,17 +178,22 @@ type importCommitBody struct {
 	SignerID       string                  `json:"signerId"`
 	TableId        string                  `json:"tableId,optional"`
 	Rows           []importxlsx.RowPreview `json:"rows"`
-	AutoAnchor     bool                    `json:"autoAnchor"`
-	AutoBackup     bool                    `json:"autoBackup"`
-	BackupPassword string                  `json:"backupPassword,omitempty"`
+	AutoAnchor     bool                    `json:"autoAnchor,optional"`
+	AutoBackup     bool                    `json:"autoBackup,optional"`
+	BackupPassword string                  `json:"backupPassword,optional"`
 }
 
 func importCommitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := pathvar.Vars(r)["id"]
 		var body importCommitBody
-		if err := httpx.Parse(r, &body); err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
+		raw, err := io.ReadAll(io.LimitReader(r.Body, 16<<20))
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid body"))
+			return
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			httpx.ErrorCtx(r.Context(), w, xerrors.New(400, "invalid json body"))
 			return
 		}
 		if body.SignerID == "" {

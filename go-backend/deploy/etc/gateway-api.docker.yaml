@@ -11,7 +11,14 @@ Upstreams:
   Auth: http://auth-api:28887
   Ledger: http://ledger-api:28888
   Storage: http://storage-api:28890
-  Ai: http://ai-api:28891
+
+OpenClaw:
+  GatewayURL: http://openclaw-gateway:18789
+  GatewayToken: ""
+  AgentModel: openclaw/default
+
+Agent:
+  ConfigPath: /data/agent/config
 
 Cors:
   AllowedOrigins:

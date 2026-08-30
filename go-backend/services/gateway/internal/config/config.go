@@ -14,8 +14,15 @@ type Config struct {
 		Auth    string `json:",default=http://127.0.0.1:28887"`
 		Ledger  string `json:",default=http://127.0.0.1:28888"`
 		Storage string `json:",default=http://127.0.0.1:28890"`
-		Ai      string `json:",default=http://127.0.0.1:28891"`
 	} `json:"Upstreams"`
+	OpenClaw struct {
+		GatewayURL   string `json:",default=http://127.0.0.1:18789"`
+		GatewayToken string `json:",optional"`
+		AgentModel   string `json:",default=openclaw/default"`
+	} `json:"OpenClaw"`
+	Agent struct {
+		ConfigPath string `json:",default=./data/agent/config"`
+	} `json:"Agent"`
 	Discovery struct {
 		Etcd registry.EtcdConfig `json:"Etcd"`
 	} `json:"Discovery"`

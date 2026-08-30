@@ -36,46 +36,65 @@
     </section>
 
     <section v-if="isSimpleLedger" class="detail-card">
-      <h3 class="detail-card__title">多表（F49）</h3>
+      <h3 class="detail-card__title">工作表（Sheet）</h3>
       <p class="field-hint">
-        开启后可在账本内创建多张表（类似 Excel 多 sheet），流水、导入与附件均按表隔离。
+        简单流水账本以 Sheet 组织数据（类似 Excel）。新建账本默认无 Sheet，需自行创建并定义字段。
       </p>
       <template v-if="isCreator">
-        <div class="toggle-row">
-          <span class="toggle-row__text">启用多表</span>
-          <ToggleSwitch
-            v-model="multiTableOn"
-            :disabled="tableSaving"
-            aria-label="启用多表"
-            @update:model-value="onMultiTableToggle"
-          />
-        </div>
-        <template v-if="ledger.multiTableEnabled">
-          <ul class="table-list">
-            <li v-for="t in ledger.tables || []" :key="t.id">
+        <ul v-if="ledger.tables?.length" class="table-list">
+          <li v-for="t in ledger.tables || []" :key="t.id">
+            <div class="table-list__main">
               <strong>{{ t.name }}</strong>
-              <span class="mono muted">{{ t.id }}</span>
               <span class="muted">{{ (t.entrySchema?.fields || []).length }} 列</span>
-            </li>
-          </ul>
-          <div v-if="ledger.tables?.length > 1" class="form-row" style="margin-top: 0.75rem">
-            <label>新表名称</label>
-            <input v-model="newTableName" class="field-sm" placeholder="例如：差旅、采购" />
-            <button
-              type="button"
-              class="btn-primary"
-              style="margin-top: 0.5rem"
-              :disabled="tableSaving || !newTableName.trim()"
-              @click="createTable"
-            >
-              添加表
-            </button>
-          </div>
-          <p v-else class="field-hint">已启用多表。添加第二张表后即可在「流水」页切换表签。</p>
-        </template>
+            </div>
+            <div class="table-list__actions">
+              <button type="button" class="btn-ghost btn-sm" :disabled="tableSaving" @click="openEditSheet(t)">
+                编辑字段
+              </button>
+              <button type="button" class="btn-ghost btn-sm" :disabled="tableSaving" @click="removeSheet(t)">
+                删除
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="field-hint">暂无 Sheet。可在下方创建，或前往「流水」页创建。</p>
+        <div class="form-row" style="margin-top: 0.75rem">
+          <label>新 Sheet 名称</label>
+          <input v-model="newTableName" class="field-sm" placeholder="例如：差旅、采购" />
+        </div>
+        <div class="form-row">
+          <label>字段</label>
+          <SchemaFieldsEditor v-model="newTableFields" :disabled="tableSaving" />
+        </div>
+        <button
+          type="button"
+          class="btn-primary"
+          :disabled="tableSaving || !newTableName.trim()"
+          @click="createTable"
+        >
+          添加 Sheet
+        </button>
       </template>
-      <p v-else class="field-hint">仅创建者可修改多表设置。</p>
+      <p v-else class="field-hint">仅创建者可管理 Sheet 与字段。</p>
     </section>
+
+    <div v-if="showSheetEdit" class="modal" @click.self="closeEditSheet">
+      <form class="modal-card sheet-edit-modal" @submit.prevent="saveEditSheet">
+        <h3>编辑 Sheet「{{ editSheetName }}」</h3>
+        <div class="form-row">
+          <label>名称</label>
+          <input v-model="editSheetName" required maxlength="64" />
+        </div>
+        <div class="form-row">
+          <label>字段</label>
+          <SchemaFieldsEditor v-model="editSheetFields" :disabled="tableSaving" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" @click="closeEditSheet">取消</button>
+          <button type="submit" class="btn-primary" :disabled="tableSaving">保存</button>
+        </div>
+      </form>
+    </div>
 
     <section class="detail-card">
       <h3 class="detail-card__title">安全与协作</h3>
@@ -288,6 +307,7 @@ import { useAuthStore } from '../../stores/auth'
 import AppSelect from '../../components/AppSelect.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import ToggleSwitch from '../../components/ToggleSwitch.vue'
+import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 import { clearInfoUnlockSession } from '../../composables/useLedgerDetail'
 import {
@@ -302,7 +322,7 @@ import {
   wrapPassphraseForLoginView,
   unwrapPassphraseForLoginView,
 } from '../../utils/e2eCrypto'
-import { DEFAULT_ENTRY_SCHEMA } from '../../utils/entrySchema'
+import { blankFieldRows, normalizeSchemaFields } from '../../utils/entrySchema'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -320,8 +340,12 @@ const showArchiveConfirm = ref(false)
 const confirmPassword = ref('')
 const archiving = ref(false)
 const tableSaving = ref(false)
-const multiTableOn = ref(false)
 const newTableName = ref('')
+const newTableFields = ref(blankFieldRows(3))
+const showSheetEdit = ref(false)
+const editSheetId = ref('')
+const editSheetName = ref('')
+const editSheetFields = ref([])
 
 const showPassphraseModal = ref(false)
 const viewStep = ref('password')
@@ -374,44 +398,86 @@ watch(
   { immediate: true }
 )
 
-watch(
-  () => ledger.value?.multiTableEnabled,
-  (v) => {
-    multiTableOn.value = !!v
-  },
-  { immediate: true }
-)
-
-async function onMultiTableToggle(enabled) {
+async function createTable() {
+  const name = newTableName.value.trim()
+  const fields = normalizeSchemaFields(newTableFields.value)
+  if (!name) return
+  if (!fields.length) {
+    error.value = '请至少定义 1 个字段'
+    return
+  }
   tableSaving.value = true
   error.value = ''
   try {
-    const updated = await api.setLedgerMultiTable(ledgerId.value, enabled)
+    if (!ledger.value?.multiTableEnabled) {
+      await api.setLedgerMultiTable(ledgerId.value, true)
+    }
+    const updated = await api.createLedgerTable(ledgerId.value, {
+      name,
+      entrySchema: { templateId: 'custom', fields },
+    })
     await applyLedgerUpdate(updated)
-    msg.value = enabled ? '已启用多表' : '已关闭多表'
+    newTableName.value = ''
+    newTableFields.value = blankFieldRows(3)
+    msg.value = `已添加 Sheet「${name}」`
   } catch (e) {
-    multiTableOn.value = !enabled
-    error.value = e instanceof ApiError ? e.message : '操作失败'
+    error.value = e instanceof ApiError ? e.message : '添加失败'
   } finally {
     tableSaving.value = false
   }
 }
 
-async function createTable() {
-  const name = newTableName.value.trim()
-  if (!name) return
+function openEditSheet(t) {
+  editSheetId.value = t.id
+  editSheetName.value = t.name || ''
+  editSheetFields.value = (t.entrySchema?.fields || []).map((f) => ({ ...f }))
+  if (!editSheetFields.value.length) editSheetFields.value = blankFieldRows(1)
+  showSheetEdit.value = true
+}
+
+function closeEditSheet() {
+  if (tableSaving.value) return
+  showSheetEdit.value = false
+}
+
+async function saveEditSheet() {
+  const name = editSheetName.value.trim()
+  const fields = normalizeSchemaFields(editSheetFields.value)
+  if (!name) {
+    error.value = '请填写名称'
+    return
+  }
+  if (!fields.length) {
+    error.value = '请至少定义 1 个字段'
+    return
+  }
   tableSaving.value = true
   error.value = ''
   try {
-    const updated = await api.createLedgerTable(ledgerId.value, {
+    const updated = await api.updateLedgerTable(ledgerId.value, editSheetId.value, {
       name,
-      entrySchema: DEFAULT_ENTRY_SCHEMA,
+      entrySchema: { templateId: 'custom', fields },
     })
     await applyLedgerUpdate(updated)
-    newTableName.value = ''
-    msg.value = `已添加表「${name}」`
+    showSheetEdit.value = false
+    msg.value = `已更新「${name}」`
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : '添加失败'
+    error.value = e instanceof ApiError ? e.message : '保存失败'
+  } finally {
+    tableSaving.value = false
+  }
+}
+
+async function removeSheet(t) {
+  if (!confirm(`确定删除 Sheet「${t.name}」？有流水的表无法删除。`)) return
+  tableSaving.value = true
+  error.value = ''
+  try {
+    const updated = await api.deleteLedgerTable(ledgerId.value, t.id)
+    await applyLedgerUpdate(updated)
+    msg.value = `已删除「${t.name}」`
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '删除失败'
   } finally {
     tableSaving.value = false
   }
@@ -728,5 +794,48 @@ async function doArchive() {
 .btn-danger:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+.table-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.table-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  flex-wrap: wrap;
+}
+.table-list__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.table-list__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+.btn-sm {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
+}
+.sheet-edit-modal {
+  width: min(100%, 32rem);
+}
+.form-row {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.form-row label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 </style>

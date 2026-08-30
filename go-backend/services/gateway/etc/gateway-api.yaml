@@ -1,6 +1,7 @@
 Name: gateway-api
 Host: 0.0.0.0
 Port: 28080
+Timeout: 600000
 
 Auth:
   AccessSecret: smart-ledger-access-secret-change-me
@@ -9,7 +10,14 @@ Upstreams:
   Auth: http://127.0.0.1:28887
   Ledger: http://127.0.0.1:28888
   Storage: http://127.0.0.1:28890
-  Ai: http://127.0.0.1:28891
+
+OpenClaw:
+  GatewayURL: http://127.0.0.1:18789
+  GatewayToken: ""
+  AgentModel: openclaw/default
+
+Agent:
+  ConfigPath: ../../data/agent/config
 
 Cors:
   AllowedOrigins:

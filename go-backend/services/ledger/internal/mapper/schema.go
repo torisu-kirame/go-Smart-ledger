@@ -24,6 +24,18 @@ func EntrySchemaToResp(s domain.EntrySchema) types.EntrySchemaResp {
 }
 
 func EntrySchemaFromReq(s types.EntrySchemaReq) domain.EntrySchema {
+	fields := make([]domain.EntryFieldDef, len(s.Fields))
+	for i, f := range s.Fields {
+		fields[i] = domain.EntryFieldDef{
+			Key:      f.Key,
+			Label:    f.Label,
+			Type:     domain.FieldType(f.Type),
+			Required: f.Required,
+		}
+	}
+	if s.TemplateId == domain.TemplateCustom {
+		return domain.EntrySchema{TemplateID: domain.TemplateCustom, Fields: fields}
+	}
 	if len(s.Fields) == 0 && s.TemplateId == "" {
 		return domain.EntrySchema{}
 	}
@@ -34,15 +46,6 @@ func EntrySchemaFromReq(s types.EntrySchemaReq) domain.EntrySchema {
 			}
 		}
 		return domain.DefaultEntrySchema()
-	}
-	fields := make([]domain.EntryFieldDef, len(s.Fields))
-	for i, f := range s.Fields {
-		fields[i] = domain.EntryFieldDef{
-			Key:      f.Key,
-			Label:    f.Label,
-			Type:     domain.FieldType(f.Type),
-			Required: f.Required,
-		}
 	}
 	return domain.EntrySchema{TemplateID: s.TemplateId, Fields: fields}
 }
