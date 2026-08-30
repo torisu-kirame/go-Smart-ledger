@@ -95,13 +95,11 @@ export const api = {
   listLedgers: () => request('/ledgers'),
   getLedger: (id) => request(`/ledgers/${id}`),
   createLedger: (data) => {
-    const mode = data.bookkeepingMode || 'simple'
-    const body = { ...data, bookkeepingMode: mode }
-    if (mode === 'professional') {
-      body.entrySchema = { templateId: 'professional', fields: [] }
-      body.approvalPolicy = { enabled: false, threshold: 1 }
-    } else {
-      body.entrySchema = data.entrySchema || { templateId: 'default' }
+    const body = {
+      ...data,
+      bookkeepingMode: 'simple',
+      entrySchema: data.entrySchema || { templateId: 'custom', fields: [] },
+      multiTableEnabled: true,
     }
     return request('/ledgers', { method: 'POST', body: JSON.stringify(body) })
   },

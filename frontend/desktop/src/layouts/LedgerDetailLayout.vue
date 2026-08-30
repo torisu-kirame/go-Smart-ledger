@@ -12,7 +12,6 @@
               <span :class="['badge', ledger.type === 'multi' ? 'badge-multi' : 'badge-private']">
                 {{ ledger.type === 'multi' ? '多人' : '私人' }}
               </span>
-              <span class="badge badge-mode">{{ bookkeepingModeLabel(bookkeepingMode) }}</span>
               <span class="ledger-hero__meta-item mono">序号 {{ ledger.latestSeq }}</span>
               <span
                 :class="['badge', ledger.anchorStatus === 'synced' ? 'badge-ok' : 'badge-pending']"
@@ -32,20 +31,11 @@
             详情
           </router-link>
           <router-link
-            v-if="isSimpleLedger"
             :to="`${basePath}/view`"
             class="ledger-tab"
             :class="{ active: activeTab === 'view' }"
           >
             流水
-          </router-link>
-          <router-link
-            v-if="isProfessionalLedger"
-            :to="`${basePath}/accounting/view`"
-            class="ledger-tab"
-            :class="{ active: activeTab === 'accounting' }"
-          >
-            财务
           </router-link>
           <router-link
             :to="`${basePath}/import`"
@@ -77,7 +67,6 @@ import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import { provideLedgerDetail } from '../composables/useLedgerDetail'
 import { useI18n } from '../composables/useI18n'
-import { bookkeepingModeLabel } from '../utils/bookkeepingMode'
 
 const route = useRoute()
 const router = useRouter()
@@ -85,15 +74,13 @@ const { t } = useI18n()
 const ledgerId = computed(() => route.params.id)
 const basePath = computed(() => `/ledgers/${ledgerId.value}`)
 
-const { ledger, loading, bookkeepingMode, isSimpleLedger, isProfessionalLedger } =
-  provideLedgerDetail(ledgerId)
+const { ledger, loading } = provideLedgerDetail(ledgerId)
 
 const activeTab = computed(() => {
   const p = route.path
   if (p.endsWith('/settings')) return 'settings'
-  if (p.includes('/accounting')) return 'accounting'
   if (p.endsWith('/import')) return 'import'
-  if (p.endsWith('/view') && !p.includes('/accounting')) return 'view'
+  if (p.endsWith('/view')) return 'view'
   return 'overview'
 })
 
@@ -103,7 +90,6 @@ const crumbs = computed(() => {
     overview: '详情',
     view: '流水',
     import: '导入',
-    accounting: '财务',
     settings: '设置',
   }
   const suffix = suffixMap[activeTab.value] || '详情'
@@ -125,18 +111,13 @@ watch(
     if (!ledger.value) return
     const p = route.path
     const base = basePath.value
-    if (isProfessionalLedger.value && p === `${base}/view`) {
-      router.replace(`${base}/accounting/view`)
-    } else if (isSimpleLedger.value && p.includes('/accounting')) {
+    if (p.includes('/accounting')) {
       router.replace(`${base}/view`)
     } else if (p.endsWith('/templates')) {
       router.replace(`${base}/view`)
-    } else if (isProfessionalLedger.value && (p.endsWith('/accounting') || p.endsWith('/accounting/'))) {
-      router.replace(`${base}/accounting/view`)
     }
   }
 )
-
 </script>
 
 <style scoped>
@@ -173,11 +154,6 @@ watch(
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
-}
-.badge-mode {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 .ledger-hero__meta-item {
   font-size: 0.8125rem;

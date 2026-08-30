@@ -43,10 +43,6 @@
         <dd>{{ ledger.type === 'multi' ? '多人账本' : '私人账本' }}</dd>
       </div>
       <div class="info-row">
-        <dt>记账方式</dt>
-        <dd>{{ bookkeepingModeLabel(bookkeepingMode) }}</dd>
-      </div>
-      <div class="info-row">
         <dt>创建者</dt>
         <dd class="mono">{{ ledger.creatorId }}</dd>
       </div>
@@ -130,10 +126,9 @@ import {
   getInfoUnlockSession,
   setInfoUnlockSession,
 } from '../../composables/useLedgerDetail'
-import { bookkeepingModeLabel } from '../../utils/bookkeepingMode'
 
 const auth = useAuthStore()
-const { ledgerId, ledger, groupKey, error, msg, bookkeepingMode, isSimpleLedger } =
+const { ledgerId, ledger, groupKey, error, msg, isSimpleLedger } =
   useLedgerDetail()
 
 const passphrase = ref('')

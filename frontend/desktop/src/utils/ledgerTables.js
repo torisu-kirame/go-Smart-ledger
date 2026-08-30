@@ -4,9 +4,12 @@ export const DEFAULT_TABLE_ID = 'default'
 
 export function ledgerTables(ledger, templates = []) {
   if (ledger?.multiTableEnabled) {
-    return Array.isArray(ledger.tables) ? ledger.tables : []
+    const list = Array.isArray(ledger.tables) ? [...ledger.tables] : []
+    return list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   }
-  if (ledger?.tables?.length) return ledger.tables
+  if (ledger?.tables?.length) {
+    return [...ledger.tables].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  }
   return [
     {
       id: DEFAULT_TABLE_ID,

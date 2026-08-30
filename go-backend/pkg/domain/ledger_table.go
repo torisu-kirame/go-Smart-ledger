@@ -22,7 +22,9 @@ type LedgerTable struct {
 	Name        string      `json:"name"`
 	EntrySchema EntrySchema `json:"entrySchema"`
 	SortOrder   int         `json:"sortOrder"`
-	CreatedAt   time.Time   `json:"createdAt"`
+	// RowOrder is display order of EntryAdded seqs for this sheet (omit = newest-first).
+	RowOrder  []uint64  `json:"rowOrder,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // NormalizeLedgerTables ensures Tables slice and EntrySchema stay aligned for legacy meta.

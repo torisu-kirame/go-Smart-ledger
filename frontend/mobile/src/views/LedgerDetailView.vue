@@ -16,10 +16,6 @@
         <van-cell-group inset title="概览">
           <van-cell title="账本 ID" :value="ledger.id" value-class="mono" />
           <van-cell title="类型" :value="ledger.type === 'multi' ? '多人' : '私人'" />
-          <van-cell
-            title="记账方式"
-            :value="ledger.bookkeepingMode === 'professional' ? '专业复式' : '简单流水'"
-          />
           <van-cell title="最新序号" :value="String(ledger.latestSeq ?? 0)" />
           <van-cell title="锚定状态">
             <template #value>
@@ -36,7 +32,7 @@
           />
         </van-cell-group>
 
-        <van-cell-group v-if="isSimple" inset title="记一笔">
+        <van-cell-group inset title="记一笔">
           <van-field
             v-for="f in entryFields"
             :key="f.key"
@@ -89,7 +85,6 @@ const entryBusy = ref(false)
 const entryForm = reactive({})
 
 const ledgerId = computed(() => route.params.id)
-const isSimple = computed(() => ledger.value?.bookkeepingMode !== 'professional')
 
 const entryFields = computed(() => {
   const fields = ledger.value?.entrySchema?.fields

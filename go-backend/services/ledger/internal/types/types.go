@@ -70,6 +70,7 @@ type LedgerTableResp struct {
 	Name        string          `json:"name"`
 	EntrySchema EntrySchemaResp `json:"entrySchema"`
 	SortOrder   int             `json:"sortOrder"`
+	RowOrder    []uint64        `json:"rowOrder,omitempty"`
 	CreatedAt   string          `json:"createdAt,omitempty"`
 }
 

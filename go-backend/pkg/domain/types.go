@@ -153,6 +153,9 @@ const (
 	EventTableCreated           = "TableCreated"
 	EventTableUpdated           = "TableUpdated"
 	EventTableDeleted           = "TableDeleted"
-)
-// Collaboration events: EntryProposed, EntryApproved, EntryRejected,
+	EventTablesReordered        = "TablesReordered"
+	EventEntryVoided            = "EntryVoided"
+	EventEntriesReordered       = "EntriesReordered"
+	EventSheetEditCommitted     = "SheetEditCommitted"
+)// Collaboration events: EntryProposed, EntryApproved, EntryRejected,
 // MemberInvited, MemberJoined, GroupKeyRotated — see collaboration.go

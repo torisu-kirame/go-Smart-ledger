@@ -66,14 +66,6 @@
             </van-radio-group>
           </template>
         </van-field>
-        <van-field label="记账">
-          <template #input>
-            <van-radio-group v-model="form.bookkeepingMode" direction="vertical">
-              <van-radio name="simple">简单流水</van-radio>
-              <van-radio name="professional">专业复式</van-radio>
-            </van-radio-group>
-          </template>
-        </van-field>
       </van-cell-group>
     </van-dialog>
   </div>
@@ -100,13 +92,11 @@ const inviteBusy = ref(false)
 const form = reactive({
   name: '',
   type: 'private',
-  bookkeepingMode: 'simple',
 })
 
 function ledgerLabel(l) {
-  const mode = l.bookkeepingMode === 'professional' ? '复式' : '流水'
   const type = l.type === 'multi' ? '多人' : '私人'
-  return `${type} · ${mode} · 序号 ${l.latestSeq ?? 0}`
+  return `${type} · 流水 · 序号 ${l.latestSeq ?? 0}`
 }
 
 function inviteName(inv) {
@@ -160,8 +150,9 @@ async function beforeCreateClose(action) {
     await api.createLedger({
       name: form.name.trim(),
       type: form.type,
-      bookkeepingMode: form.bookkeepingMode,
-      entrySchema: { templateId: 'default' },
+      bookkeepingMode: 'simple',
+      entrySchema: { templateId: 'custom', fields: [] },
+      multiTableEnabled: true,
       creatorId: auth.user?.id,
     })
     showSuccessToast('创建成功')

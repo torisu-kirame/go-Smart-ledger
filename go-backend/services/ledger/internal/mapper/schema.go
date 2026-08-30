@@ -65,6 +65,7 @@ func TablesToResp(tables []domain.LedgerTable) []types.LedgerTableResp {
 			Name:        t.Name,
 			EntrySchema: EntrySchemaToResp(domain.ResolveEntrySchema(t.EntrySchema)),
 			SortOrder:   t.SortOrder,
+			RowOrder:    append([]uint64(nil), t.RowOrder...),
 			CreatedAt:   created,
 		}
 	}

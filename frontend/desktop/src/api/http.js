@@ -194,15 +194,11 @@ export const api = {
   getLedger: (id) => request(`/ledgers/${id}`),
   ragExport: (id) => request(`/ledgers/${encodeURIComponent(id)}/rag-export`),
   createLedger: (data) => {
-    const mode = data.bookkeepingMode || 'simple'
-    const body = { ...data, bookkeepingMode: mode }
-    if (mode === 'professional') {
-      body.entrySchema = { templateId: 'professional', fields: [] }
-      body.approvalPolicy = { enabled: false, threshold: 1 }
-      delete body.multiTableEnabled
-    } else {
-      body.entrySchema = data.entrySchema || { templateId: 'custom', fields: [] }
-      body.multiTableEnabled = true
+    const body = {
+      ...data,
+      bookkeepingMode: 'simple',
+      entrySchema: data.entrySchema || { templateId: 'custom', fields: [] },
+      multiTableEnabled: true,
     }
     return request('/ledgers', { method: 'POST', body: JSON.stringify(body) })
   },
@@ -232,6 +228,21 @@ export const api = {
     }),
   deleteLedgerTable: (id, tableId) =>
     request(`/ledgers/${id}/tables/${encodeURIComponent(tableId)}`, { method: 'DELETE' }),
+  reorderLedgerTables: (id, tableIds) =>
+    request(`/ledgers/${id}/tables/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ tableIds }),
+    }),
+  reorderLedgerEntries: (id, tableId, rowOrder) =>
+    request(`/ledgers/${id}/tables/${encodeURIComponent(tableId)}/row-order`, {
+      method: 'PUT',
+      body: JSON.stringify({ rowOrder }),
+    }),
+  commitSheetEdit: (id, tableId, body) =>
+    request(`/ledgers/${id}/tables/${encodeURIComponent(tableId)}/sheet-edit`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   proposeEntry: (id, entry) =>
     request(`/ledgers/${id}/entries/propose`, {
       method: 'POST',
@@ -352,27 +363,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  getAccountingChart: (id) => request(`/ledgers/${id}/accounting/chart`),
-  putAccountingChart: (id, chart) =>
-    request(`/ledgers/${id}/accounting/chart`, { method: 'PUT', body: JSON.stringify(chart) }),
-  listAccountingJournals: (id) => request(`/ledgers/${id}/accounting/journals`),
-  postAccountingJournal: (id, journal) =>
-    request(`/ledgers/${id}/accounting/journals`, { method: 'POST', body: JSON.stringify(journal) }),
-  listAccountingPeriods: (id) => request(`/ledgers/${id}/accounting/periods`),
-  closeAccountingPeriod: (id, period) =>
-    request(`/ledgers/${id}/accounting/periods/${encodeURIComponent(period)}/close`, {
-      method: 'POST',
-      body: '{}',
-    }),
-  reopenAccountingPeriod: (id, period) =>
-    request(`/ledgers/${id}/accounting/periods/${encodeURIComponent(period)}/reopen`, {
-      method: 'POST',
-      body: '{}',
-    }),
-  getAccountingReports: (id, period = '') => {
-    const q = period ? `?period=${encodeURIComponent(period)}` : ''
-    return request(`/ledgers/${id}/accounting/reports${q}`)
-  },
   listAccountingAttachments: (id, { entrySeq = 0, tableId = '' } = {}) => {
     const params = new URLSearchParams()
     if (entrySeq) params.set('entrySeq', String(entrySeq))
@@ -429,61 +419,4 @@ export const api = {
     URL.revokeObjectURL(url)
     return filename
   },
-  listBankStatements: (id) => request(`/ledgers/${id}/accounting/bank-statements`),
-  importBankStatement: (id, file, accountCode = '1002') => {
-    const fd = new FormData()
-    fd.append('file', file)
-    if (accountCode) fd.append('accountCode', accountCode)
-    return request(`/ledgers/${id}/accounting/bank-statements/import`, { method: 'POST', body: fd })
-  },
-  matchBankLine: (id, stmtId, lineId, entrySeq) =>
-    request(`/ledgers/${id}/accounting/bank-statements/${encodeURIComponent(stmtId)}/match`, {
-      method: 'POST',
-      body: JSON.stringify({ lineId, entrySeq }),
-    }),
-  getAccountingBudget: (id, period) =>
-    request(`/ledgers/${id}/accounting/budget?period=${encodeURIComponent(period)}`),
-  putAccountingBudget: (id, body) =>
-    request(`/ledgers/${id}/accounting/budget`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
-  getAccountingBudgetAnalysis: (id, period) =>
-    request(
-      `/ledgers/${id}/accounting/budget/analysis?period=${encodeURIComponent(period)}`
-    ),
-  getAccountingAging: (id, { asOf = '', receivableAccounts = '', payableAccounts = '' } = {}) => {
-    const params = new URLSearchParams()
-    if (asOf) params.set('asOf', asOf)
-    if (receivableAccounts) params.set('receivableAccounts', receivableAccounts)
-    if (payableAccounts) params.set('payableAccounts', payableAccounts)
-    const q = params.toString() ? `?${params}` : ''
-    return request(`/ledgers/${id}/accounting/aging${q}`)
-  },
-  getAccountingCurrency: (id) => request(`/ledgers/${id}/accounting/currency`),
-  putAccountingCurrency: (id, body) =>
-    request(`/ledgers/${id}/accounting/currency`, { method: 'PUT', body: JSON.stringify(body) }),
-  getAccountingFxRates: (id, period) =>
-    request(`/ledgers/${id}/accounting/currency/fx-rates?period=${encodeURIComponent(period)}`),
-  putAccountingFxRates: (id, body) =>
-    request(`/ledgers/${id}/accounting/currency/fx-rates`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
-  getAccountingFCBalances: (id) => request(`/ledgers/${id}/accounting/currency/balances`),
-  getAccountingRevaluation: (id, period) =>
-    request(
-      `/ledgers/${id}/accounting/currency/revaluation?period=${encodeURIComponent(period)}`
-    ),
-  getAccountingTaxPresets: (id) => request(`/ledgers/${id}/accounting/tax/presets`),
-  getAccountingTax: (id) => request(`/ledgers/${id}/accounting/tax`),
-  putAccountingTax: (id, body) =>
-    request(`/ledgers/${id}/accounting/tax`, { method: 'PUT', body: JSON.stringify(body) }),
-  applyAccountingTaxPreset: (id, presetId) =>
-    request(`/ledgers/${id}/accounting/tax/apply-preset`, {
-      method: 'POST',
-      body: JSON.stringify({ presetId }),
-    }),
-  getAccountingTaxReport: (id, period) =>
-    request(`/ledgers/${id}/accounting/tax/report?period=${encodeURIComponent(period)}`),
 }

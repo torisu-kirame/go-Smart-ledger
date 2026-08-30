@@ -48,51 +48,8 @@ const routes = [
             component: () => import('../views/ledger/LedgerImportView.vue'),
           },
           {
-            path: 'accounting',
-            component: () => import('../views/ledger/LedgerAccountingLayout.vue'),
-            children: [
-              { path: '', redirect: (to) => `${to.path}/view` },
-              {
-                path: 'view',
-                component: () => import('../views/ledger/LedgerAccountingBrowseView.vue'),
-              },
-              {
-                path: 'coa',
-                component: () => import('../views/ledger/LedgerAccountingCoaView.vue'),
-              },
-              {
-                path: 'period',
-                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
-              },
-              {
-                path: 'report',
-                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
-              },
-              {
-                path: 'attach',
-                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
-              },
-              {
-                path: 'bank',
-                component: () => import('../views/ledger/LedgerAccountingOpsView.vue'),
-              },
-              {
-                path: 'budget',
-                component: () => import('../views/ledger/LedgerAccountingBudgetView.vue'),
-              },
-              {
-                path: 'aging',
-                component: () => import('../views/ledger/LedgerAccountingAgingView.vue'),
-              },
-              {
-                path: 'currency',
-                component: () => import('../views/ledger/LedgerAccountingCurrencyView.vue'),
-              },
-              {
-                path: 'tax',
-                component: () => import('../views/ledger/LedgerAccountingTaxView.vue'),
-              },
-            ],
+            path: 'accounting/:pathMatch(.*)*',
+            redirect: (to) => `/ledgers/${to.params.id}/view`,
           },
           {
             path: 'templates',

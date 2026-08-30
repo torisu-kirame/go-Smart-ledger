@@ -94,7 +94,7 @@ export const AI_SKILLS = [
     hintKey: 'assistant.skillReportHint',
     action: 'prompt',
     needsLedger: true,
-    prompt: `请生成或解读当前账本的财务报表（若为专业记账模式请调用报表工具）。用 Markdown 呈现关键科目与结论，并说明数据来源。`,
+    prompt: `请汇总当前账本流水要点，用 Markdown 呈现关键结论，并说明数据来源。`,
   },
   {
     id: 'export',

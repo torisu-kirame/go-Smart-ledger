@@ -11,17 +11,27 @@
 
     <nav v-if="hasSheets" class="table-tabs" aria-label="账本表">
       <button
-        v-for="t in tables"
+        v-for="(t, ti) in tables"
         :key="t.id"
         type="button"
         class="table-tab"
-        :class="{ active: activeTableId === t.id }"
-        @click="activeTableId = t.id"
+        :class="{
+          active: activeTableId === t.id,
+          'table-tab--dragging': sheetDragFrom === ti,
+          'table-tab--drag-over': sheetDragOver === ti,
+        }"
+        :draggable="isCreator && tables.length > 1 && !editMode"
+        @click="onSheetTabClick(t.id)"
+        @dragstart="onSheetDragStart($event, ti)"
+        @dragover.prevent="onSheetDragOver(ti)"
+        @dragleave="onSheetDragLeave(ti)"
+        @drop.prevent="onSheetDrop(ti)"
+        @dragend="onSheetDragEnd"
       >
         {{ t.name }}
       </button>
       <button
-        v-if="isCreator"
+        v-if="isCreator && !editMode"
         type="button"
         class="table-tab table-tab--add"
         title="新建 Sheet"
@@ -31,13 +41,31 @@
         新建 Sheet
       </button>
       <button
-        v-if="isCreator && activeTable"
+        v-if="isCreator && activeTable && !editMode"
         type="button"
         class="table-tab table-tab--ghost"
         title="编辑当前 Sheet 字段"
         @click="openSheetModal(activeTable)"
       >
         编辑字段
+      </button>
+      <button
+        v-if="canEditSheet && !editMode"
+        type="button"
+        class="table-tab table-tab--edit"
+        title="启用表格编辑模式"
+        @click="enterEditMode"
+      >
+        编辑表格
+      </button>
+      <button
+        v-if="editMode"
+        type="button"
+        class="table-tab table-tab--ghost"
+        title="退出编辑模式"
+        @click="requestExitEdit"
+      >
+        退出编辑
       </button>
     </nav>
 
@@ -63,18 +91,26 @@
       :events="events"
       :schema="schema"
       :table-id="activeTableId"
+      :row-order="activeRowOrder"
       :members="memberOptions"
       :group-key="groupKey"
       :loading="contentLoading"
-    />
-
-    <LedgerTableAttachments
-      v-if="isSimpleLedger && hasSheets"
-      :ledger-id="ledgerId"
-      :table-id="activeTableId"
+      :edit-mode="editMode"
+      :draft-rows="editMode ? draftRows : null"
+      :draft-fields="editMode ? draftFields : null"
+      :saving="editSaving"
+      :can-reorder-rows="canEditSheet"
+      @add-column="onAddColumn"
+      @add-row="onAddRow"
+      @delete-row="onDeleteRow"
+      @save="saveEditMode"
+      @dirty="editDirty = true"
+      @reorder-rows="onReorderRows"
+      @update-cell="onUpdateCell"
     />
 
     <button
+      v-if="!editMode"
       type="button"
       class="fab-entry btn-primary"
       :disabled="!canAddEntry || busy"
@@ -118,6 +154,21 @@
         </div>
       </form>
     </div>
+
+    <div v-if="showSaveConfirm" class="modal" @click.self="showSaveConfirm = false">
+      <div class="modal-card confirm-modal">
+        <h3>保存更改？</h3>
+        <p class="muted">编辑内容尚未保存。是否保存并上链后再退出？</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" :disabled="editSaving" @click="discardEdit">
+            不保存
+          </button>
+          <button type="button" class="btn-primary" :disabled="editSaving" @click="saveEditMode">
+            {{ editSaving ? '保存中…' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -128,10 +179,10 @@ import AppIcon from '../../components/AppIcon.vue'
 import EntryFormFields from '../../components/EntryFormFields.vue'
 import LedgerContentPanel from '../../components/LedgerContentPanel.vue'
 import SchemaFieldsEditor from '../../components/SchemaFieldsEditor.vue'
-import LedgerTableAttachments from '../../components/ledger/LedgerTableAttachments.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useLedgerDetail } from '../../composables/useLedgerDetail'
 import { blankFieldRows, emptyEntryData, normalizeSchemaFields } from '../../utils/entrySchema'
+import { buildEntryRows } from '../../utils/ledgerEntries'
 import {
   encryptEntryData,
   saveLocalGroupKey,
@@ -148,7 +199,6 @@ const {
   schema,
   activeTableId,
   tables,
-  isSimpleLedger,
   memberOptions,
   error,
   msg,
@@ -168,6 +218,18 @@ const sheetForm = reactive({
   fields: blankFieldRows(3),
 })
 
+const editMode = ref(false)
+const editDirty = ref(false)
+const editSaving = ref(false)
+const showSaveConfirm = ref(false)
+const draftRows = ref([])
+const draftFields = ref([])
+const baselineSnapshot = ref('')
+let draftKeySeq = 0
+
+const sheetDragFrom = ref(-1)
+const sheetDragOver = ref(-1)
+
 const groupKeyReady = computed(() => {
   if (!ledger.value?.encryption?.enabled) return true
   return !!groupKey.value
@@ -175,8 +237,10 @@ const groupKeyReady = computed(() => {
 const isCreator = computed(() => ledger.value?.creatorId === auth.user?.id)
 const hasSheets = computed(() => (tables.value?.length || 0) > 0)
 const activeTable = computed(() => tables.value.find((t) => t.id === activeTableId.value) || null)
+const activeRowOrder = computed(() => activeTable.value?.rowOrder || null)
 const schemaReady = computed(() => (schema.value?.fields || []).length > 0)
 const canAddEntry = computed(() => groupKeyReady.value && hasSheets.value && schemaReady.value)
+const canEditSheet = computed(() => groupKeyReady.value && hasSheets.value && !!auth.user?.id)
 const entryButtonTitle = computed(() => {
   if (!hasSheets.value) return '请先创建 Sheet'
   if (!schemaReady.value) return '请先为 Sheet 添加字段'
@@ -203,6 +267,288 @@ watch(
   },
   { immediate: true }
 )
+
+function snapshotDraft() {
+  return JSON.stringify({
+    fields: draftFields.value,
+    rows: draftRows.value.map((r) => ({
+      seq: r.seq || 0,
+      cells: r.cells,
+      locked: !!r.locked,
+    })),
+  })
+}
+
+async function enterEditMode() {
+  if (!canEditSheet.value) return
+  const fields = (schema.value?.fields || []).map((f) => ({ ...f }))
+  draftFields.value = fields
+  const built = await buildEntryRows(
+    events.value,
+    schema.value,
+    groupKey.value,
+    activeTableId.value,
+    activeRowOrder.value
+  )
+  draftRows.value = built.map((r) => ({
+    _key: r.seq != null ? `s-${r.seq}` : `n-${++draftKeySeq}`,
+    seq: r.seq,
+    locked: !!r.locked,
+    cells: { ...(r.cells || {}) },
+    _origCells: { ...(r.cells || {}) },
+  }))
+  baselineSnapshot.value = snapshotDraft()
+  editDirty.value = false
+  editMode.value = true
+  showSaveConfirm.value = false
+}
+
+function discardEdit() {
+  editMode.value = false
+  editDirty.value = false
+  showSaveConfirm.value = false
+  draftRows.value = []
+  draftFields.value = []
+  baselineSnapshot.value = ''
+}
+
+function requestExitEdit() {
+  if (!editMode.value) return
+  if (editDirty.value || snapshotDraft() !== baselineSnapshot.value) {
+    showSaveConfirm.value = true
+    return
+  }
+  discardEdit()
+}
+
+function onSheetTabClick(id) {
+  if (editMode.value) {
+    if (id === activeTableId.value) return
+    requestExitEdit()
+    return
+  }
+  activeTableId.value = id
+}
+
+function onAddColumn() {
+  const n = draftFields.value.length + 1
+  const key = `field_${Date.now().toString(36)}_${n}`
+  draftFields.value.push({
+    key,
+    label: `字段${n}`,
+    type: 'text',
+    required: false,
+  })
+  for (const row of draftRows.value) {
+    if (!row.locked) row.cells[key] = ''
+  }
+  editDirty.value = true
+}
+
+function onAddRow() {
+  const cells = {}
+  for (const f of draftFields.value) cells[f.key] = ''
+  draftRows.value.push({
+    _key: `n-${++draftKeySeq}`,
+    seq: null,
+    locked: false,
+    cells,
+    _isNew: true,
+  })
+  editDirty.value = true
+}
+
+function onDeleteRow(ri) {
+  if (ri < 0 || ri >= draftRows.value.length) return
+  draftRows.value.splice(ri, 1)
+  editDirty.value = true
+}
+
+function onUpdateCell({ key, fieldKey, value }) {
+  const row = draftRows.value.find((r) => r._key === key)
+  if (!row || row.locked) return
+  row.cells[fieldKey] = value
+  editDirty.value = true
+}
+
+async function onReorderRows({ from, to }) {
+  if (editMode.value) {
+    const list = [...draftRows.value]
+    if (from < 0 || to < 0 || from >= list.length || to >= list.length) return
+    const [item] = list.splice(from, 1)
+    list.splice(to, 0, item)
+    draftRows.value = list
+    editDirty.value = true
+    return
+  }
+  // 非编辑模式：立即上链保存行序
+  const built = await buildEntryRows(
+    events.value,
+    schema.value,
+    groupKey.value,
+    activeTableId.value,
+    activeRowOrder.value
+  )
+  if (from < 0 || to < 0 || from >= built.length || to >= built.length) return
+  const order = built.map((r) => r.seq)
+  const [item] = order.splice(from, 1)
+  order.splice(to, 0, item)
+  try {
+    const updated = await api.reorderLedgerEntries(ledgerId.value, activeTableId.value, order)
+    await applyLedgerUpdate(updated)
+    await load()
+    msg.value = '行顺序已上链'
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '排序失败'
+  }
+}
+
+async function saveEditMode() {
+  if (!editMode.value) return
+  editSaving.value = true
+  error.value = ''
+  try {
+    const fields = normalizeSchemaFields(draftFields.value)
+    if (!fields.length) {
+      error.value = '请至少保留 1 个字段'
+      return
+    }
+    const origBySeq = new Map()
+    const built = await buildEntryRows(
+      events.value,
+      schema.value,
+      groupKey.value,
+      activeTableId.value,
+      activeRowOrder.value
+    )
+    for (const r of built) {
+      origBySeq.set(r.seq, r)
+    }
+
+    const voidSeqs = []
+    const newRows = []
+    const rowOrder = []
+
+    const schemaChanged =
+      JSON.stringify((schema.value?.fields || []).map((f) => ({
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        required: !!f.required,
+      }))) !==
+      JSON.stringify(fields.map((f) => ({
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        required: !!f.required,
+      })))
+
+    const keptSeqs = new Set()
+    for (const row of draftRows.value) {
+      if (row.locked) {
+        if (row.seq) {
+          keptSeqs.add(row.seq)
+          rowOrder.push(row.seq)
+        }
+        continue
+      }
+      if (row.seq && origBySeq.has(row.seq)) {
+        const orig = origBySeq.get(row.seq)
+        const changed =
+          schemaChanged ||
+          fields.some((f) => String(row.cells[f.key] ?? '') !== String(orig.cells?.[f.key] ?? ''))
+        if (changed) {
+          voidSeqs.push(row.seq)
+          const data = {}
+          for (const f of fields) data[f.key] = String(row.cells[f.key] ?? '')
+          newRows.push(data)
+          rowOrder.push(0)
+        } else {
+          keptSeqs.add(row.seq)
+          rowOrder.push(row.seq)
+        }
+      } else {
+        const data = {}
+        for (const f of fields) data[f.key] = String(row.cells[f.key] ?? '')
+        newRows.push(data)
+        rowOrder.push(0)
+      }
+    }
+    for (const r of built) {
+      if (!keptSeqs.has(r.seq) && !voidSeqs.includes(r.seq)) {
+        // removed from draft
+        if (!draftRows.value.some((d) => d.seq === r.seq)) {
+          voidSeqs.push(r.seq)
+        }
+      }
+    }
+
+    const body = {
+      voidSeqs,
+      newRows,
+      rowOrder,
+      signerId: auth.user?.id || '',
+    }
+    if (schemaChanged) {
+      if (!isCreator.value) {
+        error.value = '仅创建者可修改字段'
+        return
+      }
+      body.entrySchema = { templateId: 'custom', fields }
+    }
+
+    const updated = await api.commitSheetEdit(ledgerId.value, activeTableId.value, body)
+    await applyLedgerUpdate(updated)
+    await load()
+    msg.value = '表格编辑已保存并上链'
+    discardEdit()
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '保存失败'
+  } finally {
+    editSaving.value = false
+  }
+}
+
+function onSheetDragStart(e, ti) {
+  if (!isCreator.value || editMode.value || tables.value.length < 2) {
+    e.preventDefault()
+    return
+  }
+  sheetDragFrom.value = ti
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', String(ti))
+}
+
+function onSheetDragOver(ti) {
+  if (sheetDragFrom.value < 0) return
+  sheetDragOver.value = ti
+}
+
+function onSheetDragLeave(ti) {
+  if (sheetDragOver.value === ti) sheetDragOver.value = -1
+}
+
+async function onSheetDrop(ti) {
+  const from = sheetDragFrom.value
+  sheetDragOver.value = -1
+  sheetDragFrom.value = -1
+  if (from < 0 || from === ti) return
+  const ids = tables.value.map((t) => t.id)
+  const [item] = ids.splice(from, 1)
+  ids.splice(ti, 0, item)
+  try {
+    const updated = await api.reorderLedgerTables(ledgerId.value, ids)
+    await applyLedgerUpdate(updated)
+    msg.value = 'Sheet 顺序已上链'
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Sheet 排序失败'
+  }
+}
+
+function onSheetDragEnd() {
+  sheetDragFrom.value = -1
+  sheetDragOver.value = -1
+}
 
 function openSheetModal(table = null) {
   editingSheetId.value = table?.id || ''
@@ -413,11 +759,13 @@ async function addEntry() {
   cursor: not-allowed;
 }
 .entry-modal,
-.sheet-modal {
+.sheet-modal,
+.confirm-modal {
   width: min(100%, 32rem);
 }
 .entry-modal h3,
-.sheet-modal h3 {
+.sheet-modal h3,
+.confirm-modal h3 {
   margin: 0 0 1rem;
 }
 .entry-modal-hint {
@@ -462,6 +810,16 @@ async function addEntry() {
 }
 .table-tab--ghost {
   background: transparent;
+}
+.table-tab--edit {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.table-tab--dragging {
+  opacity: 0.5;
+}
+.table-tab--drag-over {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .form-row {
   display: grid;

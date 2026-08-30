@@ -2,6 +2,7 @@ import { decryptEntryData } from './e2eCrypto'
 import { cellLabel, cellValue } from './entrySchema'
 
 export const ENTRY_EVENT_TYPE = 'EntryAdded'
+export const ENTRY_VOIDED_TYPE = 'EntryVoided'
 
 const VIEW_MODE_KEY = 'ledger-content-view'
 
@@ -56,12 +57,28 @@ function payloadTableId(ev) {
   }
 }
 
-/** 从链上事件解析记账行（仅 EntryAdded）；可选按 tableId 过滤 */
-export async function buildEntryRows(events, schema, groupKey = '', tableId = null) {
+/** Collect voided entry seqs from EntryVoided events. */
+export function collectVoidedSeqs(events) {
+  const out = new Set()
+  for (const ev of events || []) {
+    if (ev.type !== ENTRY_VOIDED_TYPE) continue
+    const p = parsePayload(ev.payload)
+    const seq = Number(p?.seq || 0)
+    if (seq > 0) out.add(seq)
+  }
+  return out
+}
+
+/**
+ * 从链上事件解析记账行（仅 EntryAdded，排除已作废）；可选按 tableId / rowOrder 过滤排序
+ */
+export async function buildEntryRows(events, schema, groupKey = '', tableId = null, rowOrder = null) {
   const fields = schema?.fields || []
+  const voided = collectVoidedSeqs(events)
   const rows = []
   for (const ev of events || []) {
     if (ev.type !== ENTRY_EVENT_TYPE) continue
+    if (voided.has(ev.seq)) continue
     if (tableId && payloadTableId(ev) !== tableId) continue
     const data = await resolveEntryData(ev.payload, groupKey)
     if (!data) continue
@@ -87,6 +104,20 @@ export async function buildEntryRows(events, schema, groupKey = '', tableId = nu
       locked: false,
       cells,
     })
+  }
+
+  if (Array.isArray(rowOrder) && rowOrder.length) {
+    const bySeq = new Map(rows.map((r) => [r.seq, r]))
+    const ordered = []
+    for (const seq of rowOrder) {
+      const r = bySeq.get(seq)
+      if (r) {
+        ordered.push(r)
+        bySeq.delete(seq)
+      }
+    }
+    const rest = [...bySeq.values()].sort((a, b) => b.seq - a.seq)
+    return [...ordered, ...rest]
   }
   return rows.reverse()
 }

@@ -27,12 +27,11 @@
       <div v-if="!list.length" class="muted empty">暂无账本，点击右上角创建</div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>名称</th><th>类型</th><th>记账</th><th>存储</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
+          <thead><tr><th>名称</th><th>类型</th><th>存储</th><th>账本地址</th><th>序号</th><th>锚定</th><th></th></tr></thead>
           <tbody>
             <tr v-for="l in list" :key="l.id">
               <td>{{ l.name }}</td>
               <td><span :class="['badge', l.type === 'multi' ? 'badge-multi' : 'badge-private']">{{ l.type === 'multi' ? '多人' : '私人' }}</span></td>
-              <td><span class="badge badge-mode">{{ bookkeepingModeLabel(resolveBookkeepingMode(l)) }}</span></td>
               <td>{{ storageLocationLabel(l.storageLocation) }}</td>
               <td class="mono" :title="l.ledgerAddress">{{ shortAddr(l.ledgerAddress) }}</td>
               <td class="mono">{{ l.latestSeq }}</td>
@@ -59,17 +58,9 @@
           <AppSelect v-model="form.type" :options="ledgerTypeOptions" />
         </div>
         <div class="form-row"><label>名称</label><input v-model="form.name" required /></div>
-        <div class="form-row">
-          <label>记账方式</label>
-          <AppSelect v-model="form.bookkeepingMode" :options="bookkeepingModeOptions" />
-          <p class="field-hint">
-            {{
-              form.bookkeepingMode === 'professional'
-                ? '复式记账：科目表、凭证、报表、期间与对账（创建后不可切换）。'
-                : '简单流水：创建后自行新建 Sheet，并自定义字段；支持 Excel 导入与多人审批。'
-            }}
-          </p>
-        </div>
+        <p class="field-hint" style="margin: 0 0 0.75rem">
+          简单流水账本：创建后自行新建 Sheet 并自定义字段；支持 Excel / CSV 导入与多人审批。
+        </p>
         <div v-if="form.type === 'multi'" class="form-row">
           <label class="inline-check">
             <input v-model="form.enableE2E" type="checkbox" />
@@ -111,13 +102,7 @@ import AppSelect from '../components/AppSelect.vue'
 import MemberAddPanel from '../components/MemberAddPanel.vue'
 import { buildEncryptionForCreate, saveLocalGroupKey, saveLocalPassphrase } from '../utils/e2eCrypto'
 import { DEFAULT_STORAGE_LOCATION, storageLocationLabel } from '../utils/ledgerStorage'
-import {
-  BOOKKEEPING_PROFESSIONAL,
-  BOOKKEEPING_SIMPLE,
-  bookkeepingModeLabel,
-  ledgerBookkeepingPath,
-  resolveBookkeepingMode,
-} from '../utils/bookkeepingMode'
+import { BOOKKEEPING_SIMPLE, ledgerBookkeepingPath } from '../utils/bookkeepingMode'
 
 const router = useRouter()
 const { crumbs } = usePageCrumbs()
@@ -130,10 +115,6 @@ const error = ref('')
 const success = ref('')
 const show = ref(false)
 const saving = ref(false)
-const bookkeepingModeOptions = [
-  { value: BOOKKEEPING_SIMPLE, label: '简单流水（自定义 Sheet）' },
-  { value: BOOKKEEPING_PROFESSIONAL, label: '专业复式（科目与凭证）' },
-]
 
 const form = reactive({
   type: 'private',
@@ -280,17 +261,16 @@ async function create() {
       encryption = { enabled: true, algo: 'aes-gcm-v1', wrappedKeys: enc.wrappedKeys }
       groupKey = enc._groupKey
     }
-    const isSimple = form.bookkeepingMode === BOOKKEEPING_SIMPLE
     const created = await api.createLedger({
       type: form.type,
       name: form.name.trim(),
       creatorId: auth.user.id,
       members,
-      bookkeepingMode: form.bookkeepingMode,
-      entrySchema: isSimple ? { templateId: 'custom', fields: [] } : undefined,
-      multiTableEnabled: isSimple,
+      bookkeepingMode: BOOKKEEPING_SIMPLE,
+      entrySchema: { templateId: 'custom', fields: [] },
+      multiTableEnabled: true,
       approvalPolicy:
-        isSimple && form.type === 'multi'
+        form.type === 'multi'
           ? {
               enabled: true,
               threshold: Math.max(2, members.length + inviteTargets.length),
