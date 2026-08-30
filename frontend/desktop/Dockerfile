@@ -3,7 +3,7 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-COPY package.json .npmrc ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm install --cache .npm-cache
 
 COPY index.html vite.config.js ./
