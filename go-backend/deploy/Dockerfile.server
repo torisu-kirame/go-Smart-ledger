@@ -1,0 +1,13 @@
+# Gin 单体 API（取代 auth/ledger/storage/gateway 四服务）
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates wget
+
+WORKDIR /app
+
+ARG BIN=bin/linux/smart-ledger-api
+COPY ${BIN} ./smart-ledger-api
+COPY deploy/etc/server.docker.yaml etc/server.yaml
+
+EXPOSE 28080
+CMD ["./smart-ledger-api", "-f", "etc/server.yaml"]

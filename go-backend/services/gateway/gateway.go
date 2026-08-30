@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router/restadapt"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/ai"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/config"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/handler"
@@ -32,8 +33,8 @@ func main() {
 	server.Use(middleware.RateLimit(c.Security))
 
 	ctx := svc.NewServiceContext(c)
-	handler.RegisterHandlers(server, ctx)
-	handler.RegisterDiscoveryHandlers(server, ctx)
+	handler.RegisterHandlers(restadapt.New(server), ctx)
+	handler.RegisterDiscoveryHandlers(restadapt.New(server), ctx)
 
 	authProxy := proxy.Handler(c.Upstreams.Auth)
 	authJWT := middleware.JWT(c.Auth.AccessSecret)(authProxy)

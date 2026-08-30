@@ -6,21 +6,18 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/mapper"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterSheetCSVImportHandlers one-shot CSV import into a sheet (create or append).
-func RegisterSheetCSVImportHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPost, Path: "/ledgers/:id/import/sheet-csv", Handler: importSheetCSVHandler(serverCtx)},
-	}, prefix)
+func RegisterSheetCSVImportHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/import/sheet-csv", importSheetCSVHandler(serverCtx))
 }
 
 type sheetCSVJSONBody struct {

@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/accounting"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
@@ -18,39 +18,36 @@ import (
 const maxAttachBytes = 15 << 20
 
 // RegisterAccountingHandlers F38–F44 accounting APIs.
-func RegisterAccountingHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/chart", Handler: getChartHandler(serverCtx)},
-		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/chart", Handler: putChartHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/journals", Handler: listJournalsHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/journals", Handler: postJournalHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/periods", Handler: listPeriodsHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/periods/:period/close", Handler: closePeriodHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/periods/:period/reopen", Handler: reopenPeriodHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/reports", Handler: reportsHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/attachments", Handler: listAttachmentsHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/attachments", Handler: uploadAttachmentHandler(serverCtx)},
-		{Method: http.MethodPatch, Path: "/ledgers/:id/accounting/attachments/:attachId", Handler: patchAttachmentAuxHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/bank-statements", Handler: listBankStatementsHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/bank-statements/import", Handler: importBankHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/bank-statements/:stmtId/match", Handler: matchBankHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/budget", Handler: getBudgetHandler(serverCtx)},
-		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/budget", Handler: putBudgetHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/budget/analysis", Handler: budgetAnalysisHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/aging", Handler: agingReportHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency", Handler: getCurrencySettingsHandler(serverCtx)},
-		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/currency", Handler: putCurrencySettingsHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency/fx-rates", Handler: getFxRatesHandler(serverCtx)},
-		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/currency/fx-rates", Handler: putFxRatesHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency/balances", Handler: fcBalancesHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/currency/revaluation", Handler: revaluationHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/tax/presets", Handler: taxPresetsHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/tax", Handler: getTaxTemplateHandler(serverCtx)},
-		{Method: http.MethodPut, Path: "/ledgers/:id/accounting/tax", Handler: putTaxTemplateHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/accounting/tax/apply-preset", Handler: applyTaxPresetHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/accounting/tax/report", Handler: taxReportHandler(serverCtx)},
-	}, prefix)
+func RegisterAccountingHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/chart", getChartHandler(serverCtx))
+	r.Add(http.MethodPut, "/api/v1/ledgers/:id/accounting/chart", putChartHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/journals", listJournalsHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/journals", postJournalHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/periods", listPeriodsHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/periods/:period/close", closePeriodHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/periods/:period/reopen", reopenPeriodHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/reports", reportsHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/attachments", listAttachmentsHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/attachments", uploadAttachmentHandler(serverCtx))
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id/accounting/attachments/:attachId", patchAttachmentAuxHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/bank-statements", listBankStatementsHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/bank-statements/import", importBankHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/bank-statements/:stmtId/match", matchBankHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/budget", getBudgetHandler(serverCtx))
+	r.Add(http.MethodPut, "/api/v1/ledgers/:id/accounting/budget", putBudgetHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/budget/analysis", budgetAnalysisHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/aging", agingReportHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/currency", getCurrencySettingsHandler(serverCtx))
+	r.Add(http.MethodPut, "/api/v1/ledgers/:id/accounting/currency", putCurrencySettingsHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/currency/fx-rates", getFxRatesHandler(serverCtx))
+	r.Add(http.MethodPut, "/api/v1/ledgers/:id/accounting/currency/fx-rates", putFxRatesHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/currency/balances", fcBalancesHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/currency/revaluation", revaluationHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/tax/presets", taxPresetsHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/tax", getTaxTemplateHandler(serverCtx))
+	r.Add(http.MethodPut, "/api/v1/ledgers/:id/accounting/tax", putTaxTemplateHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/accounting/tax/apply-preset", applyTaxPresetHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/accounting/tax/report", taxReportHandler(serverCtx))
 }
 
 func getChartHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

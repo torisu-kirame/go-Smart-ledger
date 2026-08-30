@@ -9,12 +9,12 @@ if ($Backend -eq 'java') {
     Write-Host 'Compose:    smart-ledger-java'
     Write-Host 'Containers: smart-ledger-java-*  (docker ps --filter name=smart-ledger-java)'
 } else {
-    Write-Host 'Backend:    Go (go-backend/) + OpenClaw Agent'
+    Write-Host 'Backend:    Go Gin 单体 (go-backend/services/api) + OpenClaw Agent'
     Write-Host 'Compose:    smart-ledger-go'
     Write-Host 'Containers: smart-ledger-go-*  (docker ps --filter name=smart-ledger-go)'
 }
 Write-Host 'Web UI:     http://localhost:25173'
-Write-Host 'Gateway:    http://localhost:28080/api/v1/health'
+Write-Host 'API:        http://localhost:28080/api/v1/health'
 Write-Host 'MiniLedger: http://localhost:24441/dashboard'
 Write-Host 'Login:      admin / admin123'
 Write-Host ''

@@ -6,55 +6,17 @@ package handler
 import (
 	"net/http"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-
-	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				Method:  http.MethodGet,
-				Path:    "/health",
-				Handler: healthHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/ledgers",
-				Handler: createLedgerHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/ledgers",
-				Handler: listLedgersHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/ledgers/:id",
-				Handler: getLedgerHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/ledgers/:id/anchor",
-				Handler: anchorLedgerHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/ledgers/:id/entries",
-				Handler: appendEntryHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/ledgers/:id/events",
-				Handler: listEventsHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/ledgers/:id/verify",
-				Handler: verifyLedgerHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/v1"),
-	)
+func RegisterHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/health", healthHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers", createLedgerHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers", listLedgersHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id", getLedgerHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/anchor", anchorLedgerHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/entries", appendEntryHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/events", listEventsHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/verify", verifyLedgerHandler(serverCtx))
 }

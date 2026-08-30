@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router/restadapt"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/config"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/handler"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
@@ -36,15 +37,16 @@ func main() {
 	}
 	defer lc.StopAll(ctx)
 
-	handler.RegisterHandlers(server, ctx)
-	handler.RegisterExtraHandlers(server, ctx)
-	handler.RegisterCollaborationHandlers(server, ctx)
-	handler.RegisterTableHandlers(server, ctx)
-	handler.RegisterImportAdaptiveHandlers(server, ctx)
-	handler.RegisterSheetCSVImportHandlers(server, ctx)
-	handler.RegisterAccountingHandlers(server, ctx)
-	handler.RegisterAuditExportHandlers(server, ctx)
-	handler.RegisterChainHandlers(server, ctx)
+	r := restadapt.New(server)
+	handler.RegisterHandlers(r, ctx)
+	handler.RegisterExtraHandlers(r, ctx)
+	handler.RegisterCollaborationHandlers(r, ctx)
+	handler.RegisterTableHandlers(r, ctx)
+	handler.RegisterImportAdaptiveHandlers(r, ctx)
+	handler.RegisterSheetCSVImportHandlers(r, ctx)
+	handler.RegisterAccountingHandlers(r, ctx)
+	handler.RegisterAuditExportHandlers(r, ctx)
+	handler.RegisterChainHandlers(r, ctx)
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()

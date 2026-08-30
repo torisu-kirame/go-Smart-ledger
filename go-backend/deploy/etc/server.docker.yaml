@@ -1,0 +1,70 @@
+Name: smart-ledger-api
+Host: 0.0.0.0
+Port: 28080
+Timeout: 600000
+
+Auth:
+  AccessSecret: smart-ledger-access-secret-change-me
+  RefreshSecret: smart-ledger-refresh-secret-change-me
+  AccessExpire: 900
+  RefreshExpire: 604800
+  CookieSecure: false
+
+Database:
+  DataSource: root:123456@tcp(host.docker.internal:3306)/smart_ledger?parseTime=true&charset=utf8mb4&loc=Local
+
+Avatar:
+  Dir: /data/avatars
+
+TeamChat:
+  Dir: /data/teamchat
+
+Snowflake:
+  NodeID: 1
+
+Users:
+  - username: admin
+    password: admin123
+
+MiniLedger:
+  BaseURL: http://miniledger:24441
+
+TxQueue:
+  Enabled: true
+  PersistPath: /data/txqueue.json
+  MaxAttempts: 30
+
+NSQ:
+  NsqdAddr: nsqd:4150
+  LookupdHTTP:
+    - http://nsqlookupd:4161
+  Topic: chain_tx_retry
+  Channel: ledger-worker
+  MaxInFlight: 4
+
+BackupDir: /data/backups
+
+HDWallet:
+  Mnemonic: "test test test test test test test test test test test junk"
+
+IPFS:
+  ApiURL: http://ipfs:5001
+  Enabled: false
+
+OpenClaw:
+  GatewayURL: http://openclaw-gateway:18789
+  GatewayToken: ""
+  AgentModel: openclaw/default
+
+Agent:
+  ConfigPath: /data/agent/config
+
+Cors:
+  AllowedOrigins:
+    - http://localhost:25173
+    - http://127.0.0.1:25173
+    - https://localhost:25174
+
+Log:
+  Mode: console
+  Level: info

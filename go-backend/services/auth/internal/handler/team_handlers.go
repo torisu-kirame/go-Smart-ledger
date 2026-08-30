@@ -5,23 +5,21 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/teamstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
-func registerTeamHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
-	registerTeamChatHandlers(server, svcCtx)
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/", Handler: listTeamsHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/", Handler: createTeamHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/read-all", Handler: markAllTeamsReadHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/:teamId", Handler: getTeamHandler(svcCtx)},
-	}, rest.WithPrefix("/api/v1/teams"))
+func registerTeamHandlers(r router.Registrar, svcCtx *svc.ServiceContext) {
+	registerTeamChatHandlers(r, svcCtx)
+	r.Add(http.MethodGet, "/api/v1/teams", listTeamsHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/teams", createTeamHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/teams/read-all", markAllTeamsReadHandler(svcCtx))
+	r.Add(http.MethodGet, "/api/v1/teams/:teamId", getTeamHandler(svcCtx))
 }
 
 type createTeamReq struct {

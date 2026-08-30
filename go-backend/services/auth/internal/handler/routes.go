@@ -6,40 +6,14 @@ package handler
 import (
 	"net/http"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/svc"
-
-	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				Method:  http.MethodGet,
-				Path:    "/captcha",
-				Handler: captchaHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/health",
-				Handler: healthHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/login",
-				Handler: loginHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/logout",
-				Handler: logoutHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/refresh",
-				Handler: refreshHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/v1/auth"),
-	)
+func RegisterHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/auth/captcha", captchaHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/auth/health", healthHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/auth/login", loginHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/auth/logout", logoutHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/auth/refresh", refreshHandler(serverCtx))
 }

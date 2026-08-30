@@ -4,25 +4,22 @@ import (
 	"net/http"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/mapper"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/types"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterTableHandlers F49 ledger multi-table APIs.
-func RegisterTableHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPatch, Path: "/ledgers/:id/multi-table", Handler: setMultiTableHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/tables", Handler: createTableHandler(serverCtx)},
-		{Method: http.MethodPatch, Path: "/ledgers/:id/tables/:tableId", Handler: updateTableHandler(serverCtx)},
-		{Method: http.MethodDelete, Path: "/ledgers/:id/tables/:tableId", Handler: deleteTableHandler(serverCtx)},
-	}, prefix)
+func RegisterTableHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id/multi-table", setMultiTableHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/tables", createTableHandler(serverCtx))
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id/tables/:tableId", updateTableHandler(serverCtx))
+	r.Add(http.MethodDelete, "/api/v1/ledgers/:id/tables/:tableId", deleteTableHandler(serverCtx))
 }
 
 type multiTableBody struct {

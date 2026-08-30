@@ -7,22 +7,20 @@ import (
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/entrytemplatestore"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/snowflake"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
-func registerEntryTemplateHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/", Handler: listEntryTemplatesHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/", Handler: createEntryTemplateHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/:templateId", Handler: getEntryTemplateHandler(svcCtx)},
-		{Method: http.MethodPut, Path: "/:templateId", Handler: updateEntryTemplateHandler(svcCtx)},
-		{Method: http.MethodDelete, Path: "/:templateId", Handler: deleteEntryTemplateHandler(svcCtx)},
-	}, rest.WithPrefix("/api/v1/entry-templates"))
+func registerEntryTemplateHandlers(r router.Registrar, svcCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/entry-templates", listEntryTemplatesHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/entry-templates", createEntryTemplateHandler(svcCtx))
+	r.Add(http.MethodGet, "/api/v1/entry-templates/:templateId", getEntryTemplateHandler(svcCtx))
+	r.Add(http.MethodPut, "/api/v1/entry-templates/:templateId", updateEntryTemplateHandler(svcCtx))
+	r.Add(http.MethodDelete, "/api/v1/entry-templates/:templateId", deleteEntryTemplateHandler(svcCtx))
 }
 
 type entryTemplateFieldReq struct {

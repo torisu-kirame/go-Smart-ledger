@@ -32,10 +32,10 @@
 
 ```bash
 # 可选：带自签名证书的 HTTPS 前端（profile）
-docker compose -f docker-compose.yml -f docker-compose.https.yml --profile https up -d
+docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.https.yml --profile https up -d
 ```
 
 ## 密钥勿入库
 
 - 勿将 `.env`、私钥、`HDWallet.Mnemonic` 提交到 Git。
-- Docker 通过 `env_file: .env` 注入（见 `docker-compose.yml`）。
+- Docker 通过 `env_file` 注入（见 `deploy/compose/docker-compose.yml`）。

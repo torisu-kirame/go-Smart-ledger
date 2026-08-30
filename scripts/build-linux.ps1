@@ -1,12 +1,12 @@
-﻿# 澶栭儴浜ゅ弶缂栬瘧 Linux 浜岃繘鍒讹紙渚?Docker COPY锛?# 鐢ㄦ硶:
-#   .\scripts\build-linux.ps1              # 缂栬瘧鍏ㄩ儴
-#   .\scripts\build-linux.ps1 -Service ledger   # 浠?ledger-api
-#   .\scripts\build-linux.ps1 -Service storage
-#   .\scripts\build-linux.ps1 -Service gateway
+﻿# Cross-compile Linux binaries for Docker COPY.
+# Usage:
+#   .\scripts\build-linux.ps1              # smart-ledger-api (Gin monolith)
+#   .\scripts\build-linux.ps1 -Service api
+#   .\scripts\build-linux.ps1 -Service all # monolith + legacy microservices
 
 param(
-    [ValidateSet("all", "ledger", "storage", "gateway", "auth")]
-    [string] $Service = "all"
+    [ValidateSet("all", "api", "ledger", "storage", "gateway", "auth")]
+    [string] $Service = "api"
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,15 +20,22 @@ $env:GOOS        = "linux"
 $env:GOARCH      = "amd64"
 
 $builds = @{
-    ledger  = @{ Out = "ledger-api";  Pkg = "./services/ledger" }
-    storage = @{ Out = "storage-api"; Pkg = "./services/storage" }
-    gateway = @{ Out = "gateway-api"; Pkg = "./services/gateway" }
-    auth    = @{ Out = "auth-api";    Pkg = "./services/auth" }
+    api     = @{ Out = "smart-ledger-api"; Pkg = "./services/api" }
+    ledger  = @{ Out = "ledger-api";       Pkg = "./services/ledger" }
+    storage = @{ Out = "storage-api";      Pkg = "./services/storage" }
+    gateway = @{ Out = "gateway-api";      Pkg = "./services/gateway" }
+    auth    = @{ Out = "auth-api";         Pkg = "./services/auth" }
 }
 
 Push-Location $Backend
 try {
-    $targets = if ($Service -eq "all") { @("ledger", "storage", "gateway", "auth") } else { @($Service) }
+    $targets = if ($Service -eq "all") {
+        @("api", "ledger", "storage", "gateway", "auth")
+    } elseif ($Service -eq "api") {
+        @("api")
+    } else {
+        @($Service)
+    }
     foreach ($name in $targets) {
         $b = $builds[$name]
         $out = Join-Path $BinDir $b.Out

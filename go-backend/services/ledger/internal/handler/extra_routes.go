@@ -9,27 +9,24 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/importfile"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/importxlsx"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/ledgersvc"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterExtraHandlers adds import, backup, template routes.
-func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/entry-schema/templates", Handler: schemaTemplatesHandler()},
-		{Method: http.MethodGet, Path: "/import/template", Handler: templateHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/import/preview", Handler: importPreviewHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/import/commit", Handler: importCommitHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/backup", Handler: ledgerBackupHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/restore/preview", Handler: restorePreviewHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/restore/commit", Handler: restoreCommitHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/rag-export", Handler: ragExportHandler(serverCtx)},
-	}, prefix)
+func RegisterExtraHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/entry-schema/templates", schemaTemplatesHandler())
+	r.Add(http.MethodGet, "/api/v1/import/template", templateHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/import/preview", importPreviewHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/import/commit", importCommitHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/backup", ledgerBackupHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/restore/preview", restorePreviewHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/restore/commit", restoreCommitHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/rag-export", ragExportHandler(serverCtx))
 }
 
 func ragExportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

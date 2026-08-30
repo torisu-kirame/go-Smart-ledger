@@ -17,14 +17,14 @@ COMPOSE_OFFLINE = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_EN
 
 help:
 	@echo "Targets:"
-	@echo "  make up-go             - Go 后端 + OpenClaw Agent + Web（项目 smart-ledger-go）"
+	@echo "  make up-go             - Gin 单体 API + OpenClaw Agent + Web（项目 smart-ledger-go）"
 	@echo "  make up-java           - Java 后端 + LangChain4j Agent + Web（项目 smart-ledger-java）"
 	@echo "  make up                - 同 make up-go"
 	@echo "  make offline-ai-up     - 额外启动 Ollama（离线模型，占磁盘）"
-	@echo "  make build-linux       - 交叉编译 Go 服务"
+	@echo "  make build-linux       - 交叉编译 Gin 单体 smart-ledger-api"
 	@echo "  make build-java        - Maven 打包 Java 服务"
 	@echo "  make frontend-dev      - 本地 Vite 开发服（需后端已 up）"
-	@echo "  make fisco-dev-up      - FISCO 链 + ledger-api（Go）"
+	@echo "  make fisco-dev-up      - FISCO 链 + gateway-api 单体（Go）"
 
 COMPOSE_FISCO = docker compose -p smart-ledger-go $(COMPOSE_ROOT) $(COMPOSE_ENV) --env-file deploy/env/fisco.env $(COMPOSE_MAIN) -f deploy/compose/docker-compose.fisco.yml --profile fisco
 
@@ -103,9 +103,9 @@ ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/print-up-hints.ps1 -Backend go
 else
 	@echo ""
-	@echo "Backend:    Go (go-backend/) + OpenClaw Agent"
+	@echo "Backend:    Go Gin monolith (services/api) + OpenClaw Agent"
 	@echo "Web UI:     http://localhost:25173"
-	@echo "Gateway:    http://localhost:28080/api/v1/health"
+	@echo "API:        http://localhost:28080/api/v1/health"
 	@echo "MiniLedger: http://localhost:24441/dashboard"
 	@echo "Login:      admin / admin123"
 endif

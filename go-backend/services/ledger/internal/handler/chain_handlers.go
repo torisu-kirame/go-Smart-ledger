@@ -4,26 +4,23 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 )
 
 // RegisterChainHandlers exposes chain explorer proxy and submit retry queue (F23).
-func RegisterChainHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/chain/status", Handler: chainStatusHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/chain/queue", Handler: chainQueueHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/chain/queue/:id/retry", Handler: chainQueueRetryHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/chain/blocks", Handler: chainProxyHandler(serverCtx, "/blocks")},
-		{Method: http.MethodGet, Path: "/chain/blocks/latest", Handler: chainProxyHandler(serverCtx, "/blocks/latest")},
-		{Method: http.MethodGet, Path: "/chain/blocks/:height", Handler: chainBlockByHeightHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/chain/tx/recent", Handler: chainProxyHandler(serverCtx, "/tx/recent")},
-		{Method: http.MethodGet, Path: "/chain/consensus", Handler: chainProxyHandler(serverCtx, "/consensus")},
-		{Method: http.MethodGet, Path: "/chain/peers", Handler: chainProxyHandler(serverCtx, "/peers")},
-	}, prefix)
+func RegisterChainHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/chain/status", chainStatusHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/chain/queue", chainQueueHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/chain/queue/:id/retry", chainQueueRetryHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/chain/blocks", chainProxyHandler(serverCtx, "/blocks"))
+	r.Add(http.MethodGet, "/api/v1/chain/blocks/latest", chainProxyHandler(serverCtx, "/blocks/latest"))
+	r.Add(http.MethodGet, "/api/v1/chain/blocks/:height", chainBlockByHeightHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/chain/tx/recent", chainProxyHandler(serverCtx, "/tx/recent"))
+	r.Add(http.MethodGet, "/api/v1/chain/consensus", chainProxyHandler(serverCtx, "/consensus"))
+	r.Add(http.MethodGet, "/api/v1/chain/peers", chainProxyHandler(serverCtx, "/peers"))
 }
 
 func chainStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

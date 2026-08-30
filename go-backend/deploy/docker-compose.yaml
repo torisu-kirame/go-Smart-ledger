@@ -1,2 +1,0 @@
-# 已迁移至 deploy/compose/docker-compose.yml
-# 请使用: cd ../.. && docker compose up -d --build

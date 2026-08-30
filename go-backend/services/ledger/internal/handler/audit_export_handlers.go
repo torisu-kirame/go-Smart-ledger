@@ -4,20 +4,17 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterAuditExportHandlers F48 audit package export.
-func RegisterAuditExportHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/ledgers/:id/audit-export", Handler: auditExportHandler(serverCtx)},
-	}, prefix)
+func RegisterAuditExportHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/audit-export", auditExportHandler(serverCtx))
 }
 
 func auditExportHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

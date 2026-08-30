@@ -1,13 +1,13 @@
 # MiniLedger legacy overlay（v0.18+ 回退至 v0.13 链行为）
 #
-#   docker compose -f docker-compose.yml -f docker-compose.legacy.yml --profile legacy up -d
+#   docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.legacy.yml --profile legacy up -d
 #
-# 启动 miniledger 容器，并将 ledger-api 链后端切回 miniledger。
+# 启动 miniledger 容器，并将 gateway-api 链后端切回 miniledger。
 
 name: smart-ledger
 
 services:
-  ledger-api:
+  gateway-api:
     environment:
       SL_CHAIN_BACKEND: miniledger
     depends_on:

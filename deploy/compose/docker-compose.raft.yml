@@ -1,6 +1,6 @@
 # F22: 3-node MiniLedger Raft cluster (use with main compose)
 #
-#   docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d
+#   docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.raft.yml --profile raft up -d
 #
 # Leader API: http://localhost:24441  (node1)
 # Node2 API:  http://localhost:24443

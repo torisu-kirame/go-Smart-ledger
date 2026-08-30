@@ -77,30 +77,6 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  auth-api:
-    build:
-      context: ./go-backend
-      dockerfile: deploy/Dockerfile.auth
-    image: smart-ledger-go-auth-api:latest
-    container_name: smart-ledger-go-auth-api
-    env_file:
-      - path: deploy/env/.env
-        required: false
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - auth-avatars:/data/avatars
-    ports:
-      - "28887:28887"
-    healthcheck:
-      # wget --spider 使用 HEAD，go-zero 仅注册 GET 会返回 405
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28887/api/v1/auth/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
-    restart: unless-stopped
-
   ipfs:
     image: ipfs/kubo:v0.32.1
     profiles: ["ipfs"]
@@ -120,25 +96,34 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  ledger-api:
+  # Gin 单体：auth + ledger + storage + AI（对外仍用 gateway-api 名，兼容 nginx / 脚本）
+  gateway-api:
     build:
       context: ./go-backend
-      dockerfile: deploy/Dockerfile.ledger
-    image: smart-ledger-go-ledger-api:latest
-    container_name: smart-ledger-go-ledger-api
+      dockerfile: deploy/Dockerfile.server
+    image: smart-ledger-go-api:latest
+    container_name: smart-ledger-go-api
     env_file:
       - path: deploy/env/.env
         required: false
-    volumes:
-      - ledger-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
+      OPENCLAW_GATEWAY_URL: ${OPENCLAW_GATEWAY_URL:-http://openclaw-gateway:18789}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_AGENT_MODEL: ${OPENCLAW_AGENT_MODEL:-openclaw/default}
+      AGENT_CONFIG_PATH: /data/agent/config
       SL_CHAIN_BACKEND: ${SL_CHAIN_BACKEND:-miniledger}
       SL_FISCO_JSONRPC: ${SL_FISCO_JSONRPC:-http://fisco-node:20200}
       SL_FISCO_GROUP_ID: ${SL_FISCO_GROUP_ID:-group0}
       SL_FISCO_CHAIN_ID: ${SL_FISCO_CHAIN_ID:-chain0}
+    volumes:
+      - auth-avatars:/data/avatars
+      - ledger-data:/data
+      - storage-backups:/data/backups
+      - ./deploy/config/agent:/data/agent/config
     ports:
-      - "28888:28888"
-      - "28898:28898"
+      - "28080:28080"
     depends_on:
       miniledger:
         condition: service_healthy
@@ -147,63 +132,11 @@ services:
       nsqd:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28888/api/v1/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28080/api/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 45s
-    restart: unless-stopped
-
-  storage-api:
-    build:
-      context: ./go-backend
-      dockerfile: deploy/Dockerfile.storage
-    image: smart-ledger-go-storage-api:latest
-    container_name: smart-ledger-go-storage-api
-    ports:
-      - "28890:28890"
-    volumes:
-      - storage-backups:/data/backups
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28890/api/v1/storage/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
-    restart: unless-stopped
-
-  gateway-api:
-    build:
-      context: ./go-backend
-      dockerfile: deploy/Dockerfile.gateway
-    image: smart-ledger-go-gateway-api:latest
-    container_name: smart-ledger-go-gateway
-    env_file:
-      - path: deploy/env/.env
-        required: false
-    environment:
-      OPENCLAW_GATEWAY_URL: ${OPENCLAW_GATEWAY_URL:-http://openclaw-gateway:18789}
-      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
-      OPENCLAW_AGENT_MODEL: ${OPENCLAW_AGENT_MODEL:-openclaw/default}
-      AGENT_CONFIG_PATH: /data/agent/config
-      LEDGER_API_URL: http://ledger-api:28888
-    volumes:
-      - ./deploy/config/agent:/data/agent/config
-    ports:
-      - "28080:28080"
-    depends_on:
-      auth-api:
-        condition: service_healthy
-      ledger-api:
-        condition: service_healthy
-      storage-api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:28080/api/v1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
     restart: unless-stopped
 
   # --- OpenClaw Gateway（AI Agent 核心）；Ollama 仅 profile offline-ai ---

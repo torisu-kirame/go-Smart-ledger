@@ -7,7 +7,7 @@
 1. 启动本地链（可选）：
 
 ```bash
-docker compose -f docker-compose.evm.yml up -d
+docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.evm.yml up -d
 ```
 
 2. 部署合约（需 Foundry `forge`）：

@@ -3,7 +3,7 @@
 # 启用注册：将 ledger-api / gateway-api 配置中 Discovery.Etcd.Enabled 设为 true
 # 或使用 deploy/etc/*.discovery.docker.yaml 挂载覆盖（见 README）
 #
-#   docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile discovery up -d
+#   docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.discovery.yml --profile discovery up -d
 
 name: smart-ledger
 

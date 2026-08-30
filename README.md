@@ -92,7 +92,7 @@ flowchart TB
 | 链抽象 | `backend/pkg/chainstore`（`miniledger` / `fisco` 后端） |
 | 后端 | go-zero REST 微服务 |
 | 前端 | Vue 3 桌面（`frontend/desktop`）+ 移动 Web/APK（`frontend/mobile`） |
-| 部署 | 根目录 `docker-compose.yml` + 可选 `docker-compose.fisco.yml` |
+| 部署 | `deploy/compose/docker-compose.yml` + 可选 overlay（如 fisco） |
 
 ---
 
@@ -237,8 +237,7 @@ flowchart TB
 go-Smart-ledger/
 ├── README.md                 # 本文件：计划 + 进度
 ├── Makefile                  # 全栈构建入口
-├── docker-compose.yml        # 账本 + Web；profile offline-ai 含 Ollama + OpenClaw
-├── docker-compose.openclaw.yml  # 已废弃，指向主 compose（兼容旧脚本）
+├── deploy/compose/           # Docker Compose 主栈与 overlay（fisco / raft / https 等）
 ├── .env.openclaw.example       # OpenClaw Docker 环境变量模板
 ├── integrations/openclaw/    # OpenClaw 工作区与示例配置（不含上游源码）
 ├── openclaw/                 # 由 setup-openclaw 克隆（gitignore）
@@ -367,7 +366,7 @@ go-Smart-ledger/
 
 ### 工程与部署
 
-- [x] 根目录 `Makefile`、`docker-compose.yml`（含 `web`；用户库为外部 MySQL）
+- [x] 根目录 `Makefile`、`deploy/compose/docker-compose.yml`（含 `web`；用户库为外部 MySQL）
 - [x] Auth + MySQL：`users` / `friendships` / `friend_requests` / `teams` / `team_members` / `team_ledgers` / `team_messages`；脚本 `backend/infra/sql/001_schema.sql`
 - [x] `ledger-api` 配置 `Snowflake.NodeID`（与 auth 区分）及 `HDWallet.Mnemonic`（生产须换密钥管理）
 - [x] `scripts/build-linux.ps1`、`scripts/docker-up.ps1`
@@ -464,7 +463,7 @@ make mobile-apk      # Android Debug APK（需 JDK + SDK）
 
 ```bash
 docker compose stop miniledger
-docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d miniledger-1 miniledger-2 miniledger-3
+docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.raft.yml --profile raft up -d miniledger-1 miniledger-2 miniledger-3
 ```
 
 详见 [docs/miniledger-raft.md](docs/miniledger-raft.md)。
@@ -472,7 +471,7 @@ docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft u
 ### etcd 服务发现（F28，可选）
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.discovery.yml --profile discovery up -d
+docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.discovery.yml --profile discovery up -d
 ```
 
 将 `ledger-api` / `gateway-api` 配置换为 `deploy/etc/*.discovery.docker.yaml` 并重建镜像。

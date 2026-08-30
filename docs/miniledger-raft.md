@@ -3,7 +3,7 @@
 Smart Ledger 默认 `docker compose up` 为**单节点** MiniLedger。需要 Raft 共识与多副本时，使用 overlay 编排：
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.raft.yml --profile raft up -d
+docker compose -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.raft.yml --profile raft up -d
 ```
 
 ## 端口

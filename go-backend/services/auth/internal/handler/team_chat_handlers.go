@@ -5,26 +5,23 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/teamchat"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/teamstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
-func registerTeamChatHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1/teams")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/:teamId/messages", Handler: listTeamMessagesHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/:teamId/messages", Handler: postTeamMessageHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/:teamId/messages/file", Handler: postTeamFileHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/:teamId/chat/files/:messageId", Handler: getTeamChatFileHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/:teamId/read", Handler: markTeamReadHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/:teamId/ledgers", Handler: addTeamLedgerHandler(svcCtx)},
-		{Method: http.MethodDelete, Path: "/:teamId/ledgers/:ledgerId", Handler: removeTeamLedgerHandler(svcCtx)},
-	}, prefix)
+func registerTeamChatHandlers(r router.Registrar, svcCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/teams/:teamId/messages", listTeamMessagesHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/teams/:teamId/messages", postTeamMessageHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/teams/:teamId/messages/file", postTeamFileHandler(svcCtx))
+	r.Add(http.MethodGet, "/api/v1/teams/:teamId/chat/files/:messageId", getTeamChatFileHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/teams/:teamId/read", markTeamReadHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/teams/:teamId/ledgers", addTeamLedgerHandler(svcCtx))
+	r.Add(http.MethodDelete, "/api/v1/teams/:teamId/ledgers/:ledgerId", removeTeamLedgerHandler(svcCtx))
 }
 
 func markTeamReadHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

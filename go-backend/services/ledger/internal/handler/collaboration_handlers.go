@@ -6,39 +6,36 @@ import (
 	"strconv"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/mapper"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/types"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterCollaborationHandlers F17/F18/F19 APIs.
-func RegisterCollaborationHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPost, Path: "/ledgers/sync-entry-template", Handler: syncEntryTemplateHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/invites/mine", Handler: myInvitesHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/pending", Handler: listPendingHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/entries/propose", Handler: proposeEntryHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/pending/:pendingId/approve", Handler: approvePendingHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/pending/:pendingId/reject", Handler: rejectPendingHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/members/invite", Handler: inviteMemberHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/invites", Handler: listLedgerInvitesHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/invites/accept", Handler: acceptInviteHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/ledgers/:id/sync", Handler: syncLedgerHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/encryption/rotate", Handler: rotateKeysHandler(serverCtx)},
-		{Method: http.MethodPatch, Path: "/ledgers/:id/storage-location", Handler: setStorageLocationHandler(serverCtx)},
-		{Method: http.MethodPatch, Path: "/ledgers/:id", Handler: updateLedgerHandler(serverCtx)},
-		{Method: http.MethodPatch, Path: "/ledgers/:id/approval-policy", Handler: setApprovalPolicyHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/encryption/enable", Handler: enableEncryptionHandler(serverCtx)},
-		{Method: http.MethodPatch, Path: "/ledgers/:id/encryption/passphrase-view-policy", Handler: setPassphraseViewPolicyHandler(serverCtx)},
-		{Method: http.MethodPut, Path: "/ledgers/:id/encryption/passphrase-view-wrap", Handler: registerPassphraseViewWrapHandler(serverCtx)},
-		{Method: http.MethodDelete, Path: "/ledgers/:id", Handler: archiveLedgerHandler(serverCtx)},
-	}, prefix)
+func RegisterCollaborationHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodPost, "/api/v1/ledgers/sync-entry-template", syncEntryTemplateHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/invites/mine", myInvitesHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/pending", listPendingHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/entries/propose", proposeEntryHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/pending/:pendingId/approve", approvePendingHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/pending/:pendingId/reject", rejectPendingHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/members/invite", inviteMemberHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/invites", listLedgerInvitesHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/invites/accept", acceptInviteHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/ledgers/:id/sync", syncLedgerHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/encryption/rotate", rotateKeysHandler(serverCtx))
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id/storage-location", setStorageLocationHandler(serverCtx))
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id", updateLedgerHandler(serverCtx))
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id/approval-policy", setApprovalPolicyHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/encryption/enable", enableEncryptionHandler(serverCtx))
+	r.Add(http.MethodPatch, "/api/v1/ledgers/:id/encryption/passphrase-view-policy", setPassphraseViewPolicyHandler(serverCtx))
+	r.Add(http.MethodPut, "/api/v1/ledgers/:id/encryption/passphrase-view-wrap", registerPassphraseViewWrapHandler(serverCtx))
+	r.Add(http.MethodDelete, "/api/v1/ledgers/:id", archiveLedgerHandler(serverCtx))
 }
 
 func userIDFromHeader(r *http.Request) string {

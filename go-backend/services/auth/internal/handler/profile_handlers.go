@@ -9,26 +9,24 @@ import (
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/authjwt"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/userstore"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/types"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/userinfo"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
-func registerProfileHandlers(server *rest.Server, svcCtx *svc.ServiceContext) {
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/me", Handler: getMeHandler(svcCtx)},
-		{Method: http.MethodPatch, Path: "/me", Handler: patchMeHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/me/avatar", Handler: uploadAvatarHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/me/delete-account", Handler: deleteAccountHandler(svcCtx)},
-		{Method: http.MethodPost, Path: "/me/verify-password", Handler: verifyPasswordHandler(svcCtx)},
-		{Method: http.MethodPut, Path: "/me/public-key", Handler: putPublicKeyHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/me/public-key", Handler: getPublicKeyHandler(svcCtx)},
-		{Method: http.MethodGet, Path: "/:userId/avatar", Handler: getAvatarHandler(svcCtx)},
-	}, rest.WithPrefix("/api/v1/users"))
+func registerProfileHandlers(r router.Registrar, svcCtx *svc.ServiceContext) {
+	r.Add(http.MethodGet, "/api/v1/users/me", getMeHandler(svcCtx))
+	r.Add(http.MethodPatch, "/api/v1/users/me", patchMeHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/users/me/avatar", uploadAvatarHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/users/me/delete-account", deleteAccountHandler(svcCtx))
+	r.Add(http.MethodPost, "/api/v1/users/me/verify-password", verifyPasswordHandler(svcCtx))
+	r.Add(http.MethodPut, "/api/v1/users/me/public-key", putPublicKeyHandler(svcCtx))
+	r.Add(http.MethodGet, "/api/v1/users/me/public-key", getPublicKeyHandler(svcCtx))
+	r.Add(http.MethodGet, "/api/v1/users/:userId/avatar", getAvatarHandler(svcCtx))
 }
 
 type verifyPasswordReq struct {

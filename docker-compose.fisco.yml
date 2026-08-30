@@ -1,3 +1,0 @@
-# 兼容旧命令
-include:
-  - path: deploy/compose/docker-compose.fisco.yml

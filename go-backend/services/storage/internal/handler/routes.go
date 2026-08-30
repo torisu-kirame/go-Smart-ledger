@@ -6,30 +6,12 @@ package handler
 import (
 	"net/http"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/storage/internal/svc"
-
-	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				Method:  http.MethodPost,
-				Path:    "/backup",
-				Handler: putBackupHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/backup/fetch",
-				Handler: getBackupHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/health",
-				Handler: healthHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/v1/storage"),
-	)
+func RegisterHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodPost, "/api/v1/storage/backup", putBackupHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/storage/backup/fetch", getBackupHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/storage/health", healthHandler(serverCtx))
 }

@@ -1,3 +1,0 @@
-# 兼容旧命令：请优先使用 make up
-include:
-  - path: deploy/compose/docker-compose.yml

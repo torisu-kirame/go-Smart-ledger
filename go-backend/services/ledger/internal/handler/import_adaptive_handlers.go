@@ -8,22 +8,19 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/domain"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/importfile"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/importxlsx"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/logic"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/mapper"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/ledger/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterImportAdaptiveHandlers ledger import with adaptive schema / new table.
-func RegisterImportAdaptiveHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPost, Path: "/ledgers/:id/import/adaptive/preview", Handler: importAdaptivePreviewHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/ledgers/:id/import/adaptive/commit", Handler: importAdaptiveCommitHandler(serverCtx)},
-	}, prefix)
+func RegisterImportAdaptiveHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/import/adaptive/preview", importAdaptivePreviewHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/ledgers/:id/import/adaptive/commit", importAdaptiveCommitHandler(serverCtx))
 }
 
 func importAdaptivePreviewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

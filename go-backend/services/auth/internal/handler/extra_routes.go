@@ -9,39 +9,33 @@ import (
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/captcha"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/friendstore"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/userstore"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/svc"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/types"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/auth/internal/userinfo"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 	"github.com/zeromicro/go-zero/rest/pathvar"
 	xerrors "github.com/zeromicro/x/errors"
 )
 
 // RegisterExtraHandlers adds register, user search, and friends APIs.
-func RegisterExtraHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodPost, Path: "/register", Handler: registerHandler(serverCtx)},
-	}, rest.WithPrefix("/api/v1/auth"))
+func RegisterExtraHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
+	r.Add(http.MethodPost, "/api/v1/auth/register", registerHandler(serverCtx))
 
-	registerProfileHandlers(server, serverCtx)
-	registerTeamHandlers(server, serverCtx)
-	registerEntryTemplateHandlers(server, serverCtx)
+	registerProfileHandlers(r, serverCtx)
+	registerTeamHandlers(r, serverCtx)
+	registerEntryTemplateHandlers(r, serverCtx)
 
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/search", Handler: userSearchHandler(serverCtx)},
-	}, rest.WithPrefix("/api/v1/users"))
+	r.Add(http.MethodGet, "/api/v1/users/search", userSearchHandler(serverCtx))
 
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/requests/incoming", Handler: listIncomingFriendRequestsHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/requests/outgoing", Handler: listOutgoingFriendRequestsHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/requests/:fromUserId/accept", Handler: acceptFriendRequestHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/requests/:fromUserId/reject", Handler: rejectFriendRequestHandler(serverCtx)},
-		{Method: http.MethodDelete, Path: "/requests/:toUserId", Handler: cancelFriendRequestHandler(serverCtx)},
-		{Method: http.MethodGet, Path: "/", Handler: listFriendsHandler(serverCtx)},
-		{Method: http.MethodPost, Path: "/", Handler: addFriendHandler(serverCtx)},
-		{Method: http.MethodDelete, Path: "/:friendId", Handler: deleteFriendHandler(serverCtx)},
-	}, rest.WithPrefix("/api/v1/friends"))
+	r.Add(http.MethodGet, "/api/v1/friends/requests/incoming", listIncomingFriendRequestsHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/friends/requests/outgoing", listOutgoingFriendRequestsHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/friends/requests/:fromUserId/accept", acceptFriendRequestHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/friends/requests/:fromUserId/reject", rejectFriendRequestHandler(serverCtx))
+	r.Add(http.MethodDelete, "/api/v1/friends/requests/:toUserId", cancelFriendRequestHandler(serverCtx))
+	r.Add(http.MethodGet, "/api/v1/friends", listFriendsHandler(serverCtx))
+	r.Add(http.MethodPost, "/api/v1/friends", addFriendHandler(serverCtx))
+	r.Add(http.MethodDelete, "/api/v1/friends/:friendId", deleteFriendHandler(serverCtx))
 }
 
 type registerReq struct {

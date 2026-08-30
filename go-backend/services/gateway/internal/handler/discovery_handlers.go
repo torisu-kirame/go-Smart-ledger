@@ -4,20 +4,17 @@ import (
 	"net/http"
 
 	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/registry"
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/gateway/internal/svc"
-	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
 // RegisterDiscoveryHandlers exposes etcd service discovery (F28).
-func RegisterDiscoveryHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
+func RegisterDiscoveryHandlers(r router.Registrar, serverCtx *svc.ServiceContext) {
 	if !serverCtx.Config.Discovery.Etcd.Enabled {
 		return
 	}
-	prefix := rest.WithPrefix("/api/v1")
-	server.AddRoutes([]rest.Route{
-		{Method: http.MethodGet, Path: "/discovery/services", Handler: discoveryListHandler(serverCtx)},
-	}, prefix)
+	r.Add(http.MethodGet, "/api/v1/discovery/services", discoveryListHandler(serverCtx))
 }
 
 func discoveryListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

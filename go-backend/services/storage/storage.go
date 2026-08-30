@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/smart-ledger/go-smart-ledger/go-backend/pkg/router/restadapt"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/storage/internal/config"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/storage/internal/handler"
 	"github.com/smart-ledger/go-smart-ledger/go-backend/services/storage/internal/svc"
@@ -30,7 +31,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	handler.RegisterHandlers(server, ctx)
+	handler.RegisterHandlers(restadapt.New(server), ctx)
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
