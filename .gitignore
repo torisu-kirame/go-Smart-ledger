@@ -31,5 +31,8 @@ frontend/desktop/dist/
 frontend/mobile/node_modules/
 /docx/
 
-# OpenClaw legacy（profile openclaw-legacy）
+# OpenClaw runtime / secrets（勿提交 API Key、会话、sqlite）
 deploy/config/openclaw/
+data/openclaw/
+.env.openclaw
+*.last-good
