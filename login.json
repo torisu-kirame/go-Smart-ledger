@@ -1,0 +1,21 @@
+﻿{
+  "baseUrl": "http://127.0.0.1:28080/api/v1",
+  "username": "admin",
+  "password": "admin123",
+  "captchaPassToken": "sl-ai-captcha-pass",
+  "note": "Set both captchaId and captchaCode to captchaPassToken to skip image captcha. Use accessToken as Authorization Bearer.",
+  "loginRequest": {
+    "method": "POST",
+    "path": "/auth/login",
+    "url": "http://127.0.0.1:28080/api/v1/auth/login",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "username": "admin",
+      "password": "admin123",
+      "captchaId": "sl-ai-captcha-pass",
+      "captchaCode": "sl-ai-captcha-pass"
+    }
+  }
+}

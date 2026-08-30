@@ -282,7 +282,20 @@ func (s *Service) appendEventLocked(ctx context.Context, meta *domain.LedgerMeta
 
 	fresh, err := s.loadMeta(ctx, meta.ID)
 	if err != nil {
-		return nil, err
+		// MiniLedger world_state can lag immediately after putMeta (Create /
+		// Restore). Fall back to the caller's in-memory meta instead of
+		// surfacing "ledger not found" on a ledger we just wrote.
+		if !errors.Is(err, domain.ErrLedgerNotFound) || strings.TrimSpace(meta.ID) == "" {
+			return nil, err
+		}
+		c := *meta
+		if meta.Tables != nil {
+			c.Tables = append([]domain.LedgerTable(nil), meta.Tables...)
+		}
+		if meta.Members != nil {
+			c.Members = append([]domain.Member(nil), meta.Members...)
+		}
+		fresh = &c
 	}
 	// Never rewind seq from a lagging world_state read — BatchImport used to
 	// loadMeta after each row and reuse the same seq, overwriting EntryAdded.

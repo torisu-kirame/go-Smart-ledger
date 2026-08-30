@@ -1,6 +1,0 @@
-string: `{
-    username:  admin,
-    captchaId:  cOtkbJUuANAyD2x4RG6r,
-    password:  admin123,
-    captchaCode:  skip
-}`, error: `invalid character 'u' looking for beginning of object key string`
